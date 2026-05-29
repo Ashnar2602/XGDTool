@@ -8,8 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="CLI\" />
-    <Folder Include="UI\" />
     <Folder Include="Resources\" />
   </ItemGroup>
 
