@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "XGDTool": {
+      "commandName": "Project",
+      "commandLineArgs": "extract -i \"C:\\dev\\xgdtooltesting\\Halo - Combat Evolved (USA) (Rev 2).iso\" -o \"C:\\dev\\xgdtooltesting\"",
+      "workingDirectory": "C:\\dev\\xgdtooltesting"
+    }
+  }
+}
