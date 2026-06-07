@@ -102,31 +102,26 @@ public static class InputHelper
         }
     }
 
-    private static void RecurseGodDirectory(string path, int depth, int limit, out string? outPath)
+    private static bool RecurseGodDirectory(string path, int depth, int limit, out string outPath)
     {
-        outPath = null;
+        outPath = "";
 
         if (depth > limit)
-            return;
+            return false;
 
-        var dirs = Directory.GetDirectories(path, "*", SearchOption.TopDirectoryOnly);
-        var files = Directory.GetFiles(path, "*.*", SearchOption.TopDirectoryOnly);
-
-        foreach (var dir in dirs)
-            RecurseGodDirectory(dir, depth + 1, limit, out outPath);
-
-        foreach (var file in files)
+        if (!Image.Reader.God.IsValid(path))
         {
-            var parentDir = Path.GetDirectoryName(file);
-
-            if (!string.IsNullOrEmpty(parentDir) &&
-                file.StartsWith("Data", StringComparison.OrdinalIgnoreCase) &&
-                parentDir.EndsWith(".data", StringComparison.OrdinalIgnoreCase))
+            var dirs = Directory.GetDirectories(path, "*", SearchOption.TopDirectoryOnly);
+            foreach (var dir in dirs)
             {
-                outPath = parentDir;
-                return;
+                if (RecurseGodDirectory(dir, depth + 1, limit, out outPath))
+                    return true;
             }
+            return false;
         }
+
+        outPath = path;
+        return true;
     }
 
     public static Image.Type DetectType(ref string path, out long? imageOffset)
@@ -138,13 +133,11 @@ public static class InputHelper
             if (Image.Reader.Extract.IsValid(path))
                 return Image.Type.Extract;
 
-            //RecurseGodDirectory(path, 0, 2, out var newPath);
-
-            //if (!string.IsNullOrEmpty(newPath))
-            //{
-            //    path = newPath;
-            //    return Image.Type.GOD;
-            //}
+            if (RecurseGodDirectory(path, 0, 2, out var newPath))
+            {
+                path = newPath;
+                return Image.Type.GOD;
+            }
         }
         else if (File.Exists(path))
         {

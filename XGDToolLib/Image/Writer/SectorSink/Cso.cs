@@ -4,9 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace XGDToolLib.Image.Writer.SectorSink
-{
-    internal class Cso
-    {
-    }
-}
+namespace XGDToolLib.Image.Writer.SectorSink;
+
+//internal class Cso
+//{
+//}

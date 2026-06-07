@@ -48,7 +48,7 @@ internal class Xiso : Base
                 buffer.Slice(maxReadBytes));
     }
 
-    public override async Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken cancelToken = default)
+    public override async Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default)
     {
         if (!XISO.IsSectorAligned(buffer.Length))
             throw new ArgumentException(
@@ -58,7 +58,7 @@ internal class Xiso : Base
         var maxReadBytes = (int)Math.Min(stream.Length - offset, buffer.Length);
 
         stream.Seek(offset, SeekOrigin.Begin);
-        var len = await stream.ReadAsync(buffer.Slice(0, maxReadBytes), cancelToken);
+        var len = await stream.ReadAsync(buffer.Slice(0, maxReadBytes), ct);
 
         if (len != maxReadBytes)
             throw new IOException(
@@ -68,7 +68,7 @@ internal class Xiso : Base
             await ReadSectorsAsync(
                 startSector + XISO.AlignUpToSector(maxReadBytes), 
                 buffer.Slice(maxReadBytes), 
-                cancelToken);
+                ct);
     }
 
     public static bool IsValid(string path)

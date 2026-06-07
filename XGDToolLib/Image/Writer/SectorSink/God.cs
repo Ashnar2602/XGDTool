@@ -58,8 +58,21 @@ internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo)
 
     public Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
     {
-        long tableCount = Streams.Aggregate(0L, (acc, s) => checked(acc + SubHashTableCount(s) + 1));
-        tableCount += Streams.Count;
+        foreach (var stream in Streams)
+        {
+            if (!GOD.IsBlockAligned(stream.Length))
+            {
+                stream.Seek(0, SeekOrigin.End);
+                var paddingSize = (int)(GOD.AlignUpToBlock(stream.Length) - stream.Length);
+
+                if (paddingSize > 0)
+                    stream.Write(new byte[paddingSize], 0, paddingSize);
+            }
+        }
+
+        long tableCount = Streams.Aggregate(0L, (acc, s) => 
+            checked(acc + GOD.SubHashTableCount(s.Length) + 1));
+        tableCount += Streams.Count; // master hash tables
         tableCount++; // Just add one to represent the live header so we're not showing 100% until it's written
 
         var progData = new Converter.Progress
@@ -93,18 +106,18 @@ internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo)
             Directory.Delete(GodFolderPath, true);
     }
 
-    protected void WriteSubHashTables(ref Converter.Progress progData, IProgress<Converter.Progress>? progress, CancellationToken cancellationToken)
+    protected void WriteSubHashTables(ref Converter.Progress progData, IProgress<Converter.Progress>? progress, CancellationToken ct)
     {
         foreach (var stream in Streams)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            ct.ThrowIfCancellationRequested();
 
-            if (!GOD.IsAligned(stream.Length))
+            if (!GOD.IsBlockAligned(stream.Length))
                 throw new InvalidOperationException(
                     $"Stream length must be a multiple of {GOD.BLOCK_SIZE}: {stream.Name}");
 
-            var blocksRemaining = GOD.AlignUp(stream.Length);
-            var subHashTableCount = SubHashTableCount(stream);
+            var blocksRemaining = GOD.AlignUpToBlock(stream.Length);
+            var subHashTableCount = GOD.SubHashTableCount(stream.Length);
 
             var masterHashTable = new byte[subHashTableCount * SHA1.HashSizeInBytes];
 
@@ -114,7 +127,7 @@ internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo)
 
             for (int i = 0; i < subHashTableCount; i++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                ct.ThrowIfCancellationRequested();
 
                 var blocksInSht = 0;
                 var blockBuffer = new byte[GOD.BLOCK_SIZE];
@@ -126,7 +139,7 @@ internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo)
 
                 while (blocksInSht < GOD.DATA_BLOCKS_PER_SHT && 0 < blocksRemaining)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    ct.ThrowIfCancellationRequested();
 
                     var bytesRead = stream.Read(blockBuffer, 0, blockBuffer.Length);
 
@@ -176,7 +189,7 @@ internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo)
         }
     }
 
-    private byte[] FinalizeHashTables(ref Converter.Progress progData, IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
+    private byte[] FinalizeHashTables(ref Converter.Progress progData, IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
         var finalMhtHash = new byte[SHA1.HashSizeInBytes];
         var currHash = new byte[SHA1.HashSizeInBytes];
@@ -184,8 +197,7 @@ internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo)
 
         for (int i = Streams.Count - 1; i > 0; i--)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return finalMhtHash;
+            ct.ThrowIfCancellationRequested();
 
             var currStream = Streams[i];
             var prevStream = Streams[i - 1];
@@ -321,16 +333,6 @@ internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo)
         var f = new FileStream(LiveHeaderPath, FileMode.Create, FileAccess.Write);
         f.Write(headerBuf, 0, headerBuf.Length);
         f.Close();
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static long SubHashTableCount(FileStream stream)
-    {
-        var blocksRemaining = GOD.AlignUp(stream.Length);
-        return
-            (blocksRemaining - 1) /
-            (GOD.DATA_BLOCKS_PER_SHT + 1) +
-            ((blocksRemaining - 1) % (GOD.DATA_BLOCKS_PER_SHT + 1) > 0 ? 1 : 0);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
