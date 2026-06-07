@@ -1,0 +1,248 @@
+﻿using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using XGDTool.Lib.Exe;
+using XGDTool.Lib.Image.Format;
+
+namespace XGDTool.Lib.Title;
+
+public static class Resolver
+{
+    private static string XboxOriginalJsonPath =>
+        Path.Combine(AppContext.BaseDirectory, "Resources", "Repackinator", "RepackList.json");
+
+    private static string Xbox360JsonPath =>
+        Path.Combine(AppContext.BaseDirectory, "Resources", "XboxUnity-Scraper", "metadata.json");
+
+    private static readonly Lazy<Dictionary<
+        (uint TitleId, uint Version, XBE.Region Region), RepackEntry>> XboxOgByIdMain = new(() =>
+        {
+            var entries = JsonSerializer.Deserialize<List<RepackEntry>>(
+                File.ReadAllText(XboxOriginalJsonPath)) ?? [];
+            return entries
+                .Where(e => 
+                    !string.IsNullOrEmpty(e.TitleId) && 
+                    e.List.Equals("Main", StringComparison.OrdinalIgnoreCase))
+                .ToDictionary(e => 
+                    (Convert.ToUInt32(e.TitleId, 16), 
+                     Convert.ToUInt32(e.Version, 16),
+                     XbeRegionFromString(e.Region)));
+        });
+
+    //private static readonly Lazy<Dictionary<
+    //    (uint TitleId, uint Version, XBE.Region Region), RepackEntry>> XboxOgByIdAlt = new(() =>
+    //    {
+    //        var entries = JsonSerializer.Deserialize<List<RepackEntry>>(
+    //            File.ReadAllText(XboxOriginalJsonPath)) ?? [];
+
+    //        //var duplicates = entries
+    //        //    .Where(e =>
+    //        //        !string.IsNullOrEmpty(e.TitleId) &&
+    //        //        e.List.Equals("Alt", StringComparison.OrdinalIgnoreCase))
+    //        //    .GroupBy(e => (
+    //        //        TitleId: Convert.ToUInt32(e.TitleId, 16),
+    //        //        Version: Convert.ToUInt32(e.Version, 16),
+    //        //        Region: XbeRegionFromString(e.Region)))
+    //        //    .Where(g => g.Count() > 1);
+
+    //        //foreach (var g in duplicates)
+    //        //{
+    //        //    Console.WriteLine($"{g.Key.TitleId:X8} {g.Key.Version:X8} {g.Key.Region}");
+
+    //        //    foreach (var e in g)
+    //        //        Console.WriteLine($"  {e.TitleName} | {e.IsoName} | {e.IsoChecksum}");
+    //        //}
+
+    //        return entries
+    //            .Where(e =>
+    //                !string.IsNullOrEmpty(e.TitleId) &&
+    //                e.List.Equals("Alt", StringComparison.OrdinalIgnoreCase))
+    //            .ToDictionary(e =>
+    //                (Convert.ToUInt32(e.TitleId, 16),
+    //                 Convert.ToUInt32(e.Version, 16),
+    //                 XbeRegionFromString(e.Region)));
+    //    });
+
+    private static readonly Lazy<Dictionary<uint, MetaDataEntry>> Xbox360ById = new(() =>
+        {
+            var root = JsonSerializer.Deserialize<MetaDataArray>(
+                File.ReadAllText(Xbox360JsonPath)) ?? new MetaDataArray();
+            return root.Items.ToDictionary(e => Convert.ToUInt32(e.TitleId, 16));
+        });
+
+    private static readonly HashSet<char> InvalidFatChars =
+        [
+            '<', '>', ':', '"', '/', '\\', '|', '?', '*'
+        ];
+
+    public static Info Resolve(Image.IReader reader)
+    {
+        var headerTool = new HeaderTool(reader);
+
+        if (headerTool.Platform == Platform.Xbox360)
+            return InfoFromXbox360(reader, headerTool);
+        else if (headerTool.Platform == Platform.OriginalXbox)
+            return InfoFromXboxOriginal(reader, headerTool);
+        else
+            throw new NotSupportedException($"Unsupported platform: {headerTool.Platform}");
+    }
+
+    private static Info InfoFromXbox360(Image.IReader reader, HeaderTool headerTool)
+    {
+        var exe = headerTool.XexInfo.ExecutionInfo;
+        string name;
+
+        if (!Xbox360ById.Value.TryGetValue(exe.TitleId, out var e) || e == null)
+            name = GetNameFromFile(reader);
+        else
+            name = e.Name;
+
+        var info = new Info(headerTool);
+        var baseFsName = SanitizeFatName(name);
+
+        info.TitleName = name;
+        info.FolderName = baseFsName;
+        info.ImageName = baseFsName;
+        info.GodFolderName = baseFsName;
+
+        var titleIdStr = " [" + info.TitleId.ToString("X8") + "]";
+        var discStr = (exe.DiscCount > 1) 
+            ? ("(Disc " + exe.DiscNumber.ToString() + ")") 
+            : string.Empty;
+
+        if (info.FolderName.Length + discStr.Length > XISO.MAX_FILENAME_CHARS_MAX)
+            info.FolderName = info.FolderName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - discStr.Length);
+
+        if (info.ImageName.Length + discStr.Length > XISO.MAX_FILENAME_CHARS_MAX - 4)
+            info.ImageName = info.ImageName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - 4 - discStr.Length);
+
+        if (info.GodFolderName.Length + titleIdStr.Length > XISO.MAX_FILENAME_CHARS_MAX)
+            info.GodFolderName = info.GodFolderName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - titleIdStr.Length);
+
+        info.FolderName += discStr;
+        info.ImageName += discStr;
+        info.GodFolderName += titleIdStr;
+        info.GodUniqueName = CreateGodUniqueuName(exe);
+
+        return info;
+    }
+
+    private static Info InfoFromXboxOriginal(Image.IReader reader, HeaderTool headerTool)
+    {
+        var cert = headerTool.XbeInfo.CertificateHeader;
+        var key = (cert.TitleID, cert.Version, cert.GameRegion);
+
+        if (!XboxOgByIdMain.Value.TryGetValue(key, out var e) || e == null)
+            e = GenerateRepackEntry(reader, cert);
+
+        var info = new Info(headerTool);
+        info.TitleName = e.XbeTitle;
+        info.FolderName = SanitizeFatName(e.FolderName);
+        info.ImageName = SanitizeFatName(e.IsoName);
+
+        var baseName = SanitizeFatName(info.TitleName.Split(" (")[0]);
+        var titleIdStr = " [" + info.TitleId.ToString("X8") + "]";
+
+        if (baseName.Length + titleIdStr.Length > 31)
+            baseName = baseName.Substring(0, 31);
+
+        info.GodFolderName = baseName + titleIdStr;
+        info.GodUniqueName = CreateGodUniqueuName(info.XexExecutionInfo);
+
+        return info;
+    }
+
+    private static string GetNameFromFile(Image.IReader reader)
+    {
+        return reader.ImageType == Image.Type.Extract
+            ? Path.GetFileName(reader.FilePaths.First())
+            : Path.GetFileNameWithoutExtension(reader.FilePaths.First());
+    }
+
+    private static RepackEntry GenerateRepackEntry(Image.IReader reader, XBE.CertificateHeader cert)
+    {
+        var e = new RepackEntry();
+        e.Region = StringFromXbeRegion(cert.GameRegion);
+
+        var rSuffix = !string.IsNullOrEmpty(e.Region)
+            ? " (" + e.Region + ")"
+            : "";
+
+        var rawName = GetNameFromFile(reader).Split(" (")[0];
+
+        e.XbeTitle = rawName;
+        e.FolderName = SanitizeFatName(rawName);
+        e.IsoName = e.FolderName;
+
+        if (e.XbeTitle.Length + rSuffix.Length > XBE.TITLE_NAME_CHARS_MAX)
+            e.XbeTitle = rawName.Substring(0, XBE.TITLE_NAME_CHARS_MAX - rSuffix.Length);
+
+        if (e.FolderName.Length + rSuffix.Length > XISO.MAX_FILENAME_CHARS_MAX)
+            e.FolderName = rawName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - rSuffix.Length);
+
+        if (e.IsoName.Length + rSuffix.Length > XISO.MAX_FILENAME_CHARS_MAX - 4)
+            e.IsoName = rawName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - 4 - rSuffix.Length);
+
+        e.XbeTitle += rSuffix;
+        e.FolderName += rSuffix;
+        e.IsoName += rSuffix;
+
+        return e;
+    }
+
+    private static string CreateGodUniqueuName(XEX.ExecutionInfo exeInfo)
+    {
+        using var ms = new MemoryStream();
+        using var bw = new BinaryWriter(ms);
+
+        bw.Write(exeInfo.TitleId);
+        bw.Write(exeInfo.MediaId);
+        bw.Write(exeInfo.DiscNumber);
+        bw.Write(exeInfo.DiscCount);
+
+        byte[] hash = SHA1.HashData(ms.ToArray());
+
+        StringBuilder sb = new StringBuilder();
+
+        foreach (byte b in hash)
+            sb.Append(b.ToString("X2"));
+
+        return sb.ToString();
+    }
+
+    private static XBE.Region XbeRegionFromString(string regionStr)
+    {
+        if (regionStr.Equals("USA", StringComparison.OrdinalIgnoreCase))
+            return XBE.Region.USA;
+        else if (regionStr.Equals("PAL", StringComparison.OrdinalIgnoreCase))
+            return XBE.Region.PAL;
+        else if (regionStr.Equals("JPN", StringComparison.OrdinalIgnoreCase))
+            return XBE.Region.JPN;
+        else if (regionStr.Equals("GLO", StringComparison.OrdinalIgnoreCase))
+            return XBE.Region.GLO;
+        else if (regionStr.Equals("DBG", StringComparison.OrdinalIgnoreCase))
+            return XBE.Region.DBG;
+        else
+            return (XBE.Region)~0U;
+    }
+
+    private static string StringFromXbeRegion(XBE.Region region)
+    {
+        return region switch
+        {
+            XBE.Region.USA => "USA",
+            XBE.Region.PAL => "PAL",
+            XBE.Region.JPN => "JPN",
+            XBE.Region.GLO => "GLO",
+            XBE.Region.DBG => "DBG",
+            _ => "UNK"
+        };
+    }
+
+    private static string SanitizeFatName(string name)
+    {
+        return new string(name
+            .Where(c => c >= 32 && !InvalidFatChars.Contains(c))
+            .ToArray());
+    }
+}

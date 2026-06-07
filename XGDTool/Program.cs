@@ -4,7 +4,7 @@
     {
         try
         {
-            var cli = new XGDToolCLI.Program();
+            var cli = new XGDTool.CLI.Program();
             int exitCode = cli.Run(args).GetAwaiter().GetResult();
             Console.WriteLine($"Operation completed with exit code: {exitCode}");
             Environment.Exit(exitCode);

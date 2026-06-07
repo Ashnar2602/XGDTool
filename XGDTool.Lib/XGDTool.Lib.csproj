@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+  	<Compile Remove="Img\**" />
+  	<Compile Remove="Resources\**\*.md;Resources\**\LICENSE*" />
+  	<None Include="Resources\**\*.md;Resources\**\LICENSE*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="Img\**" />
+    <None Remove="Img\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+  	<None Update="Resources\**\LICENSE*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  	</None>
+  </ItemGroup>
+
+  <ItemGroup>
+  	<None Update="Resources\Repackinator\RepackList.json">
+  	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  	</None>
+	<None Update="Resources\XboxUnity-Scraper\metadata.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
+  </ItemGroup>
+
+</Project>

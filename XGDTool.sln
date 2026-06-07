@@ -1,15 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36930.0
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11822.322 stable
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XGDTool", "XGDTool/XGDTool.csproj", "{FBA650DF-C2EE-4CF2-B118-39AB9AE3D8AA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XGDTool", "XGDTool\XGDTool.csproj", "{FBA650DF-C2EE-4CF2-B118-39AB9AE3D8AA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XGDToolLib", "XGDToolLib\XGDToolLib.csproj", "{A24382FD-5DFE-460D-B81B-8C51A5807A41}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XGDTool.Lib", "XGDTool.Lib\XGDTool.Lib.csproj", "{A24382FD-5DFE-460D-B81B-8C51A5807A41}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XGDToolGUI", "XGDToolGUI\XGDToolGUI.csproj", "{9AF7B3FA-C751-2383-5A08-4DEDA10793B3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XGDTool.GUI", "XGDTool.GUI\XGDTool.GUI.csproj", "{9AF7B3FA-C751-2383-5A08-4DEDA10793B3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XGDToolCLI", "XGDToolCLI\XGDToolCLI.csproj", "{EB1FBAFA-DDFE-4A76-8F02-8A30F47DC8F7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XGDTool.CLI", "XGDTool.CLI\XGDTool.CLI.csproj", "{8CD54581-FCA8-A6D0-625C-06119020EDF2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +29,10 @@ Global
 		{9AF7B3FA-C751-2383-5A08-4DEDA10793B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9AF7B3FA-C751-2383-5A08-4DEDA10793B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9AF7B3FA-C751-2383-5A08-4DEDA10793B3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EB1FBAFA-DDFE-4A76-8F02-8A30F47DC8F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EB1FBAFA-DDFE-4A76-8F02-8A30F47DC8F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EB1FBAFA-DDFE-4A76-8F02-8A30F47DC8F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EB1FBAFA-DDFE-4A76-8F02-8A30F47DC8F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CD54581-FCA8-A6D0-625C-06119020EDF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CD54581-FCA8-A6D0-625C-06119020EDF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CD54581-FCA8-A6D0-625C-06119020EDF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CD54581-FCA8-A6D0-625C-06119020EDF2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
