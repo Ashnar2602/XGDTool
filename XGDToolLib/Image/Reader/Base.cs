@@ -1,38 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using XGDToolLib.Image.Format;
+﻿using XGDToolLib.Image.Format;
 using XGDToolLib.Util;
+using XGDToolLib.Exe;
 
 namespace XGDToolLib.Image.Reader;
 
 internal abstract class Base(IReadOnlyList<string> files) : IReader
 {
-    private HashSet<uint> DataSectors = new();
     private List<SectorRange> DataSectorRanges = new();
 
-    protected List<string> InFiles { get; } = files.ToList().OrderBy(f => f).ToList();
-
     public abstract Type ImageType { get; }
-    public abstract uint TotalSectors { get; }
+    public abstract uint TotalSectors { get; protected set; }
 
+    public List<string> FilePaths { get; } = files.ToList().OrderBy(f => f).ToList();
     public long ImageOffset { get; private set; }
-    public uint SectorOffset => XISO.AlignUp(ImageOffset);
-    public Exe.Platform Platform { get; private set; } = Exe.Platform.Unknown;
+    public uint SectorOffset => XISO.AlignUpToSector(ImageOffset);
+    public Platform Platform { get; private set; } = Platform.Unknown;
     public List<DirectoryEntry> DirectoryEntries { get; } = new();
     public DirectoryEntry ExecutableEntry { get; private set; } = new();
 
-    public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken cancelToken = default)
+    public async Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
         if (DirectoryEntries.Count > 0)
-            return Task.CompletedTask;
+            return;
 
-        InitializeType(progress, cancelToken).WaitAsync(cancelToken);
-
-        if (cancelToken.IsCancellationRequested)
-            return Task.FromCanceled(cancelToken);
+        await InitializeType(progress, ct);
 
         var imgOff = DetectImageOffset();
 
@@ -55,8 +46,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         while (unprocessed.Count > 0 && unprocessed.Count < 2000)
         {
-            if (cancelToken.IsCancellationRequested)
-                return Task.FromCanceled<(List<DirectoryEntry>, DirectoryEntry)>(cancelToken);
+            ct.ThrowIfCancellationRequested();
 
             var cEntry = unprocessed.Dequeue();
 
@@ -95,12 +85,12 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
                 if (rEntry.GetName().Equals("default.xex", StringComparison.OrdinalIgnoreCase))
                 {
                     ExecutableEntry = rEntry;
-                    Platform = Exe.Platform.Xbox360;
+                    Platform = Platform.Xbox360;
                 }
                 else if (rEntry.GetName().Equals("default.xbe", StringComparison.OrdinalIgnoreCase))
                 {
                     ExecutableEntry = rEntry;
-                    Platform = Exe.Platform.OriginalXbox;
+                    Platform = Platform.OriginalXbox;
                 }
             }
 
@@ -114,27 +104,22 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         if (unprocessed.Count >= 2000)
             throw new InvalidDataException("Too many directory entries found in image, likely malformed.");
 
-        if (Platform == Exe.Platform.Unknown)
+        if (Platform == Platform.Unknown)
             throw new InvalidDataException("No executable entry found in image.");
 
         progData.Current = progData.Total;
         progress?.Report(progData);
-
-        return Task.CompletedTask;
     }
 
-    public Task<HashSet<uint>> GetDataSectors(IProgress<Converter.Progress>? progress = null, CancellationToken cancelToken = default)
+    private HashSet<uint> GetDataSectors(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
         if (DirectoryEntries.Count == 0)
             throw new InvalidOperationException("Directory entries must be initialized before getting data sectors.");
 
-        if (DataSectors.Count > 0)
-            return Task.FromResult(DataSectors);
-
         var unprocessed = new Queue<DirectoryEntry>();
         var dataSectors = new HashSet<uint>();
         var readBuf = new byte[XISO.SECTOR_SIZE];
-        var headerSector = SectorOffset + XISO.AlignUp(XISO.MAGIC_OFFSET);
+        var headerSector = SectorOffset + XISO.AlignUpToSector(XISO.MAGIC_OFFSET);
         var progData = new Converter.Progress()
         {
             Stage = Converter.Stage.LoadingDataSectors,
@@ -151,14 +136,13 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         while (unprocessed.Count > 0 && unprocessed.Count < 4000)
         {
-            if (cancelToken.IsCancellationRequested)
-                return Task.FromCanceled<HashSet<uint>>(cancelToken);
+            ct.ThrowIfCancellationRequested();
 
             var cEntry = unprocessed.Dequeue();
             var cPos = ImageOffset + cEntry.RelativeOffset + (cEntry.LROffsetFromParent * 4);
             var cEnd = ((cEntry.Header.FileSize - (cEntry.LROffsetFromParent * 4) + 2047) >> 11);
 
-            dataSectors.UnionWith(Enumerable.Range((int)XISO.AlignUp(cPos), (int)cEnd).Select(s => (uint)s));
+            dataSectors.UnionWith(Enumerable.Range((int)XISO.AlignUpToSector(cPos), (int)cEnd).Select(s => (uint)s));
 
             progData.Current += cEntry.Header.FileSize;
             progress?.Report(progData);
@@ -192,7 +176,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
                 if (rEntry.Header.FileSize > 0)
                 {
                     var start = SectorOffset + rEntry.Header.StartSector;
-                    var count = XISO.AlignUp(rEntry.Header.FileSize);
+                    var count = XISO.AlignUpToSector(rEntry.Header.FileSize);
                     dataSectors.UnionWith(Enumerable.Range((int)start, (int)count).Select(s => (uint)s));
 
                     progData.Current += rEntry.Header.FileSize;
@@ -212,13 +196,9 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         HashSet<uint>? ss = null;
 
-        if (Platform == Exe.Platform.OriginalXbox)
+        if (Platform == Platform.OriginalXbox)
         {
-            var ret = GetSecuritySectors(dataSectors, progress, cancelToken).WaitAsync(cancelToken);
-            if (ret.IsCanceled)
-                return Task.FromCanceled<HashSet<uint>>(cancelToken);
-
-            ss = ret.Result;
+            ss = GetSecuritySectors(dataSectors, progress, ct);
         }
 
         if (ss != null && ss.Count > 0)
@@ -232,21 +212,15 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
                 Enumerable.Range((int)SectorOffset, (int)(maxDataSector - SectorOffset)).Select(s => (uint)s));
         }
 
-        DataSectors = dataSectors;
-        return Task.FromResult(DataSectors);
+        return dataSectors;
     }
 
-    public Task<List<SectorRange>> GetDataSectorRanges(IProgress<Converter.Progress>? progress = null, CancellationToken cancelToken = default)
+    public Task<List<SectorRange>> GetDataSectorRanges(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
         if (DataSectorRanges.Count > 0)
             return Task.FromResult(DataSectorRanges);
 
-        var ret = GetDataSectors(progress, cancelToken).WaitAsync(cancelToken);
-
-        if (ret.IsCanceled)
-            return Task.FromCanceled<List<SectorRange>>(cancelToken);
-
-        var ds = ret.Result.OrderBy(s => s).ToList();
+        var ds = GetDataSectors(progress, ct).OrderBy(s => s).ToList();
 
         var progData = new Converter.Progress()
         {
@@ -261,8 +235,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         for (int i = 1; i < ds.Count; i++)
         {
-            if (cancelToken.IsCancellationRequested)
-                return Task.FromCanceled<List<SectorRange>>(cancelToken);
+            ct.ThrowIfCancellationRequested();
 
             uint curr = ds[i];
             if (curr == prev + 1)
@@ -288,63 +261,45 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         return Task.FromResult(DataSectorRanges);
     }
 
-    public abstract void ReadSector(uint sector, Span<byte> buffer);
+    public abstract void ReadSectors(uint startSector, Span<byte> buffer);
+
+    public abstract Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default);
 
     public virtual int ReadBytes(long offset, Span<byte> buffer)
     {
         int size = buffer.Length;
 
-        if ((size % XISO.SECTOR_SIZE) == 0 && (offset % XISO.SECTOR_SIZE) == 0)
+        if (XISO.IsSectorAligned(size) && XISO.IsSectorAligned(offset))
         {
-            var read = 0;
-            while (read < size)
-            {
-                ReadSector(XISO.AlignUp(offset + read), buffer.Slice(read, XISO.SECTOR_SIZE));
-                read += XISO.SECTOR_SIZE;
-            }
+            ReadSectors(XISO.AlignUpToSector(offset), buffer);
             return size;
         }
 
-        var tempBuffer = new byte[XISO.SECTOR_SIZE];
-        var readBytes = 0;
         var offsetInSector = (int)(offset % XISO.SECTOR_SIZE);
-        var currSector = XISO.AlignUp(offset - offsetInSector);
+        var startSector = XISO.AlignUpToSector(offset - offsetInSector);
+        var numSectors = XISO.AlignUpToSector(offsetInSector + size);
+        var tmpBuf = new byte[numSectors * XISO.SECTOR_SIZE];
 
-        while (readBytes < size)
-        {
-            ReadSector(currSector, tempBuffer);
-            var bytesToCopy = (int)Math.Min(size - readBytes, XISO.SECTOR_SIZE - offsetInSector);
-            tempBuffer.AsSpan(offsetInSector, bytesToCopy).CopyTo(buffer.Slice(readBytes, bytesToCopy));
-            readBytes += bytesToCopy;
-            offsetInSector = 0;
-            currSector++;
-        }
+        ReadSectors(startSector, tmpBuf);
+        tmpBuf.AsSpan(offsetInSector, buffer.Length).CopyTo(buffer);
 
         return size;
     }
 
-    public uint ReadUInt32(long offset)
+    public byte[] ReadBytes(long offset, int count)
     {
-        var buffer = new byte[4];
+        var buffer = new byte[count];
         ReadBytes(offset, buffer);
-        return BitConverter.ToUInt32(buffer, 0);
+        return buffer;
     }
 
-    public ushort ReadUInt16(long offset)
-    {
-        var buffer = new byte[2];
-        ReadBytes(offset, buffer);
-        return BitConverter.ToUInt16(buffer, 0);
-    }
+    public uint ReadUInt32(long offset) => BitConverter.ToUInt32(ReadBytes(offset, 4), 0);
 
-    public byte ReadByte(long offset)
-    {
-        var buffer = new byte[1];
-        ReadBytes(offset, buffer);
-        return buffer[0];
-    }
+    public ushort ReadUInt16(long offset) => BitConverter.ToUInt16(ReadBytes(offset, 2), 0);
 
-    protected virtual Task InitializeType(IProgress<Converter.Progress>? progress = null, CancellationToken cancelToken = default)
+    public byte ReadByte(long offset) => ReadBytes(offset, 1)[0];
+
+    protected virtual Task InitializeType(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
         return Task.CompletedTask;
     }
@@ -375,12 +330,13 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         return entry;
     }
 
-    private Task<HashSet<uint>> GetSecuritySectors(HashSet<uint> dataSectors, IProgress<Converter.Progress>? progress = null, CancellationToken cancelToken = default)
+    private HashSet<uint> GetSecuritySectors(IReadOnlySet<uint> dSectors, IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
-        if (TotalSectors != XISO.REDUMP_GAME_SECTORS || TotalSectors != XISO.REDUMP_TOTAL_SECTORS)
-            return Task.FromResult(dataSectors);
+        var sSectors = new HashSet<uint>();
 
-        var securitySectors = new HashSet<uint>();
+        if (TotalSectors != XISO.REDUMP_GAME_SECTORS || TotalSectors != XISO.REDUMP_TOTAL_SECTORS)
+            return sSectors;
+
         bool compareMode = false;
         bool flag = false;
         uint start = 0;
@@ -395,17 +351,16 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         for (uint s = 0; s < XISO.REDUMP_END_SECTOR; s++)
         {
-            if (cancelToken.IsCancellationRequested)
-                return Task.FromCanceled<HashSet<uint>>(cancelToken);
+            ct.ThrowIfCancellationRequested();
 
-            if (dataSectors.Contains(s))
+            if (dSectors.Contains(s))
             {
                 flag = false;
                 continue;
             }
 
             uint cSector = SectorOffset + s;
-            ReadSector(cSector, buf);
+            ReadSectors(cSector, buf);
 
             var empty = buf.Sum(b => b) == 0;
 
@@ -421,14 +376,14 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
                 if (end - start == 0xFFFF)
                 {
-                    securitySectors.UnionWith(
+                    sSectors.UnionWith(
                         Enumerable.Range((int)start, (int)(end - start + 1))
                         .Select(i => (uint)i));
                 }
                 else if (compareMode && (end - start) > 0xFFF)
                 {
-                    securitySectors.Clear();
-                    return Task.FromResult(securitySectors);
+                    sSectors.Clear();
+                    return sSectors;
                 }
             }
 
@@ -436,7 +391,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             progress?.Report(progData);
         }
 
-        return Task.FromResult(securitySectors);
+        return sSectors;
     }
 
     private long? DetectImageOffset()

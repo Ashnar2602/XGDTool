@@ -8,8 +8,20 @@ namespace XGDToolLib.Image.Writer;
 
 internal interface ISectorSink
 {
-    public Task Initialize(long outImageSize, IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default);
-    public Task WriteSectorsAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken cancelToken = default);
-    public Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default);
-    public void CleanupCanceled();
+    public static ISectorSink Create(IReader reader, IWriterOptions options, Title.Info titleInfo)
+    {
+        return options.OutputType switch
+        {
+            Type.XISO => new SectorSink.Xiso(reader, options, titleInfo),
+            Type.GOD => new SectorSink.God(reader, options, titleInfo),
+            Type.CCI => new SectorSink.Cci(reader, options, titleInfo),
+            //Type.CSO => new SectorSinks.Cso(reader, options, titleInfo),
+            _ => throw new NotSupportedException($"Image type {options.OutputType} is not supported for writing."),
+        };
+    }
+
+    public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default);
+    public Task WriteSectorsAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken ct = default);
+    public Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default);
+    public void CleanupCancelled();
 }

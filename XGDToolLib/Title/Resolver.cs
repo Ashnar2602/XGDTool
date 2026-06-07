@@ -75,7 +75,7 @@ public static class Resolver
             '<', '>', ':', '"', '/', '\\', '|', '?', '*'
         ];
 
-    public static Info Resolve(Image.Reader reader)
+    public static Info Resolve(Image.IReader reader)
     {
         var headerTool = new HeaderTool(reader);
 
@@ -87,7 +87,7 @@ public static class Resolver
             throw new NotSupportedException($"Unsupported platform: {headerTool.Platform}");
     }
 
-    private static Info InfoFromXbox360(Image.Reader reader, HeaderTool headerTool)
+    private static Info InfoFromXbox360(Image.IReader reader, HeaderTool headerTool)
     {
         var exe = headerTool.XexInfo.ExecutionInfo;
         string name;
@@ -127,7 +127,7 @@ public static class Resolver
         return info;
     }
 
-    private static Info InfoFromXboxOriginal(Image.Reader reader, HeaderTool headerTool)
+    private static Info InfoFromXboxOriginal(Image.IReader reader, HeaderTool headerTool)
     {
         var cert = headerTool.XbeInfo.CertificateHeader;
         var key = (cert.TitleID, cert.Version, cert.GameRegion);
@@ -152,14 +152,14 @@ public static class Resolver
         return info;
     }
 
-    private static string GetNameFromFile(Image.Reader reader)
+    private static string GetNameFromFile(Image.IReader reader)
     {
         return reader.ImageType == Image.Type.Extract
-            ? Path.GetFileName(reader.Filepaths.First())
-            : Path.GetFileNameWithoutExtension(reader.Filepaths.First());
+            ? Path.GetFileName(reader.FilePaths.First())
+            : Path.GetFileNameWithoutExtension(reader.FilePaths.First());
     }
 
-    private static RepackEntry GenerateRepackEntry(Image.Reader reader, XBE.CertificateHeader cert)
+    private static RepackEntry GenerateRepackEntry(Image.IReader reader, XBE.CertificateHeader cert)
     {
         var e = new RepackEntry();
         e.Region = StringFromXbeRegion(cert.GameRegion);

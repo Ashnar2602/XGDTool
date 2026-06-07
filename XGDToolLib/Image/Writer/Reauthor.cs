@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using XGDToolLib.Image.Format;
+﻿using XGDToolLib.Image.Format;
 using XGDToolLib.Util;
 
 namespace XGDToolLib.Image.Writer;
@@ -16,7 +11,7 @@ internal class Reauthor : IWriter
     private readonly Title.Info TitleInfo;
     private readonly Avl.Tree AvlTree;
     private Converter.Progress ProgData = new();
-    private CancellationToken CancellationToken;
+    private CancellationToken Ct;
     private IProgress<Converter.Progress>? Progress;
     private const int BatchSectors = 256;
 
@@ -25,21 +20,21 @@ internal class Reauthor : IWriter
         Reader = reader;
         Options = options;
         TitleInfo = titleInfo;
-        SectorSink = ISectorSinkFactory.Create(Reader, Options, TitleInfo);
+        SectorSink = ISectorSink.Create(Reader, Options, TitleInfo);
         AvlTree = new Avl.Tree(TitleInfo.TitleName);
     }
 
-    public async Task<IReadOnlyList<string>> Convert(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<string>> Convert(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
-        CancellationToken = cancellationToken;
+        Ct = ct;
         Progress = progress;
 
         AvlTree.BuildTree(Reader.DirectoryEntries);
 
-        await SectorSink.Initialize(progress, cancellationToken);
-        CancellationToken.ThrowIfCancellationRequested();
+        await SectorSink.Initialize(progress, ct);
+        Ct.ThrowIfCancellationRequested();
 
-        var totalSectors = XISO.AlignUp(XISO.CalculateTotalSize(AvlTree.RootNode));
+        var totalSectors = XISO.AlignUpToSector(XISO.CalculateTotalSize(AvlTree.RootNode));
 
         ProgData = new()
         {
@@ -49,7 +44,7 @@ internal class Reauthor : IWriter
         };
 
         await WriteXisoHeader(totalSectors);
-        CancellationToken.ThrowIfCancellationRequested();
+        Ct.ThrowIfCancellationRequested();
 
         var avlIterator = new Avl.Iterator(AvlTree);
         var entries = avlIterator.Entries;
@@ -57,7 +52,7 @@ internal class Reauthor : IWriter
 
         for (var i = 0; i < entries.Count; i++)
         {
-            CancellationToken.ThrowIfCancellationRequested();
+            Ct.ThrowIfCancellationRequested();
 
             var entry = entries[i];
 
@@ -74,9 +69,9 @@ internal class Reauthor : IWriter
                     throw new InvalidOperationException(
                         "Directory buffer size is not a multiple of sector size.");
 
-                await SectorSink.WriteSectorsAsync(currentSector, dBuffer, CancellationToken);
+                await SectorSink.WriteSectorsAsync(currentSector, dBuffer, Ct);
 
-                var sectorsWritten = XISO.AlignUp(dBuffer.Length);
+                var sectorsWritten = XISO.AlignUpToSector(dBuffer.Length);
                 currentSector += sectorsWritten;
                 ProgData.Current += sectorsWritten;
                 Progress?.Report(ProgData);
@@ -105,8 +100,10 @@ internal class Reauthor : IWriter
         ProgData.Current = totalSectors;
         Progress?.Report(ProgData);
 
-        return SectorSink.FinalizeImage(Progress, CancellationToken);
+        return await SectorSink.FinalizeImage(Progress, Ct);
     }
+
+    public void CleanupCancelled() => SectorSink.CleanupCancelled();
 
     private async Task WriteXisoHeader(uint numSectors)
     {
@@ -120,9 +117,9 @@ internal class Reauthor : IWriter
         if (header.Size() % XISO.SECTOR_SIZE != 0)
             throw new InvalidOperationException("Header size is not a multiple of sector size.");
 
-        await SectorSink.WriteSectorsAsync(0, header.ToBytes(), CancellationToken);
+        await SectorSink.WriteSectorsAsync(0, header.ToBytes(), Ct);
 
-        ProgData.Current += XISO.AlignUp(header.Size());
+        ProgData.Current += XISO.AlignUpToSector(header.Size());
         Progress?.Report(ProgData);
     }
 
@@ -141,9 +138,9 @@ internal class Reauthor : IWriter
 
         while (remainingBytes > 0)
         {
-            CancellationToken.ThrowIfCancellationRequested();
+            Ct.ThrowIfCancellationRequested();
 
-            int sectorsToWrite = (int)Math.Min(BatchSectors, XISO.AlignUp(remainingBytes));
+            int sectorsToWrite = (int)Math.Min(BatchSectors, XISO.AlignUpToSector(remainingBytes));
             int bytesToWrite = sectorsToWrite * XISO.SECTOR_SIZE;
 
             bufferIndex ^= 1;
@@ -153,14 +150,14 @@ internal class Reauthor : IWriter
             await Reader.ReadSectorsAsync(
                 readSector, 
                 buffer.AsMemory(0, bytesToWrite),
-                CancellationToken);
+                Ct);
 
             await pendingWrite;
 
             pendingWrite = SectorSink.WriteSectorsAsync(
                 writeSector, 
                 buffer.AsMemory(0, bytesToWrite), 
-                CancellationToken);
+                Ct);
 
             readSector += (uint)sectorsToWrite;
             writeSector += (uint)sectorsToWrite;
@@ -182,7 +179,7 @@ internal class Reauthor : IWriter
 
         while (sectorsWritten < count)
         {
-            CancellationToken.ThrowIfCancellationRequested();
+            Ct.ThrowIfCancellationRequested();
 
             int sectorsToWrite = (int)Math.Min(BatchSectors, count - sectorsWritten);
             int bytesToWrite = sectorsToWrite * XISO.SECTOR_SIZE;
@@ -190,7 +187,7 @@ internal class Reauthor : IWriter
             await SectorSink.WriteSectorsAsync(
                 startSector + sectorsWritten, 
                 buffer.AsMemory(0, bytesToWrite), 
-                CancellationToken);
+                Ct);
 
             sectorsWritten += (uint)sectorsToWrite;
         }

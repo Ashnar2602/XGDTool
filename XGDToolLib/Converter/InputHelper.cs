@@ -14,7 +14,8 @@ public static class InputHelper
         public string[] InputPaths { get; set; } = Array.Empty<string>();
         public string? OutputDirectory { get; set; } = null;
         public Image.Type OutputType { get; set; } = Image.Type.XISO;
-        public Type ConvertType { get; set; } = Type.Passthrough;
+        public Type ConvertType { get; set; } = Type.Rewrite;
+        public bool? Scrub { get; set; } = false;
         public bool? Split { get; set; } = null;
         public bool? GenAttachXbe { get; set; } = null;
         public bool? Rename { get; set; } = null;
@@ -85,16 +86,16 @@ public static class InputHelper
 
                 entries.Add(new Entry
                 {
-                    ImageType = options.OutputType,
+                    OutputType = options.OutputType,
                     ConvertType = options.ConvertType,
                     OutDirectory = options.OutputDirectory ?? Environment.CurrentDirectory,
+                    Scrub = options.Scrub,
                     Split = options.Split,
                     RenameXbe = options.Rename,
                     RenameTo = options.NewName,
                     AllowedMediaPatch = options.AllowedMediaPatch,
                     InputPaths = newPaths,
                     InputType = type,
-                    ImageOffset = imageOffset,
                     AttachXbe = options.GenAttachXbe
                 });
             }
@@ -134,21 +135,23 @@ public static class InputHelper
 
         if (Directory.Exists(path))
         {
-            if (Image.Readers.Extract.IsValid(path))
+            if (Image.Reader.Extract.IsValid(path))
                 return Image.Type.Extract;
 
-            RecurseGodDirectory(path, 0, 2, out var newPath);
+            //RecurseGodDirectory(path, 0, 2, out var newPath);
 
-            if (!string.IsNullOrEmpty(newPath))
-            {
-                path = newPath;
-                return Image.Type.GOD;
-            }
+            //if (!string.IsNullOrEmpty(newPath))
+            //{
+            //    path = newPath;
+            //    return Image.Type.GOD;
+            //}
         }
         else if (File.Exists(path))
         {
-            if (Image.Readers.Xiso.IsValid(new[] { path }, out var offset))
+            if (Image.Reader.Xiso.IsValid(path))
                 return Image.Type.XISO;
+            //else if (Image.Reader.Cci.IsValid(path))
+            //    return Image.Type.CCI;
         }
 
         return Image.Type.Unknown;

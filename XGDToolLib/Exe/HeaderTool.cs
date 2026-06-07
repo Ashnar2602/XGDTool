@@ -1,16 +1,10 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using XGDToolLib.Image;
+﻿using XGDToolLib.Image;
 using XGDToolLib.Image.Format;
 using XGDToolLib.Util;
 
 namespace XGDToolLib.Exe;
 
-public class HeaderTool(Reader reader)
+public class HeaderTool(IReader reader)
 {
     public class XbeHeaderInfo
     {
@@ -28,7 +22,7 @@ public class HeaderTool(Reader reader)
 
     private XbeHeaderInfo? _XbeInfo;
     private XexHeaderInfo? _XexInfo;
-    private readonly Reader Reader = reader;
+    private readonly IReader Reader = reader;
 
     public XbeHeaderInfo XbeInfo => 
         _XbeInfo ??= GetXbeInfo() ?? 
@@ -68,7 +62,7 @@ public class HeaderTool(Reader reader)
         if (header.SizeOfMicrosoftLogo > 0 && header.SizeOfMicrosoftLogo < MaxLogoSize)
             logoData = Reader.ReadBytes(
                 exeOffset + logoOffset, 
-                header.SizeOfMicrosoftLogo);
+                (int)header.SizeOfMicrosoftLogo);
 
         return new XbeHeaderInfo() 
         { 

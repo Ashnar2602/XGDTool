@@ -1,120 +1,112 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Mime;
-using System.Security.Cryptography;
+﻿using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading.Tasks;
+using System.Security.Cryptography;
 using XGDToolLib.Exe;
 using XGDToolLib.Image.Format;
 using XGDToolLib.Util;
-using static XGDToolLib.Image.Writer;
 
-namespace XGDToolLib.Image.Writers;
+namespace XGDToolLib.Image.Writer.SectorSink;
 
-public abstract class GodBase(Reader reader, Options options, Title.Info titleInfo)
-    : Writer(reader, options, titleInfo)
+internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo) : ISectorSink
 {
-    protected struct Remap
-    {
-        public long Offset;
-        public int FileIndex;
-    }
+    private readonly IReader Reader = reader;
+    private readonly IWriterOptions Options = options;
+    private readonly Title.Info TitleInfo = titleInfo;
+    private readonly List<FileStream> Streams = new();
 
-    protected class FilePart
-    {
-        public required FileStream Stream;
-        public required string Path;
-    }
-
-    protected List<FilePart> FileParts = new();
-    protected Converter.Progress ProgData = new();
-
-    protected string PlatformString => TitleInfo.Platform switch
-    {
-        Platform.OriginalXbox => GOD.Type.OriginalXbox.ToString("X8"),
-        Platform.Xbox360 => GOD.Type.GamesOnDemand.ToString("X8"),
-        _ => throw new InvalidOperationException(
-            $"Unsupported platform: {TitleInfo.Platform}")
-    };
-
-    protected string OutDataDirectory => Path.Join(
-        OutOptions.OutDirectory,
-        TitleInfo.GodFolderName,
-        PlatformString,
-        TitleInfo.GodUniqueName + ".data");
-
-    protected string LiveHeaderPath => Path.Join(
-        OutOptions.OutDirectory,
-        TitleInfo.GodFolderName,
-        PlatformString,
-        TitleInfo.GodUniqueName);
-
-    public override async Task<IReadOnlyList<string>> Convert(
-        IProgress<Converter.Progress>? progress = null,
-        CancellationToken cancellationToken = default)
-    {
-        EnsureOutputDirectory(OutDataDirectory);
-
-        int totalParts = GetTotalFileParts();
-
-        for (int i = 0; i < totalParts; i++)
+    private string PlatformString => TitleInfo.Platform switch
         {
-            var partPath = GetFilePartPath(i);
-            var stream = new FileStream(partPath, FileMode.Create, FileAccess.ReadWrite);
-            FileParts.Add(new FilePart() { Stream = stream, Path = partPath });
-        }
+            Platform.OriginalXbox => GOD.Type.OriginalXbox.ToString("X8"),
+            Platform.Xbox360 => GOD.Type.GamesOnDemand.ToString("X8"),
+            _ => throw new InvalidOperationException(
+                $"Unsupported platform: {TitleInfo.Platform}")
+        };
 
-        ProgData.Stage = Converter.Stage.WritingData;
-        ProgData.Current = 0;
-        ProgData.Total = GetTotalOutDataBytes();
+    private string GodFolderPath => Path.Join(Options.OutDirectory, TitleInfo.GodFolderName);
+    private string OutDataDirectory => Path.Join(GodFolderPath, PlatformString, TitleInfo.GodUniqueName + ".data");
+    private string LiveHeaderPath => Path.Join(GodFolderPath, PlatformString, TitleInfo.GodUniqueName);
 
-        await WriteData(progress, cancellationToken);
-        if (cancellationToken.IsCancellationRequested)
-            return CleanupCancelledFiles();
+    public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        if (!Directory.Exists(OutDataDirectory))
+            Directory.CreateDirectory(OutDataDirectory);
 
-        WriteSubHashTables(progress, cancellationToken);
-        if (cancellationToken.IsCancellationRequested)
-            return CleanupCancelledFiles();
+        if (!Directory.Exists(GodFolderPath))
+            throw new DirectoryNotFoundException(
+                $"Expected directory not found: {GodFolderPath}");
 
-        var finalMhtHash = FinalizeHashTables(progress, cancellationToken);
-        if (cancellationToken.IsCancellationRequested)
-            return CleanupCancelledFiles();
+        return Task.CompletedTask;
+    }
+
+    public async Task WriteSectorsAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken cancelToken = default)
+    {
+        if (!XISO.IsSectorAligned(buffer.Length))
+            throw new ArgumentException(
+                $"Buffer length must be a multiple of {XISO.SECTOR_SIZE}", nameof(buffer));
+
+        var (stream, offset) = RemapSector(startSector);
+
+        stream.Seek(offset, SeekOrigin.Begin);
+        await stream.WriteAsync(buffer.Slice(0, XISO.SECTOR_SIZE), cancelToken);
+
+        if (buffer.Length > XISO.SECTOR_SIZE)
+            await WriteSectorsAsync(
+                startSector + 1, 
+                buffer.Slice(XISO.SECTOR_SIZE), 
+                cancelToken);
+    }
+
+    public Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        long tableCount = Streams.Aggregate(0L, (acc, s) => checked(acc + SubHashTableCount(s) + 1));
+        tableCount += Streams.Count;
+        tableCount++; // Just add one to represent the live header so we're not showing 100% until it's written
+
+        var progData = new Converter.Progress
+        {
+            Stage = Converter.Stage.Finalizing,
+            Current = 0,
+            Total = tableCount
+        };
+
+        WriteSubHashTables(ref progData, progress, cancellationToken);
+        var finalMhtHash = FinalizeHashTables(ref progData, progress, cancellationToken);
 
         WriteLiveHeader(finalMhtHash);
-        if (cancellationToken.IsCancellationRequested)
-            return CleanupCancelledFiles();
 
-        return FileParts.Select(fp => fp.Path).ToList().AsReadOnly();
+        progData.Current = progData.Total;
+        progress?.Report(progData);
+
+        return Task.FromResult(new List<string> { GodFolderPath });
     }
 
-    protected int GetTotalFileParts() => 
-        NumFileParts(NumBlocks(GetTotalOutDataBytes()));
-
-    protected abstract long GetTotalOutDataBytes();
-
-    protected abstract Task WriteData(
-        IProgress<Converter.Progress>? progress,
-        CancellationToken cancellationToken);
-
-    protected void WriteSubHashTables(
-        IProgress<Converter.Progress>? progress,
-        CancellationToken cancellationToken)
+    public void CleanupCancelled()
     {
-        foreach (var part in FileParts)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return;
+        Streams.ForEach(s => s.Dispose());
+        Streams.ForEach(s => File.Delete(s.Name));
+        Streams.Clear();
 
-            var blocksRemaining = NumBlocks(part.Stream.Length);
-            var subHashTableCount =
-                (blocksRemaining - 1) /
-                (GOD.DATA_BLOCKS_PER_SHT + 1) +
-                ((blocksRemaining - 1) % (GOD.DATA_BLOCKS_PER_SHT + 1) > 0 ? 1 : 0);
+        if (File.Exists(LiveHeaderPath))
+            File.Delete(LiveHeaderPath);
+
+        if (Directory.Exists(GodFolderPath))
+            Directory.Delete(GodFolderPath, true);
+    }
+
+    protected void WriteSubHashTables(ref Converter.Progress progData, IProgress<Converter.Progress>? progress, CancellationToken cancellationToken)
+    {
+        foreach (var stream in Streams)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!GOD.IsAligned(stream.Length))
+                throw new InvalidOperationException(
+                    $"Stream length must be a multiple of {GOD.BLOCK_SIZE}: {stream.Name}");
+
+            var blocksRemaining = GOD.AlignUp(stream.Length);
+            var subHashTableCount = SubHashTableCount(stream);
 
             var masterHashTable = new byte[subHashTableCount * SHA1.HashSizeInBytes];
-            var stream = part.Stream;
 
             stream.Seek(GOD.BLOCK_SIZE, SeekOrigin.Begin);
 
@@ -122,8 +114,7 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
 
             for (int i = 0; i < subHashTableCount; i++)
             {
-                if (cancellationToken.IsCancellationRequested)
-                    return;
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var blocksInSht = 0;
                 var blockBuffer = new byte[GOD.BLOCK_SIZE];
@@ -135,6 +126,8 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
 
                 while (blocksInSht < GOD.DATA_BLOCKS_PER_SHT && 0 < blocksRemaining)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     var bytesRead = stream.Read(blockBuffer, 0, blockBuffer.Length);
 
                     if (bytesRead != blockBuffer.Length)
@@ -145,17 +138,16 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
 
                     ReadOnlySpan<byte> blockData = blockBuffer.AsSpan(0, bytesRead);
 
-                    if (!SHA1.TryHashData(blockData, subhashTable.AsSpan(blocksInSht * SHA1.HashSizeInBytes, SHA1.HashSizeInBytes), out int written) ||
-                        written != SHA1.HashSizeInBytes)
-                    {
+                    var ret = SHA1.TryHashData(
+                        blockData, 
+                        subhashTable.AsSpan(blocksInSht * SHA1.HashSizeInBytes, SHA1.HashSizeInBytes), 
+                        out int written);
+
+                    if (!ret || written != SHA1.HashSizeInBytes)
                         throw new InvalidOperationException("Failed to compute hash for block.");
-                    }
 
                     blocksInSht++;
                     --blocksRemaining;
-
-                    ProgData.Current += bytesRead;
-                    progress?.Report(ProgData);
                 }
 
                 var pos = stream.Position;
@@ -166,6 +158,9 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
 
                 stream.Write(subhashTable, 0, subhashTable.Length);
 
+                progData.Current++;
+                progress?.Report(progData);
+
                 var masterHash = SHA1.HashData(subhashTable);
                 masterHash.CopyTo(masterHashTable, i * SHA1.HashSizeInBytes);
 
@@ -175,24 +170,25 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
 
             stream.Seek(0, SeekOrigin.Begin);
             stream.Write(masterHashTable, 0, masterHashTable.Length);
+
+            progData.Current++;
+            progress?.Report(progData);
         }
     }
 
-    protected byte[] FinalizeHashTables(
-        IProgress<Converter.Progress>? progress = null,
-        CancellationToken cancellationToken = default)
+    private byte[] FinalizeHashTables(ref Converter.Progress progData, IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
     {
         var finalMhtHash = new byte[SHA1.HashSizeInBytes];
         var currHash = new byte[SHA1.HashSizeInBytes];
         var blockBuffer = new byte[GOD.BLOCK_SIZE];
 
-        for (int i = FileParts.Count - 1; i > 0; i--)
+        for (int i = Streams.Count - 1; i > 0; i--)
         {
             if (cancellationToken.IsCancellationRequested)
                 return finalMhtHash;
 
-            var currStream = FileParts[i].Stream;
-            var prevStream = FileParts[i - 1].Stream;
+            var currStream = Streams[i];
+            var prevStream = Streams[i - 1];
 
             currStream.Seek(0, SeekOrigin.Begin);
             currStream.Read(blockBuffer, 0, blockBuffer.Length);
@@ -220,12 +216,15 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
                         "Failed to compute hash for final master hash table.");
                 }
             }
+
+            progData.Current++;
+            progress?.Report(progData);
         }
 
         return finalMhtHash;
     }
 
-    protected void WriteLiveHeader(byte[] finalMhtHash)
+    private void WriteLiveHeader(byte[] finalMhtHash)
     {
         var headerBuf = GOD.GetLiveHeaderTemplate();
         using var ms = new MemoryStream(headerBuf, writable: true);
@@ -246,10 +245,9 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
             //ms.WriteByte(xexInfo.DiscNumber);
             //ms.WriteByte(xexInfo.DiscCount);
 
-            ulong totalSize = FileParts.Aggregate(
-                0UL, (acc, fp) => checked(acc + (ulong)fp.Stream.Length));
+            ulong totalSize = Streams.Aggregate(0UL, (acc, s) => checked(acc + (ulong)s.Length));
             uint partsWrittenSize = (uint)(totalSize / 0x100);
-            uint partCount = (uint)FileParts.Count;
+            uint partCount = (uint)Streams.Count;
             uint contentType =
                 (TitleInfo.Platform == Platform.Xbox360)
                     ? (uint)GOD.Type.GamesOnDemand
@@ -270,7 +268,12 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
             titleNameSize = Math.Min(titleNameSize, XEX.TITLE_NAME_MAX_LENGTH);
 
             var titleNameBytes = new byte[titleNameSize];
-            Encoding.Unicode.GetBytes(TitleInfo.TitleName, 0, TitleInfo.TitleName.Length, titleNameBytes, 0);
+            Encoding.Unicode.GetBytes(
+                TitleInfo.TitleName, 
+                0, 
+                TitleInfo.TitleName.Length, 
+                titleNameBytes,
+                0);
 
             ms.Seek(0x411 + 1, SeekOrigin.Begin);
             ms.Write(titleNameBytes, 0, titleNameSize);
@@ -320,21 +323,18 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
         f.Close();
     }
 
-    protected string GetFilePartPath(int index)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static long SubHashTableCount(FileStream stream)
     {
-        string s = index.ToString("D4");
-        return Path.Join(OutDataDirectory, $"Data{s}");
+        var blocksRemaining = GOD.AlignUp(stream.Length);
+        return
+            (blocksRemaining - 1) /
+            (GOD.DATA_BLOCKS_PER_SHT + 1) +
+            ((blocksRemaining - 1) % (GOD.DATA_BLOCKS_PER_SHT + 1) > 0 ? 1 : 0);
     }
 
-    protected void WriteXisoSector(uint sector, ReadOnlySpan<byte> data)
-    {
-        var remap = RemapSector(sector);
-        var stream = FileParts[remap.FileIndex].Stream;
-        stream.Seek(remap.Offset, SeekOrigin.Begin);
-        stream.Write(data);
-    }
-
-    protected static Remap RemapSector(uint sector)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private (FileStream stream, long offset) RemapSector(uint sector)
     {
         long blockNum = (sector * XISO.SECTOR_SIZE) / GOD.BLOCK_SIZE;
         int fileIndex = (int)(blockNum / GOD.BLOCKS_PER_PART);
@@ -345,72 +345,28 @@ public abstract class GodBase(Reader reader, Options options, Title.Info titleIn
         newOffset += ((hashIndex + 1) * GOD.BLOCK_SIZE);
         newOffset += (dataBlockInFile * GOD.BLOCK_SIZE);
         newOffset += (sector * XISO.SECTOR_SIZE) % GOD.BLOCK_SIZE;
-        return new Remap() { Offset = newOffset, FileIndex = fileIndex };
+
+        return (GetOrCreateFile(fileIndex), newOffset);
     }
 
-    protected static Remap RemapOffset(long offset)
+    private FileStream GetOrCreateFile(int index)
     {
-        var remap = RemapSector((uint)(offset / XISO.SECTOR_SIZE));
-        remap.Offset += offset % XISO.SECTOR_SIZE;
-        return remap;
-    }
+        if (index < Streams.Count)
+            return Streams[index];
 
-    protected static long ToIsoOffset(long offset, int fileIndex)
-    {
-        long blockNum = offset / GOD.BLOCK_SIZE;
-        var prevDataBlocks = fileIndex * GOD.DATA_BLOCKS_PER_PART;
-        var subHashIndex = blockNum / (GOD.DATA_BLOCKS_PER_SHT + 1);
-        var dataBlockNum = blockNum - (subHashIndex + 2) + prevDataBlocks;
-        return (dataBlockNum * GOD.BLOCK_SIZE) + (offset % GOD.BLOCK_SIZE);
-    }
-
-    protected static long NumBlocks(long size)
-    {
-        return (size / GOD.BLOCK_SIZE) + ((size % GOD.BLOCK_SIZE) > 0 ? 1 : 0);
-    }
-
-    protected static int NumFileParts(long numBlocks)
-    {
-        return (int)
-            ((numBlocks / GOD.DATA_BLOCKS_PER_PART) +
-             (((numBlocks % GOD.DATA_BLOCKS_PER_PART) > 0) ? 1 : 0));
-    }
-
-    private IReadOnlyList<string> CleanupCancelledFiles()
-    {
-        foreach (var part in FileParts)
+        for (int i = Streams.Count; i <= index; i++)
         {
-            try
-            {
-                part.Stream.Close();
-                if (File.Exists(part.Path))
-                    File.Delete(part.Path);
-            }
-            catch
-            {
-            }
+            var path = GetFilePartPath(i);
+            var stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
+            Streams.Add(stream);
         }
 
-        if (File.Exists(LiveHeaderPath))
-        {
-            try
-            {
-                File.Delete(LiveHeaderPath);
-            }
-            catch
-            {
-            }
-        }
-        if (Directory.Exists(OutDataDirectory))
-        {
-            try
-            {
-                Directory.Delete(OutDataDirectory, recursive: true);
-            }
-            catch
-            {
-            }
-        }
-        return Array.Empty<string>();
+        return Streams[index];
+    }
+
+    private string GetFilePartPath(int index)
+    {
+        string s = index.ToString("D4");
+        return Path.Join(OutDataDirectory, $"Data{s}");
     }
 }

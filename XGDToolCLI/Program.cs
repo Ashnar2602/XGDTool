@@ -123,6 +123,7 @@ public class Program
             ConvertType = GetConvertType(
                 results.GetValue(Commands.Options.Scrub), 
                 results.GetValue(Commands.Options.Reauthor)),
+            Scrub = results.GetValue(Commands.Options.Scrub),
             Split = results.GetValue(Commands.Options.Split),
             GenAttachXbe = results.GetValue(Commands.Options.Xbe),
             Rename = !string.IsNullOrEmpty(results.GetValue(Commands.Options.Rename)),
@@ -134,11 +135,9 @@ public class Program
 
     private static XGDToolLib.Converter.Type GetConvertType(bool? scrub, bool? reauthor)
     {
-        if (scrub == true)
-            return XGDToolLib.Converter.Type.Scrub;
-        else if (reauthor == true)
+        if (reauthor == true)
             return XGDToolLib.Converter.Type.Reauthor;
         else
-            return XGDToolLib.Converter.Type.Passthrough;
+            return XGDToolLib.Converter.Type.Rewrite;
     }
 }

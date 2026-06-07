@@ -1,26 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using XGDToolLib.Util;
 
 namespace XGDToolLib.Image.Format;
 
 public static class CCI
 {
-    public const uint MAGIC = 1307107395; // 'CCIM'
+    public static uint MAGIC => Bits.FromBig(Bits.UintFromString("CCIM"));
     public const byte HEADER_SIZE = 32;
     public const byte VERSION = 1;
     public const byte INDEX_ALIGNMENT = 2;
+    public const uint COMPRESSED_FLAG = 0x80000000;
     public const long SPLIT_OFFSET = 0xFF000000;
-
-    struct IndexInfo
-    {
-        public readonly uint Value;
-        public readonly bool Compressed;
-    }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public class Header : IMarshalable
@@ -48,5 +39,18 @@ public static class CCI
             IndexAlignment = INDEX_ALIGNMENT;
         }
     }
-}
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static uint EncodeIndexEntry(uint offset, bool compressed)
+    {
+        return (offset >> INDEX_ALIGNMENT) | (compressed ? COMPRESSED_FLAG : 0u);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static (uint offset, bool compressed) DecodeIndexEntry(uint entry)
+    {
+        bool compressed = (entry & COMPRESSED_FLAG) != 0;
+        uint offset = (entry & ~COMPRESSED_FLAG) << INDEX_ALIGNMENT;
+        return (offset, compressed);
+    }
+}

@@ -12,6 +12,8 @@ public enum Stage
 {
     [Description("Idle")]
     Idle,
+    [Description("Initializing")]
+    Initializing,
     [Description("Parsing directory entries")]
     ParsingDirectoryEntries,
     [Description("Loading data sectors")]

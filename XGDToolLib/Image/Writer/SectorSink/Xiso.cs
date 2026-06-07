@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 using XGDToolLib.Image.Format;
 
-namespace XGDToolLib.Image.Writer.SectorSinks;
+namespace XGDToolLib.Image.Writer.SectorSink;
 
 internal class Xiso(IReader reader, IWriterOptions options, Title.Info titleInfo) : ISectorSink
 {
@@ -18,7 +13,7 @@ internal class Xiso(IReader reader, IWriterOptions options, Title.Info titleInfo
     private bool FirstRenamed = false;
     private bool DirectoryCreated = false;
 
-    public Task Initialize(long outImageSize, IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
+    public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(Options.OutDirectory))
         {
@@ -34,7 +29,7 @@ internal class Xiso(IReader reader, IWriterOptions options, Title.Info titleInfo
 
     public async Task WriteSectorsAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken cancelToken = default)
     {
-        if (!XISO.IsAligned(buffer.Length))
+        if (!XISO.IsSectorAligned(buffer.Length))
             throw new ArgumentException($"Buffer length must be a multiple of {XISO.SECTOR_SIZE}", nameof(buffer));
 
         var (stream, offset) = GetStreamForSector(startSector);
@@ -46,7 +41,7 @@ internal class Xiso(IReader reader, IWriterOptions options, Title.Info titleInfo
 
         if (writeCount < buffer.Length)
             await WriteSectorsAsync(
-                startSector + XISO.AlignUp(writeCount), 
+                startSector + XISO.AlignUpToSector(writeCount), 
                 buffer.Slice(writeCount), 
                 cancelToken);
     }
@@ -77,7 +72,7 @@ internal class Xiso(IReader reader, IWriterOptions options, Title.Info titleInfo
         return names;
     }
 
-    public void CleanupCanceled()
+    public void CleanupCancelled()
     {
         Streams.ForEach(s => s.Dispose());
         Streams.ForEach(s => File.Delete(s.Name));

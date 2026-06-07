@@ -20,18 +20,16 @@ internal class Rewrite : IWriter
         Reader = reader;
         Options = options;
         TitleInfo = titleInfo;
-        SectorSink = ISectorSinkFactory.Create(Reader, Options, TitleInfo);
+        SectorSink = ISectorSink.Create(Reader, Options, TitleInfo);
     }
 
-    public async Task<IReadOnlyList<string>> Convert(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<string>> Convert(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
-        bool scrub = Options.ConvertType == Converter.Type.Scrub;
         List<Reader.SectorRange>? dsRanges = null;
 
-        if (scrub)
+        if (Options.Scrub == true)
         {
-            dsRanges = await Reader.GetDataSectorRanges(progress, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
+            dsRanges = await Reader.GetDataSectorRanges(progress, ct);
         }
         else
         {
@@ -41,7 +39,7 @@ internal class Rewrite : IWriter
             };
         }
 
-        await SectorSink.Initialize(progress, cancellationToken);
+        await SectorSink.Initialize(progress, ct);
 
         byte[][] buffers =
         {
@@ -75,7 +73,7 @@ internal class Rewrite : IWriter
                 await Reader.ReadSectorsAsync(
                     sector,
                     buf.AsMemory(0, byteCount),
-                    cancellationToken);
+                    ct);
 
                 uint writeSector = sector;
                 Memory<byte> writeBuffer = buf.AsMemory(0, byteCount);
@@ -83,7 +81,7 @@ internal class Rewrite : IWriter
                 pendingWrite = SectorSink.WriteSectorsAsync(
                     writeSector,
                     writeBuffer,
-                    cancellationToken);
+                    ct);
 
                 sector += (uint)sectorsToRead;
                 remaining -= (uint)sectorsToRead;
@@ -97,6 +95,8 @@ internal class Rewrite : IWriter
         progress?.Report(progData);
 
         await pendingWrite;
-        return SectorSink.FinalizeImage();
+        return await SectorSink.FinalizeImage(progress, ct);
     }
+
+    public void CleanupCancelled() => SectorSink.CleanupCancelled();
 }

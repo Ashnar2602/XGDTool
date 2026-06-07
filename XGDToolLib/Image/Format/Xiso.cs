@@ -1,11 +1,6 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using XGDToolLib.Util;
 
 namespace XGDToolLib.Image.Format;
@@ -74,8 +69,6 @@ public static class XISO
         public uint FileSize;
         public DirAttribute Attributes;
         internal byte NameLength;
-
-        //public DirAttribute Attributes => (DirAttribute)(_Attributes & 0xFF);
 
         public int Size() => DIRECTORY_HEADER_SIZE;
     }
@@ -312,13 +305,13 @@ public static class XISO
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint AlignUp(long value) => (uint)((value + SECTOR_SIZE - 1) & ~(SECTOR_SIZE - 1));
+    public static uint AlignUpToSector(long value) => (uint)((value + SECTOR_SIZE - 1) & ~(SECTOR_SIZE - 1));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint AlignDown(long value) => (uint)(value & ~(SECTOR_SIZE - 1));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsAligned(long value) => (value & (SECTOR_SIZE - 1)) == 0;
+    public static bool IsSectorAligned(long value) => (value & (SECTOR_SIZE - 1)) == 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static long SectorToOffset(uint sector) => (long)sector << SECTOR_SHIFT;
