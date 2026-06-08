@@ -2,17 +2,17 @@
 
 public static class Process
 {
-    public static async Task<IReadOnlyList<string>> ConvertEntry(Entry entry, IProgress<Progress>? progress = null, CancellationToken cancellationToken = default)
+    public static async Task<IReadOnlyList<string>> ConvertEntry(Entry entry, IProgress<Progress>? progress = null, CancellationToken ct = default)
     {
         var reader = Image.IReader.Create(entry.InputType, entry.InputPaths);
-        await reader.Initialize(progress, cancellationToken);
+        await reader.Initialize(progress, ct);
 
         var writer = Image.IWriter.Create(reader, entry);
         IReadOnlyList<string> ret;
 
         try
         {
-            ret = await writer.Convert(progress, cancellationToken);
+            ret = await writer.Convert(progress, ct);
         }
         catch (Exception ex)
         {
