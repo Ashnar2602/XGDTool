@@ -8,14 +8,14 @@ namespace XGDTool.Lib.Image.Writer;
 
 internal interface ISectorSink
 {
-    public static ISectorSink Create(IReader reader, IWriterOptions options, Title.Info titleInfo)
+    public static ISectorSink Create(IWriterOptions options, Title.Info titleInfo)
     {
         return options.OutputType switch
         {
-            Type.XISO => new SectorSink.Xiso(reader, options, titleInfo),
-            Type.GOD => new SectorSink.God(reader, options, titleInfo),
-            Type.CCI => new SectorSink.Cci(reader, options, titleInfo),
-            //Type.CSO => new SectorSinks.Cso(reader, options, titleInfo),
+            Type.XISO => new SectorSink.Xiso(options, titleInfo),
+            Type.GOD => new SectorSink.God(options, titleInfo),
+            Type.CCI => new SectorSink.Cci(options, titleInfo),
+            //Type.CSO => new SectorSinks.Cso(options, titleInfo),
             _ => throw new NotSupportedException($"Image type {options.OutputType} is not supported for writing."),
         };
     }

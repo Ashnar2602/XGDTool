@@ -20,7 +20,7 @@ internal class Reauthor : IWriter
         Reader = reader;
         Options = options;
         TitleInfo = titleInfo;
-        SectorSink = ISectorSink.Create(Reader, Options, TitleInfo);
+        SectorSink = ISectorSink.Create(Options, TitleInfo);
         AvlTree = new Avl.Tree(TitleInfo.TitleName);
     }
 
@@ -34,7 +34,7 @@ internal class Reauthor : IWriter
         await SectorSink.Initialize(progress, ct);
         Ct.ThrowIfCancellationRequested();
 
-        var totalSectors = XISO.NumSectors(XISO.CalculateTotalSize(AvlTree.RootNode));
+        var totalSectors = XISO.SectorCount(XISO.CalculateTotalSize(AvlTree.RootNode));
 
         ProgData = new()
         {
@@ -71,7 +71,7 @@ internal class Reauthor : IWriter
 
                 await SectorSink.WriteSectorsAsync(currentSector, dBuffer, Ct);
 
-                var sectorsWritten = XISO.NumSectors(dBuffer.Length);
+                var sectorsWritten = XISO.SectorCount(dBuffer.Length);
                 currentSector += sectorsWritten;
                 ProgData.Current += sectorsWritten;
                 Progress?.Report(ProgData);
@@ -119,7 +119,7 @@ internal class Reauthor : IWriter
 
         await SectorSink.WriteSectorsAsync(0, header.ToBytes(), Ct);
 
-        ProgData.Current += XISO.NumSectors(header.Size());
+        ProgData.Current += XISO.SectorCount(header.Size());
         Progress?.Report(ProgData);
     }
 
@@ -140,7 +140,7 @@ internal class Reauthor : IWriter
         {
             Ct.ThrowIfCancellationRequested();
 
-            int sectorsToWrite = (int)Math.Min(BatchSectors, XISO.NumSectors(remainingBytes));
+            int sectorsToWrite = (int)Math.Min(BatchSectors, XISO.SectorCount(remainingBytes));
             int bytesToWrite = sectorsToWrite * XISO.SECTOR_SIZE;
 
             bufferIndex ^= 1;

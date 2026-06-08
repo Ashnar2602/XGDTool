@@ -20,7 +20,7 @@ internal class Rewrite : IWriter
         Reader = reader;
         Options = options;
         TitleInfo = titleInfo;
-        SectorSink = ISectorSink.Create(Reader, Options, TitleInfo);
+        SectorSink = ISectorSink.Create(Options, TitleInfo);
     }
 
     public async Task<IReadOnlyList<string>> Convert(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
@@ -29,7 +29,7 @@ internal class Rewrite : IWriter
 
         if (Options.Scrub == true)
         {
-            dsRanges = await Reader.GetDataSectorRanges(progress, ct);
+            dsRanges = await Reader.GetSectorRanges(progress, ct);
         }
         else
         {
@@ -50,15 +50,18 @@ internal class Rewrite : IWriter
         {
             Stage = Converter.Stage.WritingData,
             Current = 0,
-            Total = dsRanges.Sum(r => r.EndExclusive - r.Start)
+            Total = dsRanges.Sum(r => r.End - r.Start)
         };
         Task pendingWrite = Task.CompletedTask;
         int buffIndex = 0;
 
-        foreach (var r in dsRanges)
+        foreach (var range in dsRanges)
         {
-            var sector = r.Start;
-            var remaining = r.EndExclusive - r.Start;
+            var sector = range.Start;
+            if (range.Start > range.End)
+                throw new InvalidOperationException($"Invalid sector range: {range.Start} - {range.End}");
+
+            var remaining = checked(range.End - range.Start) + 1;
 
             while (remaining > 0)
             {
@@ -75,7 +78,7 @@ internal class Rewrite : IWriter
                     buf.AsMemory(0, byteCount),
                     ct);
 
-                uint writeSector = sector;
+                uint writeSector = checked(sector - Reader.SectorOffset);
                 Memory<byte> writeBuffer = buf.AsMemory(0, byteCount);
 
                 pendingWrite = SectorSink.WriteSectorsAsync(
@@ -91,10 +94,11 @@ internal class Rewrite : IWriter
             }
         }
 
+        await pendingWrite;
+
         progData.Current = progData.Total;
         progress?.Report(progData);
 
-        await pendingWrite;
         return await SectorSink.FinalizeImage(progress, ct);
     }
 

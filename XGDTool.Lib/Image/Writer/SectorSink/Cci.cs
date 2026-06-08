@@ -14,7 +14,6 @@ internal class Cci : ISectorSink
 
     private record CompressedSector(bool Compressed, byte[] Data, int Length);
 
-    private readonly IReader Reader;
     private readonly IWriterOptions Options;
     private readonly Title.Info TitleInfo;
     private List<FileEntry> OutFiles = new();
@@ -22,9 +21,8 @@ internal class Cci : ISectorSink
     private bool DirectoryCreated = false;
     private FileEntry CurrentFile => OutFiles.Last();
 
-    public Cci(IReader reader, IWriterOptions options, Title.Info titleInfo)
+    public Cci(IWriterOptions options, Title.Info titleInfo)
     {
-        Reader = reader;
         Options = options;
         TitleInfo = titleInfo;
         OutFiles.Add(new FileEntry() 

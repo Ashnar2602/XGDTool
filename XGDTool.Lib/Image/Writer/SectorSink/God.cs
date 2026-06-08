@@ -7,9 +7,8 @@ using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Image.Writer.SectorSink;
 
-internal class God(IReader reader, IWriterOptions options, Title.Info titleInfo) : ISectorSink
+internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 {
-    private readonly IReader Reader = reader;
     private readonly IWriterOptions Options = options;
     private readonly Title.Info TitleInfo = titleInfo;
     private readonly List<FileStream> Streams = new();

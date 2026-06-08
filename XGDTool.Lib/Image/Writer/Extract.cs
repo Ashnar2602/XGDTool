@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using XGDTool.Lib.Image.Format;
+﻿using XGDTool.Lib.Image.Format;
 using XGDTool.Lib.Exe;
 using XGDTool.Lib.Util;
 
@@ -24,7 +19,7 @@ internal class Extract : IWriter
         TitleInfo = titleInfo;
     }
 
-    public async Task<IReadOnlyList<string>> Convert(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
+    public Task<IReadOnlyList<string>> Convert(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
         var progData = new Converter.Progress
         {
@@ -112,7 +107,7 @@ internal class Extract : IWriter
         progData.Current = progData.Total;
         progress?.Report(progData);
 
-        return new[] { TitleDirectoryPath };
+        return Task.FromResult<IReadOnlyList<string>>(new[] { TitleDirectoryPath });
     }
 
     public void CleanupCancelled()
