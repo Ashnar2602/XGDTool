@@ -55,7 +55,7 @@ public class Program
         {
             var entry = entries[i];
 
-            Console.WriteLine("Task " + (i + 1) + " of " + entries.Count);
+            Console.WriteLine("\nTask " + (i + 1) + " of " + entries.Count);
 
             Console.WriteLine(
                 "Processing: " + 
@@ -78,7 +78,10 @@ public class Program
                         Console.WriteLine();
 
                     if (p.Stage == Stage.Done)
+                    {
+                        prevStage = p.Stage;
                         return;
+                    }
 
                     Console.WriteLine(stageName + "...");
                     prevStage = p.Stage;

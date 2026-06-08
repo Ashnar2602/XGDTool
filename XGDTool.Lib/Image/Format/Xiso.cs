@@ -104,8 +104,8 @@ public static class XISO
             if (name.Length > 0xFF)
                 throw new ArgumentException("Name length cannot exceed 255.");
 
-            Name = name;
-            Header.NameLength = (byte)name.Length;
+            Name = new string(name.AsSpan());
+            Header.NameLength = (byte)Name.Length;
         }
 
         public byte[] ToBytes()

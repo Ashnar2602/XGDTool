@@ -42,11 +42,15 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         var readBuf = new byte[XISO.SECTOR_SIZE];
         var unprocessed = new Queue<DirectoryEntry>();
+        var processedCount = 0;
         unprocessed.Enqueue(GetRootEntry());
 
-        while (unprocessed.Count > 0 && unprocessed.Count < 2000)
+        while (unprocessed.Count > 0)
         {
             ct.ThrowIfCancellationRequested();
+
+            if (++processedCount > 4000)
+                throw new InvalidDataException("Too many directory entries found in image, likely malformed.");
 
             var cEntry = unprocessed.Dequeue();
 
@@ -62,12 +66,12 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             if (rEntry.Header.LeftOffset != 0)
             {
                 cEntry.LROffsetFromParent = rEntry.Header.LeftOffset;
-                unprocessed.Enqueue(cEntry);
+                unprocessed.Enqueue(cEntry.Clone());
             }
 
             if (rEntry.Header.Attributes.HasFlag(XISO.DirAttribute.Directory))
             {
-                var dEntry = rEntry;
+                var dEntry = rEntry.Clone();
                 dEntry.LROffsetFromParent = 0;
                 dEntry.RelativeOffset = XISO.SectorToOffset(rEntry.Header.StartSector);
                 dEntry.Filepath = Path.Join(cEntry.Filepath, rEntry.GetName());
@@ -97,12 +101,9 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             if (rEntry.Header.RightOffset != 0)
             {
                 cEntry.LROffsetFromParent = rEntry.Header.RightOffset;
-                unprocessed.Enqueue(cEntry);
+                unprocessed.Enqueue(cEntry.Clone());
             }
         }
-
-        if (unprocessed.Count >= 2000)
-            throw new InvalidDataException("Too many directory entries found in image, likely malformed.");
 
         if (Platform == Platform.Unknown)
             throw new InvalidDataException("No executable entry found in image.");
@@ -116,6 +117,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         if (DirectoryEntries.Count == 0)
             throw new InvalidOperationException("Directory entries must be initialized before getting data sectors.");
 
+        var processedCount = 0;
         var unprocessed = new Queue<DirectoryEntry>();
         var dataSectors = new HashSet<uint>();
         var readBuf = new byte[XISO.SECTOR_SIZE];
@@ -134,9 +136,12 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         unprocessed.Enqueue(GetRootEntry());
 
-        while (unprocessed.Count > 0 && unprocessed.Count < 4000)
+        while (unprocessed.Count > 0)
         {
             ct.ThrowIfCancellationRequested();
+
+            if (++processedCount > 4000)
+                throw new InvalidDataException("Too many directory entries found in image, likely malformed.");
 
             var cEntry = unprocessed.Dequeue();
             var cPos = ImageOffset + cEntry.RelativeOffset + (cEntry.LROffsetFromParent * 4);
@@ -158,14 +163,14 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             if (rEntry.Header.LeftOffset != 0)
             {
                 cEntry.LROffsetFromParent = rEntry.Header.LeftOffset;
-                unprocessed.Enqueue(cEntry);
+                unprocessed.Enqueue(cEntry.Clone());
             }
 
             if (rEntry.Header.Attributes.HasFlag(XISO.DirAttribute.Directory))
             {
                 if (rEntry.Header.FileSize > 0)
                 {
-                    var dEntry = rEntry;
+                    var dEntry = rEntry.Clone();
                     dEntry.LROffsetFromParent = 0;
                     dEntry.RelativeOffset = XISO.SectorToOffset(rEntry.Header.StartSector);
                     unprocessed.Enqueue(dEntry);
@@ -187,12 +192,9 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             if (rEntry.Header.RightOffset != 0)
             {
                 cEntry.LROffsetFromParent = rEntry.Header.RightOffset;
-                unprocessed.Enqueue(cEntry);
+                unprocessed.Enqueue(cEntry.Clone());
             }
         }
-
-        if (unprocessed.Count >= 4000)
-            throw new InvalidDataException("Too many directory entries found in image, likely malformed.");
 
         HashSet<uint>? ss = null;
 
