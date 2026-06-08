@@ -11,7 +11,6 @@ public static class XISO
     public const int SECTOR_SHIFT = 11;
     public const byte PAD_BYTE = 0xFF;
     public const ushort PAD_WORD = 0xFFFF;
-    public const long FILE_MODULUS = 0x10000;
 
     public const uint REDUMP_VIDEO_SECTORS = 0x30600;
     public const uint REDUMP_TOTAL_SECTORS = 0x3A4D50;
@@ -216,16 +215,9 @@ public static class XISO
         var maxStartSector = nodes.Max(n => n.StartSector);
 
         if (nodes.Count > 0)
-        {
-            outSize = (maxStartSector * SECTOR_SIZE) + nodes.Last().FileSize;
-
-            if ((outSize % SECTOR_SIZE) != 0)
-                outSize += SECTOR_SIZE - (outSize % SECTOR_SIZE);
-        }
+            outSize = (maxStartSector + SectorCount(nodes.Last().FileSize)) * SECTOR_SIZE;
         else
-        {
             throw new ArgumentException("Root node must have at least one file or directory.");
-        }
 
         nodes.Sort((a, b) => a.DirectoryStart.CompareTo(b.DirectoryStart));
 
@@ -249,8 +241,8 @@ public static class XISO
                 outSize = offsetInFile;
         }
 
-        if ((outSize % FILE_MODULUS) != 0)
-            outSize += FILE_MODULUS - (outSize % FILE_MODULUS);
+        if (!IsSectorAligned(outSize))
+            outSize += SECTOR_SIZE - (outSize % SECTOR_SIZE);
 
         return outSize;
     }
@@ -305,10 +297,10 @@ public static class XISO
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint NumSectors(long value) => (uint)(((value + SECTOR_SIZE - 1) & ~(SECTOR_SIZE - 1)) >> SECTOR_SHIFT);
+    public static uint SectorCount(long value) => (uint)((value + SECTOR_SIZE - 1) >> SECTOR_SHIFT);
 
-    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-    //public static uint AlignDown(long value) => (uint)(value & ~(SECTOR_SIZE - 1));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static uint SectorIndex(long value) => (uint)(value >> SECTOR_SHIFT);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsSectorAligned(long value) => (value & (SECTOR_SIZE - 1)) == 0;
