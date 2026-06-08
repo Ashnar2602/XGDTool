@@ -54,7 +54,7 @@ internal class Extract : IWriter
                 if (!Directory.Exists(outDir))
                     Directory.CreateDirectory(outDir);
 
-                byte[]? xbeCert = null;
+                byte[]? certBytes = null;
                 long certOffset = 0;
                 long readStart = XISO.SectorToOffset(Reader.SectorOffset + entry.Header.StartSector);
 
@@ -62,13 +62,13 @@ internal class Extract : IWriter
                     entry.Filepath.Equals("default.xbe", StringComparison.OrdinalIgnoreCase) &&
                     (Options.RenameXbe == true || Options.AllowedMediaPatch == true))
                 {
-                    xbeCert = MarshalableExt.ToBytes(TitleInfo.XbeCertificate);
+                    certBytes = MarshalableExt.ToBytes(TitleInfo.XbeCertificate);
                     certOffset = TitleInfo.XbeCertificateOffset;
                 }
 
                 using var fOut = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None);
                 uint bytesRead = 0;
-                int certBytesRemain = xbeCert?.Length ?? 0;
+                int certBytesRemain = certBytes?.Length ?? 0;
                 var certPos = certOffset != 0 ? certOffset + readStart : 0;
 
                 while (bytesRead < entry.Header.FileSize)
@@ -80,21 +80,21 @@ internal class Extract : IWriter
 
                     Reader.ReadBytes(readPos, readBuffer.AsSpan(0, readLen));
 
-                    if (xbeCert != null && certBytesRemain > 0)
+                    if (certBytes != null && certBytesRemain > 0)
                     {
                         var buffOffset = -1;
                         var certByteCount = 0;
 
                         if ((readPos <= certPos) && ((readPos + readLen) > certPos))
                             buffOffset = (int)(certPos - readPos);
-                        else if ((readPos > certPos) && (readPos < (certPos + xbeCert.Length)))
+                        else if ((readPos > certPos) && (readPos < (certPos + certBytes.Length)))
                             buffOffset = 0;
 
                         if (buffOffset > -1)
                         {
                             certByteCount = Math.Min(certBytesRemain, readLen - buffOffset);
-                            xbeCert
-                                .AsSpan(xbeCert.Length - certBytesRemain, certByteCount)
+                            certBytes
+                                .AsSpan(certBytes.Length - certBytesRemain, certByteCount)
                                 .CopyTo(readBuffer.AsSpan(buffOffset));
                             certBytesRemain -= certByteCount;
                         }
@@ -108,6 +108,10 @@ internal class Extract : IWriter
                 }
             }
         }
+
+        progData.Current = progData.Total;
+        progress?.Report(progData);
+
         return new[] { TitleDirectoryPath };
     }
 
