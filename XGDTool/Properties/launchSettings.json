@@ -2,7 +2,7 @@
   "profiles": {
     "XGDTool": {
       "commandName": "Project",
-      "commandLineArgs": "extract -i \"C:\\dev\\xgdtooltesting\\Halo - Combat Evolved (USA) (Rev 2).iso\" -o \"C:\\dev\\xgdtooltesting\"",
+      "commandLineArgs": "xiso -i \"C:\\dev\\xgdtooltesting\\Halo - Combat Evolved (USA) (Rev 2).iso\" -o \"C:\\dev\\xgdtooltesting\" --scrub",
       "workingDirectory": "C:\\dev\\xgdtooltesting"
     }
   }

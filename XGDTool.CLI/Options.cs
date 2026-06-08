@@ -87,6 +87,7 @@ internal class Commands
         cmd.Options.Add(options.Input);
         cmd.Options.Add(options.Output);
         cmd.Options.Add(options.Scrub);
+        cmd.Options.Add(options.Split);
         cmd.Options.Add(options.Reauthor);
         cmd.Options.Add(options.Xbe);
         cmd.Options.Add(options.Rename);

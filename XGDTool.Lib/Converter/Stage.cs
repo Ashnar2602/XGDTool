@@ -28,8 +28,8 @@ public enum Stage
     Finalizing,
     [Description("Generating attach XBE")]
     GeneratingAttachXBE,
-    [Description("Cancelled")]
-    Cancelled,
-    [Description("Done")]
-    Done
+    //[Description("Cancelled")]
+    //Cancelled,
+    //[Description("Done")]
+    //Done
 }

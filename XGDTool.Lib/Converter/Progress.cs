@@ -3,10 +3,13 @@
 public struct Progress
 {
     public Stage Stage;
-    public long Current;
-    public long Total;
+    public double Current;
+    public double Total;
 
     public readonly double Percent => 
-        (Total == 0) ? 0 : 
-            (Current> Total) ? 1.0 : ((double)Current / Total);
+        (Current >= Total) 
+            ? 1.0 
+            : (Total == 0) 
+                ? 0.0 
+                : ((double)Current / Total);
 }

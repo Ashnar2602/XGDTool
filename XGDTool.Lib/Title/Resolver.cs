@@ -113,8 +113,8 @@ public static class Resolver
         if (info.FolderName.Length + discStr.Length > XISO.MAX_FILENAME_CHARS_MAX)
             info.FolderName = info.FolderName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - discStr.Length);
 
-        if (info.ImageName.Length + discStr.Length > XISO.MAX_FILENAME_CHARS_MAX - 4)
-            info.ImageName = info.ImageName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - 4 - discStr.Length);
+        if (info.ImageName.Length + discStr.Length > XISO.MAX_FILENAME_CHARS_MAX - 4 - 2)
+            info.ImageName = info.ImageName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - 4 - 2 - discStr.Length);
 
         if (info.GodFolderName.Length + titleIdStr.Length > XISO.MAX_FILENAME_CHARS_MAX)
             info.GodFolderName = info.GodFolderName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - titleIdStr.Length);
@@ -180,8 +180,8 @@ public static class Resolver
         if (e.FolderName.Length + rSuffix.Length > XISO.MAX_FILENAME_CHARS_MAX)
             e.FolderName = rawName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - rSuffix.Length);
 
-        if (e.IsoName.Length + rSuffix.Length > XISO.MAX_FILENAME_CHARS_MAX - 4)
-            e.IsoName = rawName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - 4 - rSuffix.Length);
+        if (e.IsoName.Length + rSuffix.Length > XISO.MAX_FILENAME_CHARS_MAX - 4 - 2)
+            e.IsoName = rawName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - 4 - 2 - rSuffix.Length);
 
         e.XbeTitle += rSuffix;
         e.FolderName += rSuffix;

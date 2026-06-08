@@ -36,10 +36,10 @@ public class Program
         return await parseResult.InvokeAsync();
     }
 
-    private static void PrintProgress(Progress p)
+    private static void PrintProgress(double progress)
     {
         const int barWidth = 50;
-        var progress = Math.Clamp(p.Percent, 0, 1);
+        progress = Math.Clamp(progress, 0, 1);
         int filled = (int)(progress * barWidth);
 
         string bar = new string('#', filled) + new string('-', barWidth - filled);
@@ -67,27 +67,32 @@ public class Program
                 EnumExt.GetDescription(options.OutputType));
 
             var prevStage = Stage.Idle;
+            var prevPercent = 0.0;
 
             var progressReporter = new Progress<Progress>(p =>
             {
                 if (p.Stage != prevStage)
                 {
+                    Console.Out.Flush();
+
                     var stageName = EnumExt.GetDescription(p.Stage);
 
-                    if (prevStage != Stage.Idle) 
-                        Console.WriteLine();
-
-                    if (p.Stage == Stage.Done)
+                    if (prevStage != Stage.Idle)
                     {
-                        prevStage = p.Stage;
-                        return;
+                        PrintProgress(1);
+                        Console.WriteLine();
                     }
 
                     Console.WriteLine(stageName + "...");
                     prevStage = p.Stage;
+                    prevPercent = p.Percent;
+                    PrintProgress(p.Percent);
                 }
-
-                PrintProgress(p);
+                else if (p.Current == p.Total || p.Percent - prevPercent >= 0.01)
+                {
+                    prevPercent = p.Percent;
+                    PrintProgress(p.Percent);
+                }
             });
 
             var paths = await Process.ConvertEntry(entry, progressReporter);
