@@ -96,33 +96,34 @@ public class Program
     }
 
     private Task HandleExtract(ParseResult results) =>
-        ProcessOptions(ParseOptions(XGDTool.Lib.Image.Type.Extract, results));
+        ProcessOptions(ParseOptions(Lib.Image.Type.Extract, results));
 
     private Task HandleXiso(ParseResult results) =>
-        ProcessOptions(ParseOptions(XGDTool.Lib.Image.Type.XISO, results));
+        ProcessOptions(ParseOptions(Lib.Image.Type.XISO, results));
 
     private Task HandleGod(ParseResult results) =>
-        ProcessOptions(ParseOptions(XGDTool.Lib.Image.Type.GOD, results));
+        ProcessOptions(ParseOptions(Lib.Image.Type.GOD, results));
 
     private Task HandleCci(ParseResult results) =>
-        ProcessOptions(ParseOptions(XGDTool.Lib.Image.Type.CCI, results));
+        ProcessOptions(ParseOptions(Lib.Image.Type.CCI, results));
 
     private Task HandleCso(ParseResult results) =>
-        ProcessOptions(ParseOptions(XGDTool.Lib.Image.Type.CSO, results));
+        ProcessOptions(ParseOptions(Lib.Image.Type.CSO, results));
 
     private Task HandleZar(ParseResult results) =>
-        ProcessOptions(ParseOptions(XGDTool.Lib.Image.Type.ZAR, results));
+        ProcessOptions(ParseOptions(Lib.Image.Type.ZAR, results));
 
-    private InputHelper.Options ParseOptions(XGDTool.Lib.Image.Type type, ParseResult results)
+    private InputHelper.Options ParseOptions(Lib.Image.Type type, ParseResult results)
     {
         return new InputHelper.Options()
         {
             InputPaths = results.GetRequiredValue(Commands.Options.Input),
             OutputDirectory = results.GetValue(Commands.Options.Output),
             OutputType = type,
-            ConvertType = GetConvertType(
-                results.GetValue(Commands.Options.Scrub), 
-                results.GetValue(Commands.Options.Reauthor)),
+            ConvertType = 
+                GetConvertType(
+                    results.GetValue(Commands.Options.Scrub), 
+                    results.GetValue(Commands.Options.Reauthor)),
             Scrub = results.GetValue(Commands.Options.Scrub),
             Split = results.GetValue(Commands.Options.Split),
             GenAttachXbe = results.GetValue(Commands.Options.Xbe),
@@ -133,11 +134,11 @@ public class Program
         };
     }
 
-    private static XGDTool.Lib.Converter.Type GetConvertType(bool? scrub, bool? reauthor)
+    private static Lib.Converter.Type GetConvertType(bool? scrub, bool? reauthor)
     {
         if (reauthor == true)
-            return XGDTool.Lib.Converter.Type.Reauthor;
+            return Lib.Converter.Type.Reauthor;
         else
-            return XGDTool.Lib.Converter.Type.Rewrite;
+            return Lib.Converter.Type.Rewrite;
     }
 }

@@ -17,7 +17,7 @@ public interface IReader
         {
             Type.Extract => new Reader.Extract(files),
             Type.XISO => new Reader.Xiso(files),
-            //Type.GOD => new Reader.God(files),
+            Type.GOD => new Reader.God(files),
             //Type.CCI => new Reader.Cci(files),
             //Type.CSO => new Reader.Cso(files),
             //Type.ZAR => new Reader.Zar(files),

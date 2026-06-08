@@ -41,7 +41,7 @@ internal class Xiso(IReader reader, IWriterOptions options, Title.Info titleInfo
 
         if (writeCount < buffer.Length)
             await WriteSectorsAsync(
-                startSector + XISO.AlignUpToSector(writeCount), 
+                startSector + XISO.NumSectors(writeCount), 
                 buffer.Slice(writeCount), 
                 cancelToken);
     }

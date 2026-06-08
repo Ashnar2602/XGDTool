@@ -1,10 +1,12 @@
-﻿class Program
+﻿namespace XGDTool;
+
+class Program
 {
     static void Main(string[] args)
     {
         try
         {
-            var cli = new XGDTool.CLI.Program();
+            var cli = new CLI.Program();
             int exitCode = cli.Run(args).GetAwaiter().GetResult();
             Console.WriteLine($"Operation completed with exit code: {exitCode}");
             Environment.Exit(exitCode);

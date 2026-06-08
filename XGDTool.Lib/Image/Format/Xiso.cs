@@ -305,10 +305,10 @@ public static class XISO
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint AlignUpToSector(long value) => (uint)((value + SECTOR_SIZE - 1) & ~(SECTOR_SIZE - 1));
+    public static uint NumSectors(long value) => (uint)(((value + SECTOR_SIZE - 1) & ~(SECTOR_SIZE - 1)) >> SECTOR_SHIFT);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint AlignDown(long value) => (uint)(value & ~(SECTOR_SIZE - 1));
+    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+    //public static uint AlignDown(long value) => (uint)(value & ~(SECTOR_SIZE - 1));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsSectorAligned(long value) => (value & (SECTOR_SIZE - 1)) == 0;

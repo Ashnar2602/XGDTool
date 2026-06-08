@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Buffers.Binary;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Exe;
@@ -66,7 +63,7 @@ public static class XBE
         DBG = 0x80000000
     }
 
-    public static uint MAGIC => Bits.FromBig(Bits.UintFromString("XBEH"));
+    public static uint MAGIC => BinaryPrimitives.ReverseEndianness(Bits.UintFromString("XBEH"));
     public const int HEADER_SIZE = 376;
     public const int SECTION_HEADER_SIZE = 56;
     public const int CERTIFICATE_SIZE = 464;

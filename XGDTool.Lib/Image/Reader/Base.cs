@@ -13,7 +13,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
     public List<string> FilePaths { get; } = files.ToList().OrderBy(f => f).ToList();
     public long ImageOffset { get; private set; }
-    public uint SectorOffset => XISO.AlignUpToSector(ImageOffset);
+    public uint SectorOffset => XISO.NumSectors(ImageOffset);
     public Platform Platform { get; private set; } = Platform.Unknown;
     public List<DirectoryEntry> DirectoryEntries { get; } = new();
     public DirectoryEntry ExecutableEntry { get; private set; } = new();
@@ -119,7 +119,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         var unprocessed = new Queue<DirectoryEntry>();
         var dataSectors = new HashSet<uint>();
         var readBuf = new byte[XISO.SECTOR_SIZE];
-        var headerSector = SectorOffset + XISO.AlignUpToSector(XISO.MAGIC_OFFSET);
+        var headerSector = SectorOffset + XISO.NumSectors(XISO.MAGIC_OFFSET);
         var progData = new Converter.Progress()
         {
             Stage = Converter.Stage.LoadingDataSectors,
@@ -142,7 +142,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             var cPos = ImageOffset + cEntry.RelativeOffset + (cEntry.LROffsetFromParent * 4);
             var cEnd = ((cEntry.Header.FileSize - (cEntry.LROffsetFromParent * 4) + 2047) >> 11);
 
-            dataSectors.UnionWith(Enumerable.Range((int)XISO.AlignUpToSector(cPos), (int)cEnd).Select(s => (uint)s));
+            dataSectors.UnionWith(Enumerable.Range((int)XISO.NumSectors(cPos), (int)cEnd).Select(s => (uint)s));
 
             progData.Current += cEntry.Header.FileSize;
             progress?.Report(progData);
@@ -176,7 +176,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
                 if (rEntry.Header.FileSize > 0)
                 {
                     var start = SectorOffset + rEntry.Header.StartSector;
-                    var count = XISO.AlignUpToSector(rEntry.Header.FileSize);
+                    var count = XISO.NumSectors(rEntry.Header.FileSize);
                     dataSectors.UnionWith(Enumerable.Range((int)start, (int)count).Select(s => (uint)s));
 
                     progData.Current += rEntry.Header.FileSize;
@@ -271,13 +271,13 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         if (XISO.IsSectorAligned(size) && XISO.IsSectorAligned(offset))
         {
-            ReadSectors(XISO.AlignUpToSector(offset), buffer);
+            ReadSectors(XISO.NumSectors(offset), buffer);
             return size;
         }
 
         var offsetInSector = (int)(offset % XISO.SECTOR_SIZE);
-        var startSector = XISO.AlignUpToSector(offset - offsetInSector);
-        var numSectors = XISO.AlignUpToSector(offsetInSector + size);
+        var startSector = XISO.NumSectors(offset - offsetInSector);
+        var numSectors = XISO.NumSectors(offsetInSector + size);
         var tmpBuf = new byte[numSectors * XISO.SECTOR_SIZE];
 
         ReadSectors(startSector, tmpBuf);
