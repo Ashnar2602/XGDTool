@@ -25,9 +25,9 @@ public interface IReader
         };
     }
 
-    public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken cancelToken = default);
-    public Task<List<Reader.SectorRange>> GetDataSectorRanges(IProgress<Converter.Progress>? progress = null, CancellationToken cancelToken = default);
-    public Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken cancelToken = default);
+    public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default);
+    public Task<List<Reader.SectorRange>> GetSectorRanges(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default);
+    public Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default);
     public void ReadSectors(uint startSector, Span<byte> buffer);
     public int ReadBytes(long offset, Span<byte> buffer);
     public byte[] ReadBytes(long offset, int count);
