@@ -65,7 +65,7 @@ internal class God : Base
 
         if (maxReadBytes < buffer.Length)
             ReadSectors(
-                startSector + XISO.NumSectors(maxReadBytes),
+                startSector + XISO.SectorCount(maxReadBytes),
                 buffer.Slice(maxReadBytes));
     }
 
@@ -91,7 +91,7 @@ internal class God : Base
 
         if (maxReadBytes < buffer.Length)
             await ReadSectorsAsync(
-                startSector + XISO.NumSectors(maxReadBytes),
+                startSector + XISO.SectorCount(maxReadBytes),
                 buffer.Slice(maxReadBytes), ct);
     }
 

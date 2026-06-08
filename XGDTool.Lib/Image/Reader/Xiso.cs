@@ -24,6 +24,8 @@ internal class Xiso : Base
             }
             Streams.Add(stream);
         }
+
+        TotalSectors = XISO.SectorCount(Streams.Sum(s => s.Length));
     }
 
     public override void ReadSectors(uint startSector, Span<byte> buffer)
@@ -44,7 +46,7 @@ internal class Xiso : Base
 
         if (maxReadBytes < buffer.Length)
             ReadSectors(
-                startSector + XISO.NumSectors(maxReadBytes), 
+                startSector + XISO.SectorCount(maxReadBytes), 
                 buffer.Slice(maxReadBytes));
     }
 
@@ -66,7 +68,7 @@ internal class Xiso : Base
 
         if (maxReadBytes < buffer.Length)
             await ReadSectorsAsync(
-                startSector + XISO.NumSectors(maxReadBytes), 
+                startSector + XISO.SectorCount(maxReadBytes), 
                 buffer.Slice(maxReadBytes), 
                 ct);
     }

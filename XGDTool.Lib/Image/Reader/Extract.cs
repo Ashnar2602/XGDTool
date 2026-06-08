@@ -12,7 +12,7 @@ internal class Extract : Base
         public long Offset => StartSector * XISO.SECTOR_SIZE;
 
         public required long Size;
-        public uint NumSectors => XISO.NumSectors(Size);
+        public uint NumSectors => XISO.SectorCount(Size);
         public uint EndSector => StartSector + NumSectors;
     }
 
@@ -34,7 +34,7 @@ internal class Extract : Base
 
     public override uint TotalSectors 
     { 
-        get => XISO.NumSectors(VirtualSize); 
+        get => XISO.SectorCount(VirtualSize); 
         protected set => throw new NotImplementedException(); 
     }
     public override Type ImageType => Type.Extract;
@@ -53,7 +53,7 @@ internal class Extract : Base
     {
         AvlTree.BuildTree(DirPath);
         VirtualSize = XISO.CalculateTotalSize(AvlTree.RootNode);
-        var totalSectors = XISO.NumSectors(VirtualSize);
+        var totalSectors = XISO.SectorCount(VirtualSize);
 
         var progData = new Converter.Progress
         {
@@ -95,7 +95,7 @@ internal class Extract : Base
                 EEntries.Add(new EDirectory
                 {
                     Buffer = dirBuffer,
-                    StartSector = XISO.NumSectors(entry.Offset),
+                    StartSector = XISO.SectorIndex(entry.Offset),
                     Size = dirBuffer.Length
                 });
             }
@@ -108,7 +108,7 @@ internal class Extract : Base
                         FileMode.Open, 
                         FileAccess.Read, 
                         FileShare.Read),
-                    StartSector = XISO.NumSectors(entry.Offset),
+                    StartSector = XISO.SectorIndex(entry.Offset),
                     Size = entry.Node.FileSize
                 });
             }
@@ -164,7 +164,7 @@ internal class Extract : Base
 
             if (!XISO.IsSectorAligned(readLen))
             {
-                var padLen = (int)(XISO.NumSectors(readLen) - readLen);
+                var padLen = (int)(XISO.SectorCount(readLen) - readLen);
                 buffer.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
                 readLen += padLen;
             }
@@ -180,7 +180,7 @@ internal class Extract : Base
         if (remainingLen > 0) 
         {
             ReadSectors(
-                startSector + XISO.NumSectors(copyLen), 
+                startSector + XISO.SectorCount(copyLen), 
                 buffer.Slice((int)copyLen));
         }
     }
@@ -227,7 +227,7 @@ internal class Extract : Base
 
             if (!XISO.IsSectorAligned(readLen))
             {
-                var padLen = (int)(XISO.NumSectors(readLen) - readLen);
+                var padLen = (int)(XISO.SectorCount(readLen) - readLen);
                 buffer.Span.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
                 readLen += padLen;
             }
@@ -243,7 +243,7 @@ internal class Extract : Base
         if (remainingLen > 0)
         {
             await ReadSectorsAsync(
-                startSector + XISO.NumSectors(copyLen), 
+                startSector + XISO.SectorCount(copyLen), 
                 buffer.Slice((int)copyLen), 
                 ct);
         }
