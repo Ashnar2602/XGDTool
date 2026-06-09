@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using XGDTool.Lib.Util;
 
-namespace XGDTool.Lib.Image.Format;
+namespace XGDTool.Lib.Image.Formats;
 
 public static class XISO
 {

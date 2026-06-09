@@ -5,19 +5,19 @@ public interface IReader
     public long ImageOffset { get; }
     public uint SectorOffset { get; }
     public uint TotalSectors { get; }
-    public Type ImageType { get; }
+    public Format ImageFormat { get; }
     public Exe.Platform Platform { get; }
     public List<Reader.DirectoryEntry> DirectoryEntries { get; }
     public Reader.DirectoryEntry ExecutableEntry { get; }
     public List<string> FilePaths { get; }
 
-    public static IReader Create(Type type, IReadOnlyList<string> files)
+    public static IReader Create(Format type, IReadOnlyList<string> files)
     {
         return type switch
         {
-            Type.Extract => new Reader.Extract(files),
-            Type.XISO => new Reader.Xiso(files),
-            Type.GOD => new Reader.God(files),
+            Format.Extract => new Reader.Extract(files),
+            Format.XISO => new Reader.Xiso(files),
+            Format.GOD => new Reader.God(files),
             //Type.CCI => new Reader.Cci(files),
             //Type.CSO => new Reader.Cso(files),
             //Type.ZAR => new Reader.Zar(files),

@@ -2,7 +2,7 @@
 
 namespace XGDTool.Lib.Image;
 
-public enum Type
+public enum Format
 {
     [Description("Unknown")]
     Unknown,

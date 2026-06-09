@@ -1,11 +1,5 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
+﻿using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace XGDTool.Lib.Util;
 
@@ -19,7 +13,7 @@ public static class Bits
         uint result = 0;
 
         for (int i = 0; i < str.Length; i++)
-            result |= (uint)str[i] << (8 * (3 - i));
+            result |= (uint)(byte)str[i] << (8 * i);
 
         return result;
     }

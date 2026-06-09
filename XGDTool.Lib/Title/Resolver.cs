@@ -2,7 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using XGDTool.Lib.Exe;
-using XGDTool.Lib.Image.Format;
+using XGDTool.Lib.Image.Formats;
 
 namespace XGDTool.Lib.Title;
 
@@ -154,7 +154,7 @@ public static class Resolver
 
     private static string GetNameFromFile(Image.IReader reader)
     {
-        return reader.ImageType == Image.Type.Extract
+        return reader.ImageFormat == Image.Format.Extract
             ? Path.GetFileName(reader.FilePaths.First())
             : Path.GetFileNameWithoutExtension(reader.FilePaths.First());
     }

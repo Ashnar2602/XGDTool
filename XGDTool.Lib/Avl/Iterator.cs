@@ -1,4 +1,4 @@
-﻿using XGDTool.Lib.Image.Format;
+﻿using XGDTool.Lib.Image.Formats;
 
 namespace XGDTool.Lib.Avl;
 

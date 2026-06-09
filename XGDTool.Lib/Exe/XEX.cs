@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Exe;
@@ -39,7 +40,7 @@ public static class XEX
 		EXPORTS_BY_NAME               = 0x00E10402
     }
 
-	public static uint MAGIC => Bits.FromBig(Bits.UintFromString("XEX2"));
+	public static uint MAGIC => BinaryPrimitives.ReverseEndianness(Bits.UintFromString("XEX2"));
 	public const int HEADER_SIZE = 0x18;
 	public const int DIRECTORY_ENTRY_SIZE = 8;
 	public const int EXECUTION_INFO_SIZE = 24;

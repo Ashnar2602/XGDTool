@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using XGDTool.Lib.Image.Format;
+using XGDTool.Lib.Image;
 
 namespace XGDTool.Lib.Converter;
 
@@ -13,9 +13,9 @@ public static class InputHelper
     {
         public string[] InputPaths { get; set; } = Array.Empty<string>();
         public string? OutputDirectory { get; set; } = null;
-        public Image.Type OutputType { get; set; } = Image.Type.XISO;
-        public Type ConvertType { get; set; } = Type.Rewrite;
-        public bool? Scrub { get; set; } = false;
+        public Format OutputFormat { get; set; } = Format.XISO;
+        public IWriterType WriterType { get; set; } = IWriterType.Rewrite;
+        public bool? Scrub { get; set; } = null;
         public bool? Split { get; set; } = null;
         public bool? GenAttachXbe { get; set; } = null;
         public bool? Rename { get; set; } = null;
@@ -41,7 +41,7 @@ public static class InputHelper
             var path = inPath;
             var type = DetectType(ref path, out var imageOffset);
 
-            if (type == Image.Type.Unknown)
+            if (type == Format.Unknown)
             {
                 if (Directory.Exists(path))
                 {
@@ -68,7 +68,7 @@ public static class InputHelper
             {
                 List<string> newPaths;
 
-                if (type != Image.Type.Extract && type != Image.Type.GOD)
+                if (type != Format.Extract && type != Format.GOD)
                 {
                     var parts = CollectFileParts(path);
                     if (parts == null)
@@ -86,8 +86,8 @@ public static class InputHelper
 
                 entries.Add(new Entry
                 {
-                    OutputType = options.OutputType,
-                    ConvertType = options.ConvertType,
+                    OutputFormat = options.OutputFormat,
+                    WriterType = options.WriterType,
                     OutDirectory = options.OutputDirectory ?? Environment.CurrentDirectory,
                     Scrub = options.Scrub,
                     Split = options.Split,
@@ -95,7 +95,7 @@ public static class InputHelper
                     RenameTo = options.NewName,
                     AllowedMediaPatch = options.AllowedMediaPatch,
                     InputPaths = newPaths,
-                    InputType = type,
+                    InputFormat = type,
                     AttachXbe = options.GenAttachXbe
                 });
             }
@@ -124,30 +124,30 @@ public static class InputHelper
         return true;
     }
 
-    public static Image.Type DetectType(ref string path, out long? imageOffset)
+    public static Format DetectType(ref string path, out long? imageOffset)
     {
         imageOffset = null;
 
         if (Directory.Exists(path))
         {
             if (Image.Reader.Extract.IsValid(path))
-                return Image.Type.Extract;
+                return Format.Extract;
 
             if (RecurseGodDirectory(path, 0, 2, out var newPath))
             {
                 path = newPath;
-                return Image.Type.GOD;
+                return Format.GOD;
             }
         }
         else if (File.Exists(path))
         {
             if (Image.Reader.Xiso.IsValid(path))
-                return Image.Type.XISO;
+                return Format.XISO;
             //else if (Image.Reader.Cci.IsValid(path))
             //    return Image.Type.CCI;
         }
 
-        return Image.Type.Unknown;
+        return Format.Unknown;
     }
 
     public static List<string>? CollectFileParts(string path)

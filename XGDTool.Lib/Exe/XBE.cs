@@ -63,7 +63,7 @@ public static class XBE
         DBG = 0x80000000
     }
 
-    public static uint MAGIC => BinaryPrimitives.ReverseEndianness(Bits.UintFromString("XBEH"));
+    public static uint MAGIC => Bits.UintFromString("XBEH");
     public const int HEADER_SIZE = 376;
     public const int SECTION_HEADER_SIZE = 56;
     public const int CERTIFICATE_SIZE = 464;

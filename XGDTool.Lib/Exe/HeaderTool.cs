@@ -1,5 +1,5 @@
 ﻿using XGDTool.Lib.Image;
-using XGDTool.Lib.Image.Format;
+using XGDTool.Lib.Image.Formats;
 using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Exe;

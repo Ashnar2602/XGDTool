@@ -5,7 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using XGDTool.Lib.Image.Format;
+using XGDTool.Lib.Image.Formats;
 
 namespace XGDTool.Lib.Avl
 {

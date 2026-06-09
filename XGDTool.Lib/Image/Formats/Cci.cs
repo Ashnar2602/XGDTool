@@ -2,12 +2,12 @@
 using System.Runtime.InteropServices;
 using XGDTool.Lib.Util;
 
-namespace XGDTool.Lib.Image.Format;
+namespace XGDTool.Lib.Image.Formats;
 
 public static class CCI
 {
-    public static uint MAGIC => Bits.FromBig(Bits.UintFromString("CCIM"));
-    public const byte HEADER_SIZE = 32;
+    public static uint MAGIC => Bits.UintFromString("CCIM");
+    public const uint HEADER_SIZE = 32;
     public const byte VERSION = 1;
     public const byte INDEX_ALIGNMENT = 2;
     public const uint COMPRESSED_FLAG = 0x80000000;
@@ -25,7 +25,7 @@ public static class CCI
         public byte IndexAlignment;
         public short Reserved;
 
-        public int Size() => HEADER_SIZE;
+        public int Size() => (int)HEADER_SIZE;
 
         public Header() { }
         public Header(ulong uncompressedSize, ulong indexOffset)
@@ -41,10 +41,8 @@ public static class CCI
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint EncodeIndexEntry(uint offset, bool compressed)
-    {
-        return (offset >> INDEX_ALIGNMENT) | (compressed ? COMPRESSED_FLAG : 0u);
-    }
+    public static uint EncodeIndexEntry(uint offset, bool compressed) => 
+        ((offset >> INDEX_ALIGNMENT) | (compressed ? COMPRESSED_FLAG : 0u));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static (uint offset, bool compressed) DecodeIndexEntry(uint entry)

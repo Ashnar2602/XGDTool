@@ -2,8 +2,8 @@
 
 public class IWriterOptions
 {
-    public Type OutputType { get; set; } = Type.XISO;
-    public Converter.Type ConvertType { get; set; } = Converter.Type.Rewrite;
+    public Format OutputFormat { get; set; } = Format.XISO;
+    public IWriterType WriterType { get; set; } = IWriterType.Rewrite;
     public string OutDirectory { get; set; } = Environment.CurrentDirectory;
     public bool? Scrub { get; set; } = false;
     public bool? Split { get; set; } = null;

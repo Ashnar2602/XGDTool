@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace XGDTool.Lib.Image.Format;
+namespace XGDTool.Lib.Image.Formats;
 
 public static class GOD
 {

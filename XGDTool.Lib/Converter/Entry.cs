@@ -1,8 +1,10 @@
-﻿namespace XGDTool.Lib.Converter;
+﻿using XGDTool.Lib.Image;
 
-public class Entry : Image.IWriterOptions
+namespace XGDTool.Lib.Converter;
+
+public class Entry : IWriterOptions
 {
     public List<string> InputPaths { get; set; } = new();
-    public Image.Type InputType { get; set; } = Image.Type.Unknown;
+    public Format InputFormat { get; set; } = Format.Unknown;
     public bool? AttachXbe { get; set; } = null;
 }
