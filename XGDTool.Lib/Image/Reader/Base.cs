@@ -1,4 +1,4 @@
-﻿using XGDTool.Lib.Image.Format;
+﻿using XGDTool.Lib.Image.Formats;
 using XGDTool.Lib.Util;
 using XGDTool.Lib.Exe;
 
@@ -8,7 +8,9 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 {
     private List<SectorRange> SectorRanges = new();
 
-    public abstract Type ImageType { get; }
+    protected readonly SemaphoreSlim ReadLock = new(1, 1);
+
+    public abstract Format ImageFormat { get; }
     public abstract uint TotalSectors { get; protected set; }
 
     public List<string> FilePaths { get; } = files.ToList().OrderBy(f => f).ToList();
@@ -171,7 +173,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
     public abstract Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default);
 
-    public virtual int ReadBytes(long offset, Span<byte> buffer)
+    public int ReadBytes(long offset, Span<byte> buffer)
     {
         int size = buffer.Length;
 

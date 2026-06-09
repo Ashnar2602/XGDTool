@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using XGDTool.Lib.Image.Format;
+using XGDTool.Lib.Image.Formats;
 using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Image.Reader;

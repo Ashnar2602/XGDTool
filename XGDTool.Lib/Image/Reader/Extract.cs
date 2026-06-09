@@ -1,4 +1,4 @@
-﻿using XGDTool.Lib.Image.Format;
+﻿using XGDTool.Lib.Image.Formats;
 using XGDTool.Lib.Util;
 using XGDTool.Lib.Exe;
 
@@ -37,7 +37,7 @@ internal class Extract : Base
         get => XISO.SectorCount(VirtualSize); 
         protected set => throw new NotImplementedException(); 
     }
-    public override Type ImageType => Type.Extract;
+    public override Format ImageFormat => Format.Extract;
 
     public Extract(IReadOnlyList<string> filePaths) : base(filePaths)
     {
@@ -130,58 +130,67 @@ internal class Extract : Base
                 "Buffer length must be sector aligned.", 
                 nameof(buffer));
 
-        var entry = GetEntryForSector(startSector);
-        if (entry == null)
+        ReadLock.Wait();
+        try
         {
-            if (startSector > TotalSectors)
-                throw new ArgumentOutOfRangeException(
-                    nameof(startSector), 
-                    "Start sector is beyond the total sectors of the image.");
-            
-            buffer.Clear();
-            return;
-        }
 
-        var offsetInEntry = (int)(startSector - entry.StartSector) * XISO.SECTOR_SIZE;
-        var remainingLen = buffer.Length;
-        var copyLen = Math.Min(remainingLen, entry.Size - offsetInEntry);
-
-        if (entry is EDirectory dir)
-        {
-            dir.Buffer.AsSpan(offsetInEntry, (int)copyLen).CopyTo(buffer);
-            remainingLen -= (int)copyLen;
-        }
-        else if (entry is EFile file)
-        {
-            var readLen = (int)Math.Min(copyLen, file.Stream.Length - offsetInEntry);
-
-            file.Stream.Seek(offsetInEntry, SeekOrigin.Begin);
+            var entry = GetEntryForSector(startSector);
+            if (entry == null)
             {
-                var bytesRead = file.Stream.Read(buffer.Slice(0, readLen));
-                if (bytesRead != readLen)
-                    throw new IOException($"Expected to read {readLen} bytes but only read {bytesRead} bytes.");
+                if (startSector > TotalSectors)
+                    throw new ArgumentOutOfRangeException(
+                        nameof(startSector),
+                        "Start sector is beyond the total sectors of the image.");
+
+                buffer.Clear();
+                return;
             }
 
-            if (!XISO.IsSectorAligned(readLen))
+            var offsetInEntry = (int)(startSector - entry.StartSector) * XISO.SECTOR_SIZE;
+            var remainingLen = buffer.Length;
+            var copyLen = Math.Min(remainingLen, entry.Size - offsetInEntry);
+
+            if (entry is EDirectory dir)
             {
-                var padLen = (int)(XISO.SectorCount(readLen) - readLen);
-                buffer.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
-                readLen += padLen;
+                dir.Buffer.AsSpan(offsetInEntry, (int)copyLen).CopyTo(buffer);
+                remainingLen -= (int)copyLen;
+            }
+            else if (entry is EFile file)
+            {
+                var readLen = (int)Math.Min(copyLen, file.Stream.Length - offsetInEntry);
+
+                file.Stream.Seek(offsetInEntry, SeekOrigin.Begin);
+                {
+                    var bytesRead = file.Stream.Read(buffer.Slice(0, readLen));
+                    if (bytesRead != readLen)
+                        throw new IOException($"Expected to read {readLen} bytes but only read {bytesRead} bytes.");
+                }
+
+                if (!XISO.IsSectorAligned(readLen))
+                {
+                    var padLen = (int)(XISO.SectorCount(readLen) - readLen);
+                    buffer.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
+                    readLen += padLen;
+                }
+
+                copyLen = readLen;
+                remainingLen -= readLen;
+            }
+            else
+            {
+                throw new InvalidOperationException("Unknown entry type.");
             }
 
-            copyLen = readLen;
-            remainingLen -= readLen;
+            if (remainingLen > 0)
+            {
+                ReadSectors(
+                    startSector + XISO.SectorCount(copyLen),
+                    buffer.Slice((int)copyLen));
+            }
         }
-        else
+        finally
         {
-            throw new InvalidOperationException("Unknown entry type.");
-        }
-
-        if (remainingLen > 0) 
-        {
-            ReadSectors(
-                startSector + XISO.SectorCount(copyLen), 
-                buffer.Slice((int)copyLen));
+            ReadLock.Release();
         }
     }
 
@@ -192,60 +201,68 @@ internal class Extract : Base
                 "Buffer length must be sector aligned.", 
                 nameof(buffer));
 
-        var entry = GetEntryForSector(startSector);
-        if (entry == null)
+        await ReadLock.WaitAsync(ct);
+        try
         {
-            if (startSector > TotalSectors)
-                throw new ArgumentOutOfRangeException(
-                    nameof(startSector), 
-                    "Start sector is beyond the total sectors of the image.");
-
-            buffer.Span.Clear();
-            return;
-        }
-
-        var offsetInEntry = (int)(startSector - entry.StartSector) * XISO.SECTOR_SIZE;
-        var remainingLen = buffer.Length;
-        var copyLen = Math.Min(remainingLen, entry.Size - offsetInEntry);
-
-        if (entry is EDirectory dir)
-        {
-            dir.Buffer.AsSpan(offsetInEntry, (int)copyLen).CopyTo(buffer.Span);
-            remainingLen -= (int)copyLen;
-        }
-        else if (entry is EFile file)
-        {
-            var readLen = (int)Math.Min(copyLen, file.Stream.Length - offsetInEntry);
-
-            file.Stream.Seek(offsetInEntry, SeekOrigin.Begin);
+            var entry = GetEntryForSector(startSector);
+            if (entry == null)
             {
-                var bytesRead = await file.Stream.ReadAsync(buffer.Slice(0, readLen), ct);
-                if (bytesRead != readLen)
-                    throw new IOException(
-                        $"Expected to read {readLen} bytes but only read {bytesRead} bytes.");
+                if (startSector > TotalSectors)
+                    throw new ArgumentOutOfRangeException(
+                        nameof(startSector),
+                        "Start sector is beyond the total sectors of the image.");
+
+                buffer.Span.Clear();
+                return;
             }
 
-            if (!XISO.IsSectorAligned(readLen))
+            var offsetInEntry = (int)(startSector - entry.StartSector) * XISO.SECTOR_SIZE;
+            var remainingLen = buffer.Length;
+            var copyLen = Math.Min(remainingLen, entry.Size - offsetInEntry);
+
+            if (entry is EDirectory dir)
             {
-                var padLen = (int)(XISO.SectorCount(readLen) - readLen);
-                buffer.Span.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
-                readLen += padLen;
+                dir.Buffer.AsSpan(offsetInEntry, (int)copyLen).CopyTo(buffer.Span);
+                remainingLen -= (int)copyLen;
+            }
+            else if (entry is EFile file)
+            {
+                var readLen = (int)Math.Min(copyLen, file.Stream.Length - offsetInEntry);
+
+                file.Stream.Seek(offsetInEntry, SeekOrigin.Begin);
+                {
+                    var bytesRead = await file.Stream.ReadAsync(buffer.Slice(0, readLen), ct);
+                    if (bytesRead != readLen)
+                        throw new IOException(
+                            $"Expected to read {readLen} bytes but only read {bytesRead} bytes.");
+                }
+
+                if (!XISO.IsSectorAligned(readLen))
+                {
+                    var padLen = (int)(XISO.SectorCount(readLen) - readLen);
+                    buffer.Span.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
+                    readLen += padLen;
+                }
+
+                copyLen = readLen;
+                remainingLen -= readLen;
+            }
+            else
+            {
+                throw new InvalidOperationException("Unknown entry type.");
             }
 
-            copyLen = readLen;
-            remainingLen -= readLen;
+            if (remainingLen > 0)
+            {
+                await ReadSectorsAsync(
+                    startSector + XISO.SectorCount(copyLen),
+                    buffer.Slice((int)copyLen),
+                    ct);
+            }
         }
-        else
+        finally
         {
-            throw new InvalidOperationException("Unknown entry type.");
-        }
-
-        if (remainingLen > 0)
-        {
-            await ReadSectorsAsync(
-                startSector + XISO.SectorCount(copyLen), 
-                buffer.Slice((int)copyLen), 
-                ct);
+            ReadLock.Release();
         }
     }
 
