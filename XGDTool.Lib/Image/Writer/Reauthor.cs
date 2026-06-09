@@ -1,4 +1,4 @@
-﻿using XGDTool.Lib.Image.Format;
+﻿using XGDTool.Lib.Image.Formats;
 using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Image.Writer;
@@ -31,10 +31,11 @@ internal class Reauthor : IWriter
 
         AvlTree.BuildTree(Reader.DirectoryEntries);
 
-        await SectorSink.Initialize(progress, ct);
-        Ct.ThrowIfCancellationRequested();
+        var totalSize = XISO.CalculateTotalSize(AvlTree.RootNode);
+        var totalSectors = XISO.SectorCount(totalSize);
 
-        var totalSectors = XISO.SectorCount(XISO.CalculateTotalSize(AvlTree.RootNode));
+        await SectorSink.Initialize(totalSize, progress, ct);
+        Ct.ThrowIfCancellationRequested();
 
         ProgData = new()
         {

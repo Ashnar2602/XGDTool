@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using XGDTool.Lib.Image.Format;
+using XGDTool.Lib.Image.Formats;
 
 namespace XGDTool.Lib.Image.Writer;
 
@@ -39,7 +39,8 @@ internal class Rewrite : IWriter
             };
         }
 
-        await SectorSink.Initialize(progress, ct);
+        var totalSectors = dsRanges.Max(r => r.End) + 1;
+        await SectorSink.Initialize(totalSectors * XISO.SECTOR_SIZE, progress, ct);
 
         byte[][] buffers =
         {
