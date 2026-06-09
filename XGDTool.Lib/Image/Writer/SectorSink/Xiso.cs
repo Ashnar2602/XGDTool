@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
-using XGDTool.Lib.Image.Format;
+using XGDTool.Lib.Image.Formats;
 
 namespace XGDTool.Lib.Image.Writer.SectorSink;
 
@@ -8,11 +8,13 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
     private readonly IWriterOptions Options = options;
     private readonly Title.Info TitleInfo = titleInfo;
     private readonly List<FileStream> Streams = new();
+    private readonly SemaphoreSlim WriteLock = new(1, 1);
+    private long TotalOutSize = 0;
     private bool Split => Options.Split == true;
     private bool FirstRenamed = false;
     private bool DirectoryCreated = false;
 
-    public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
+    public Task Initialize(long totalOutSize, IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
         if (!Directory.Exists(Options.OutDirectory))
         {
@@ -23,6 +25,7 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
             DirectoryCreated = true;
         }
 
+        TotalOutSize = totalOutSize;
         return Task.CompletedTask;
     }
 
@@ -31,33 +34,53 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         if (!XISO.IsSectorAligned(buffer.Length))
             throw new ArgumentException($"Buffer length must be a multiple of {XISO.SECTOR_SIZE}", nameof(buffer));
 
-        var (stream, offset) = GetStreamForSector(startSector);
-        var remaingFileBytes = Split ? (XISO.SPLIT_MARGIN - offset) : long.MaxValue;
-        var writeCount = (int)Math.Min(buffer.Length, remaingFileBytes);
+        await WriteLock.WaitAsync(ct);
+        try
+        {
+            var (stream, offset) = GetStreamForSector(startSector);
+            var remaingFileBytes = Split ? (XISO.SPLIT_MARGIN - offset) : long.MaxValue;
+            var writeCount = (int)Math.Min(buffer.Length, remaingFileBytes);
 
-        stream.Seek(offset, SeekOrigin.Begin);
-        await stream.WriteAsync(buffer.Slice(0, writeCount), ct);
+            stream.Seek(offset, SeekOrigin.Begin);
+            await stream.WriteAsync(buffer.Slice(0, writeCount), ct);
 
-        if (writeCount < buffer.Length)
-            await WriteSectorsAsync(
-                startSector + XISO.SectorCount(writeCount), 
-                buffer.Slice(writeCount), 
-                ct);
+            if (writeCount < buffer.Length)
+                await WriteSectorsAsync(
+                    startSector + XISO.SectorCount(writeCount),
+                    buffer.Slice(writeCount),
+                    ct);
+        }
+        finally
+        {
+            WriteLock.Release();
+        }
     }
 
     public async Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
-        for (int i = 0; i < Streams.Count; i++)
+        await WriteLock.WaitAsync(ct);
+        try
         {
-            var stream = Streams[i];
-            await stream.FlushAsync(ct);
+            long totalWritten = Streams.Sum(s => s.Length);
 
-            if (!XISO.IsSectorAligned(stream.Length))
-                stream.SetLength(XISO.SectorCount(stream.Length) * XISO.SECTOR_SIZE);
+            if (!XISO.IsSectorAligned(totalWritten))
+                throw new InvalidOperationException($"Total written bytes must be sector aligned, but was {totalWritten}");
+
+            while (totalWritten < TotalOutSize)
+            {
+                var padding = new byte[256 * XISO.SECTOR_SIZE];
+                var writeCount = (int)Math.Min(padding.Length, TotalOutSize - totalWritten);
+                await WriteSectorsAsync(XISO.SectorIndex(totalWritten), padding.AsMemory(0, writeCount), ct);
+                totalWritten += writeCount;
+            }
+
+            Streams.ForEach(s => { s.Flush(); s.Dispose(); });
+            return Streams.AsEnumerable().Select(s => s.Name).ToList();
         }
-
-        Streams.ForEach(s => { s.Flush(); s.Dispose(); });
-        return Streams.AsEnumerable().Select(s => s.Name).ToList();
+        finally
+        {
+            WriteLock.Release();
+        }
     }
 
     public void CleanupCancelled()
@@ -70,11 +93,9 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         {
             try
             {
-                Directory.Delete(Options.OutDirectory);
+                Directory.Delete(Options.OutDirectory, true);
             }
-            catch
-            {
-            }
+            catch { }
         }
     }
 

@@ -2,7 +2,7 @@
 using System.Text;
 using System.Security.Cryptography;
 using XGDTool.Lib.Exe;
-using XGDTool.Lib.Image.Format;
+using XGDTool.Lib.Image.Formats;
 using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Image.Writer.SectorSink;
@@ -12,6 +12,7 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
     private readonly IWriterOptions Options = options;
     private readonly Title.Info TitleInfo = titleInfo;
     private readonly List<FileStream> Streams = new();
+    private readonly SemaphoreSlim WriteLock = new(1, 1);
 
     private string PlatformString => TitleInfo.Platform switch
         {
@@ -25,7 +26,7 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
     private string OutDataDirectory => Path.Join(GodFolderPath, PlatformString, TitleInfo.GodUniqueName + ".data");
     private string LiveHeaderPath => Path.Join(GodFolderPath, PlatformString, TitleInfo.GodUniqueName);
 
-    public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
+    public Task Initialize(long totalOutSize, IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
         if (!Directory.Exists(OutDataDirectory))
             Directory.CreateDirectory(OutDataDirectory);
@@ -37,65 +38,80 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         return Task.CompletedTask;
     }
 
-    public async Task WriteSectorsAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken cancelToken = default)
+    public async Task WriteSectorsAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
     {
         if (!XISO.IsSectorAligned(buffer.Length))
             throw new ArgumentException(
                 $"Buffer length must be a multiple of {XISO.SECTOR_SIZE}", nameof(buffer));
 
-        var (stream, offset) = RemapSector(startSector);
+        await WriteLock.WaitAsync(ct);
+        try
+        {
+            var (stream, offset) = RemapSector(startSector);
 
-        stream.Seek(offset, SeekOrigin.Begin);
-        await stream.WriteAsync(buffer.Slice(0, XISO.SECTOR_SIZE), cancelToken);
+            stream.Seek(offset, SeekOrigin.Begin);
+            await stream.WriteAsync(buffer.Slice(0, XISO.SECTOR_SIZE), ct);
 
-        if (buffer.Length > XISO.SECTOR_SIZE)
-            await WriteSectorsAsync(
-                startSector + 1, 
-                buffer.Slice(XISO.SECTOR_SIZE), 
-                cancelToken);
+            if (buffer.Length > XISO.SECTOR_SIZE)
+                await WriteSectorsAsync(
+                    startSector + 1,
+                    buffer.Slice(XISO.SECTOR_SIZE),
+                    ct);
+        }
+        finally
+        {
+            WriteLock.Release();
+        }
     }
 
-    public Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
-        foreach (var stream in Streams)
+        await WriteLock.WaitAsync(ct);
+        try
         {
-            if (!GOD.IsBlockAligned(stream.Length))
+            foreach (var stream in Streams)
             {
-                stream.Seek(0, SeekOrigin.End);
-                var paddingSize = (int)(GOD.AlignUpToBlock(stream.Length) - stream.Length);
+                if (!GOD.IsBlockAligned(stream.Length))
+                {
+                    stream.Seek(0, SeekOrigin.End);
+                    var paddingSize = (int)(GOD.AlignUpToBlock(stream.Length) - stream.Length);
 
-                if (paddingSize > 0)
-                    stream.Write(new byte[paddingSize], 0, paddingSize);
+                    if (paddingSize > 0)
+                        stream.Write(new byte[paddingSize], 0, paddingSize);
+                }
             }
+
+            long tableCount = Streams.Aggregate(0L, (acc, s) =>
+                checked(acc + GOD.SubHashTableCount(s.Length) + 1));
+            tableCount += Streams.Count; // master hash tables
+            tableCount++; // Just add one to represent the live header so we're not showing 100% until it's written
+
+            var progData = new Converter.Progress
+            {
+                Stage = Converter.Stage.Finalizing,
+                Current = 0,
+                Total = tableCount
+            };
+
+            WriteSubHashTables(ref progData, progress, ct);
+            var finalMhtHash = FinalizeHashTables(ref progData, progress, ct);
+
+            WriteLiveHeader(finalMhtHash);
+
+            progData.Current = progData.Total;
+            progress?.Report(progData);
+
+            return new List<string> { GodFolderPath };
         }
-
-        long tableCount = Streams.Aggregate(0L, (acc, s) => 
-            checked(acc + GOD.SubHashTableCount(s.Length) + 1));
-        tableCount += Streams.Count; // master hash tables
-        tableCount++; // Just add one to represent the live header so we're not showing 100% until it's written
-
-        var progData = new Converter.Progress
+        finally
         {
-            Stage = Converter.Stage.Finalizing,
-            Current = 0,
-            Total = tableCount
-        };
-
-        WriteSubHashTables(ref progData, progress, cancellationToken);
-        var finalMhtHash = FinalizeHashTables(ref progData, progress, cancellationToken);
-
-        WriteLiveHeader(finalMhtHash);
-
-        progData.Current = progData.Total;
-        progress?.Report(progData);
-
-        return Task.FromResult(new List<string> { GodFolderPath });
+            WriteLock.Release();
+        }
     }
 
     public void CleanupCancelled()
     {
-        Streams.ForEach(s => s.Dispose());
-        Streams.ForEach(s => File.Delete(s.Name));
+        Streams.ForEach(s => { s.Dispose(); File.Delete(s.Name); });
         Streams.Clear();
 
         if (File.Exists(LiveHeaderPath))
@@ -105,7 +121,7 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
             Directory.Delete(GodFolderPath, true);
     }
 
-    protected void WriteSubHashTables(ref Converter.Progress progData, IProgress<Converter.Progress>? progress, CancellationToken ct)
+    private void WriteSubHashTables(ref Converter.Progress progData, IProgress<Converter.Progress>? progress, CancellationToken ct)
     {
         foreach (var stream in Streams)
         {
@@ -359,6 +375,10 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         {
             var path = GetFilePartPath(i);
             var stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
+
+            if (i < index)
+                stream.SetLength(GOD.BLOCKS_PER_PART * GOD.BLOCK_SIZE);
+
             Streams.Add(stream);
         }
 
