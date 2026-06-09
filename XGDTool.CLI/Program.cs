@@ -1,5 +1,4 @@
 ﻿using System.CommandLine;
-using System.ComponentModel;
 using XGDTool.Lib.Image;
 using XGDTool.Lib.Converter;
 using XGDTool.Lib.Util;
@@ -36,102 +35,144 @@ public class Program
         return await parseResult.InvokeAsync();
     }
 
-    private static void PrintProgress(double progress)
-    {
-        const int barWidth = 50;
-        progress = Math.Clamp(progress, 0, 1);
-        int filled = (int)(progress * barWidth);
-
-        string bar = new string('#', filled) + new string('-', barWidth - filled);
-
-        Console.Write($"\r[{bar}] {(int)(progress * 100),3}%");
-    }
-
     private static async Task ProcessOptions(InputHelper.Options options)
     {
-        var entries = InputHelper.GenerateEntries(options);
+        var startTime = DateTime.Now;
+        var entries = new List<Entry>();
+        try
+        {
+            entries = InputHelper.GenerateEntries(options);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error: " + ex.Message);
+            return;
+        }
+
+        var consoleLock = new object();
+
+        static void PrintProgress(double progress, DateTime stageStartTime)
+        {
+            const int barWidth = 50;
+            progress = Math.Clamp(progress, 0, 1);
+            int filled = (int)(progress * barWidth);
+            var elapsed = DateTime.Now - stageStartTime;
+
+            string bar = new string('#', filled) + new string('-', barWidth - filled);
+
+            Console.Write($"\r[{bar}] {(int)(progress * 100),3}% ({elapsed:mm\\:ss})");
+        }
 
         for (int i = 0; i < entries.Count; i++)
         {
             var entry = entries[i];
 
             Console.WriteLine("\nTask " + (i + 1) + " of " + entries.Count);
+            Console.WriteLine("Processing files: ");
+
+            foreach (var path in entry.InputPaths)
+                Console.WriteLine("  " + path);
 
             Console.WriteLine(
-                "Processing: " + 
-                entry.InputPaths.First() + 
-                (entry.InputPaths.Count > 1 ? "..." : ""));
+                "Output format: " + 
+                EnumExt.GetDescription(options.OutputFormat));
 
-            Console.WriteLine(
-                "Output Type: " + 
-                EnumExt.GetDescription(options.OutputType));
-
+            var entryStartTime = DateTime.Now;
             var prevStage = Stage.Idle;
             var prevPercent = 0.0;
-
-            var progressReporter = new Progress<Progress>(p =>
+            var stageStartTime = entryStartTime;
+            var reporter = new Progress<Progress>(p =>
             {
                 if (p.Stage != prevStage)
                 {
-                    Console.Out.Flush();
-
-                    var stageName = EnumExt.GetDescription(p.Stage);
-
-                    if (prevStage != Stage.Idle)
+                    lock (consoleLock)
                     {
-                        PrintProgress(1);
-                        Console.WriteLine();
-                    }
+                        Console.Out.Flush();
 
-                    Console.WriteLine(stageName + "...");
-                    prevStage = p.Stage;
-                    prevPercent = p.Percent;
-                    PrintProgress(p.Percent);
+                        var stageName = EnumExt.GetDescription(p.Stage);
+
+                        if (prevStage != Stage.Idle)
+                        {
+                            PrintProgress(1, stageStartTime);
+                            Console.WriteLine();
+                        }
+
+                        stageStartTime = DateTime.Now;
+                        Console.WriteLine(stageName + "...");
+                        prevStage = p.Stage;
+                        prevPercent = p.Percent;
+                        PrintProgress(p.Percent, stageStartTime);
+                    }
                 }
-                else if (p.Current == p.Total || p.Percent - prevPercent >= 0.01)
+                else if (p.Current >= p.Total || (p.Percent - prevPercent) >= 0.01)
                 {
-                    prevPercent = p.Percent;
-                    PrintProgress(p.Percent);
+                    lock (consoleLock)
+                    {
+                        Console.Out.Flush();
+                        prevPercent = p.Percent;
+                        PrintProgress(p.Percent, stageStartTime);
+                    }
                 }
             });
 
-            var paths = await Process.ConvertEntry(entry, progressReporter);
+            try
+            {
+                var paths = await Process.ConvertEntry(entry, reporter);
+                var elapsed = DateTime.Now - entryStartTime;
 
-            Console.WriteLine("\nDone: " + string.Join(", ", paths) + "\n");
+                Console.WriteLine($"\nTask completed ({elapsed:hh\\:mm\\:ss}), output files:");
+
+                foreach (var path in paths)
+                    Console.WriteLine("  " + path);
+            }
+            catch (Exception ex)
+            {
+                var color = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\nError: " + ex.Message + "\n");
+                Console.ForegroundColor = color;
+            }
         }
 
-        Console.WriteLine("All tasks completed.");
+        var totalElapsed = DateTime.Now - startTime;
+        Console.WriteLine($"\nAll tasks completed, total elapsed time: ({totalElapsed:hh\\:mm\\:ss})");
     }
 
-    private Task HandleExtract(ParseResult results) =>
-        ProcessOptions(ParseOptions(Lib.Image.Type.Extract, results));
+    private async Task HandleExtract(ParseResult results) =>
+        await ProcessOptions(ParseOptions(Format.Extract, results));
 
-    private Task HandleXiso(ParseResult results) =>
-        ProcessOptions(ParseOptions(Lib.Image.Type.XISO, results));
+    private async Task HandleXiso(ParseResult results) =>
+        await ProcessOptions(ParseOptions(Format.XISO, results));
 
-    private Task HandleGod(ParseResult results) =>
-        ProcessOptions(ParseOptions(Lib.Image.Type.GOD, results));
+    private async Task HandleGod(ParseResult results) =>
+        await ProcessOptions(ParseOptions(Format.GOD, results));
 
-    private Task HandleCci(ParseResult results) =>
-        ProcessOptions(ParseOptions(Lib.Image.Type.CCI, results));
+    private async Task HandleCci(ParseResult results) =>
+        await ProcessOptions(ParseOptions(Format.CCI, results));
 
-    private Task HandleCso(ParseResult results) =>
-        ProcessOptions(ParseOptions(Lib.Image.Type.CSO, results));
+    private async Task HandleCso(ParseResult results) =>
+        await ProcessOptions(ParseOptions(Format.CSO, results));
 
-    private Task HandleZar(ParseResult results) =>
-        ProcessOptions(ParseOptions(Lib.Image.Type.ZAR, results));
+    private async Task HandleZar(ParseResult results) =>
+        await ProcessOptions(ParseOptions(Format.ZAR, results));
 
-    private InputHelper.Options ParseOptions(Lib.Image.Type type, ParseResult results)
+    private InputHelper.Options ParseOptions(Format format, ParseResult results)
     {
+        var writerType = format switch
+        {
+            Format.Extract => IWriterType.Extract,
+            Format.ZAR => IWriterType.Zar,
+            _ => (results.GetValue(Commands.Options.Reauthor) == true)
+                ? IWriterType.Reauthor
+                : IWriterType.Rewrite
+        };
+
         return new InputHelper.Options()
         {
             InputPaths = results.GetRequiredValue(Commands.Options.Input),
             OutputDirectory = results.GetValue(Commands.Options.Output),
-            OutputType = type,
-            ConvertType = 
-                GetConvertType(
-                    results.GetValue(Commands.Options.Scrub), 
-                    results.GetValue(Commands.Options.Reauthor)),
+            OutputFormat = format,
+            WriterType = writerType,
             Scrub = results.GetValue(Commands.Options.Scrub),
             Split = results.GetValue(Commands.Options.Split),
             GenAttachXbe = results.GetValue(Commands.Options.Xbe),
@@ -140,13 +181,5 @@ public class Program
             AllowedMediaPatch = results.GetValue(Commands.Options.AllowedMedia),
             IconPath = results.GetValue(Commands.Options.Icon)
         };
-    }
-
-    private static Lib.Converter.Type GetConvertType(bool? scrub, bool? reauthor)
-    {
-        if (reauthor == true)
-            return Lib.Converter.Type.Reauthor;
-        else
-            return Lib.Converter.Type.Rewrite;
     }
 }
