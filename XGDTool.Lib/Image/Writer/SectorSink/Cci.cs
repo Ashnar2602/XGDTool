@@ -19,6 +19,8 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         public byte PadLen;
     }
 
+    private const int BufferSectors = 256;
+
     private readonly IWriterOptions Options = options;
     private readonly Title.Info TitleInfo = titleInfo;
     private readonly List<FileEntry> OutFiles = new();
@@ -26,8 +28,8 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
     private bool DirectoryCreated = false;
     private readonly SemaphoreSlim WriteLock = new(1, 1);
     private long TotalUncompressedSize = 0;
-    private const int BufferSectors = 256;
     private FileEntry CurrentFile => OutFiles.Last();
+    private readonly byte[] ZeroPad = new byte[1 << CCI.INDEX_ALIGNMENT];
 
     private string GetFilePath(int? index = null) => 
         Path.Join(
@@ -167,7 +169,6 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 
         int sectorCount = buffer.Length / XISO.SECTOR_SIZE;
         var results = new CompressedSector[sectorCount];
-        byte[] zeroPad = new byte[1 << CCI.INDEX_ALIGNMENT];
         const int alignMult = 1 << CCI.INDEX_ALIGNMENT;
 
         try
@@ -239,7 +240,7 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
                     CurrentFile.Stream.Write(result.Data, 0, result.CompressedSize);
 
                     if (result.PadLen > 0)
-                        CurrentFile.Stream.Write(zeroPad, 0, result.PadLen);
+                        CurrentFile.Stream.Write(ZeroPad, 0, result.PadLen);
                 }
                 else
                 {
