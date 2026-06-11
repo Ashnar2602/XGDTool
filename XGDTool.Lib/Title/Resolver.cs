@@ -17,6 +17,8 @@ public static class Resolver
     private static readonly Lazy<Dictionary<
         (uint TitleId, uint Version, XBE.Region Region), RepackEntry>> XboxOgByIdMain = new(() =>
         {
+            if (!File.Exists(XboxOriginalJsonPath))
+                return new Dictionary<(uint, uint, XBE.Region), RepackEntry>();
             var entries = JsonSerializer.Deserialize<List<RepackEntry>>(
                 File.ReadAllText(XboxOriginalJsonPath)) ?? [];
             return entries
@@ -65,6 +67,8 @@ public static class Resolver
 
     private static readonly Lazy<Dictionary<uint, MetaDataEntry>> Xbox360ById = new(() =>
         {
+            if (!File.Exists(Xbox360JsonPath))
+                return new Dictionary<uint, MetaDataEntry>();
             var root = JsonSerializer.Deserialize<MetaDataArray>(
                 File.ReadAllText(Xbox360JsonPath)) ?? new MetaDataArray();
             return root.Items.ToDictionary(e => Convert.ToUInt32(e.TitleId, 16));
