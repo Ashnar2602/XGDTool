@@ -11,7 +11,6 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
     private readonly SemaphoreSlim WriteLock = new(1, 1);
     private long TotalOutSize = 0;
     private bool Split => Options.Split == true;
-    private bool FirstRenamed = false;
     private bool DirectoryCreated = false;
 
     public Task Initialize(long totalOutSize, IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
@@ -19,7 +18,7 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         if (!Directory.Exists(Options.OutputDirectory))
         {
             Directory.CreateDirectory(Options.OutputDirectory);
-            
+
             if (!Directory.Exists(Options.OutputDirectory))
                 throw new IOException($"Failed to create output directory: {Options.OutputDirectory}");
 
@@ -125,7 +124,7 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
             return Streams[0];
         }
 
-        if (!FirstRenamed)
+        if (!Streams[0].Name.EndsWith(".1.iso", StringComparison.OrdinalIgnoreCase))
         {
             var name = Streams[0].Name;
             var newName = Path.Join(Options.OutputDirectory, $"{TitleInfo.ImageName}.1.iso");
@@ -133,7 +132,6 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
             Streams[0].Flush();
             Streams[0].Dispose();
             File.Move(name, newName);
-            FirstRenamed = true;
             Streams[0] = new FileStream(newName, FileMode.Open, FileAccess.Write);
         }
 
