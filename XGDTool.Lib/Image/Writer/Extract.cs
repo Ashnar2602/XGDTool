@@ -10,7 +10,7 @@ internal class Extract : IWriter
     private readonly IWriterOptions Options;
     private readonly Title.Info TitleInfo;
     private const int BufferSectors = 256;
-    private string TitleDirectoryPath => Path.Join(Options.OutDirectory, TitleInfo.FolderName);
+    private string TitleDirectoryPath => Path.Join(Options.OutputDirectory, TitleInfo.FolderName);
 
     public Extract(IReader reader, IWriterOptions options, Title.Info titleInfo)
     {
@@ -53,7 +53,7 @@ internal class Extract : IWriter
                 long certOffset = 0;
                 long readStart = XISO.SectorToOffset(Reader.SectorOffset + entry.Header.StartSector);
 
-                if (TitleInfo.Platform == Platform.OriginalXbox &&
+                if (TitleInfo.Platform == Platform.Xbox &&
                     entry.Filepath.Equals("default.xbe", StringComparison.OrdinalIgnoreCase) &&
                     (Options.RenameXbe == true || Options.AllowedMediaPatch == true))
                 {
