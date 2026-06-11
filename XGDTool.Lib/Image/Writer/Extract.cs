@@ -4,20 +4,13 @@ using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Image.Writer;
 
-internal class Extract : IWriter
+internal class Extract(IReader reader, IWriterOptions options, Title.Info titleInfo) : IWriter
 {
-    private readonly IReader Reader;
-    private readonly IWriterOptions Options;
-    private readonly Title.Info TitleInfo;
+    private readonly IReader Reader = reader;
+    private readonly IWriterOptions Options = options;
+    private readonly Title.Info TitleInfo = titleInfo;
     private const int BufferSectors = 256;
     private string TitleDirectoryPath => Path.Join(Options.OutputDirectory, TitleInfo.FolderName);
-
-    public Extract(IReader reader, IWriterOptions options, Title.Info titleInfo)
-    {
-        Reader = reader;
-        Options = options;
-        TitleInfo = titleInfo;
-    }
 
     public Task<IReadOnlyList<string>> Convert(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
@@ -33,7 +26,7 @@ internal class Extract : IWriter
         {
             ct.ThrowIfCancellationRequested();
 
-            var outPath = Path.Join(TitleDirectoryPath, entry.Filepath);
+            var outPath = Path.Join(TitleDirectoryPath, entry.FilePath);
 
             if (entry.Header.Attributes.HasFlag(XISO.DirAttribute.Directory))
             {
@@ -54,7 +47,7 @@ internal class Extract : IWriter
                 long readStart = XISO.SectorToOffset(Reader.SectorOffset + entry.Header.StartSector);
 
                 if (TitleInfo.Platform == Platform.Xbox &&
-                    entry.Filepath.Equals("default.xbe", StringComparison.OrdinalIgnoreCase) &&
+                    entry.FilePath.Equals("default.xbe", StringComparison.OrdinalIgnoreCase) &&
                     (Options.RenameXbe == true || Options.AllowedMediaPatch == true))
                 {
                     certBytes = MarshalableExt.ToBytes(TitleInfo.XbeCertificate);
