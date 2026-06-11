@@ -77,11 +77,12 @@ public static class Resolver
 
     public static Info Resolve(Image.IReader reader)
     {
-        var headerTool = new HeaderTool(reader);
+        var headerTool = new HeaderTool();
+        headerTool.Initialize(reader);
 
         if (headerTool.Platform == Platform.Xbox360)
             return InfoFromXbox360(reader, headerTool);
-        else if (headerTool.Platform == Platform.OriginalXbox)
+        else if (headerTool.Platform == Platform.Xbox)
             return InfoFromXboxOriginal(reader, headerTool);
         else
             throw new NotSupportedException($"Unsupported platform: {headerTool.Platform}");
