@@ -49,7 +49,7 @@ internal class Reauthor : IWriter
 
         var avlIterator = new Avl.Iterator(AvlTree);
         var entries = avlIterator.Entries;
-        uint currentSector = (uint)(entries[0].Offset / XISO.SECTOR_SIZE);
+        uint sectorIndex = XISO.SectorIndex(entries[0].Offset);
 
         for (var i = 0; i < entries.Count; i++)
         {
@@ -57,45 +57,46 @@ internal class Reauthor : IWriter
 
             var entry = entries[i];
 
-            if (entry.Offset != currentSector * XISO.SECTOR_SIZE)
+            if (entry.Offset != sectorIndex * XISO.SECTOR_SIZE)
                 throw new InvalidOperationException(
-                    $"Entry offset {entry.Offset} does not match expected offset {currentSector * XISO.SECTOR_SIZE}.");
+                    $"Entry offset {entry.Offset} does not match expected offset {sectorIndex * XISO.SECTOR_SIZE}.");
 
             if (entry.IsDirectoryEntry)
             {
                 var dBuffer = avlIterator.WriteDirectoriesToBuffer(i, out var count);
                 i += count - 1;
 
-                if (dBuffer.Length % XISO.SECTOR_SIZE != 0)
+                if (!XISO.IsSectorAligned(dBuffer.Length))
                     throw new InvalidOperationException(
                         "Directory buffer size is not a multiple of sector size.");
 
-                await SectorSink.WriteSectorsAsync(currentSector, dBuffer, Ct);
-
-                var sectorsWritten = XISO.SectorCount(dBuffer.Length);
-                currentSector += sectorsWritten;
-                ProgData.Current += sectorsWritten;
-                Progress?.Report(ProgData);
+                await SectorSink.WriteSectorsAsync(sectorIndex, dBuffer, Ct);
+                sectorIndex += XISO.SectorCount(dBuffer.Length);
             }
             else
             {
                 await WriteFile(entry.Node);
+                sectorIndex += XISO.SectorCount(entry.Node.FileSize);
             }
 
-            if (i != (entries.Count - 1) && entries[i + 1].Offset > (currentSector * XISO.SECTOR_SIZE))
+            if (i != (entries.Count - 1) && entries[i + 1].Offset > (sectorIndex * XISO.SECTOR_SIZE))
             {
                 uint padSectors =
                     (uint)(entries[i + 1].Offset / XISO.SECTOR_SIZE) -
-                    currentSector;
+                    sectorIndex;
 
-                await WritePadSectors(currentSector, padSectors, XISO.PAD_BYTE);
+                await WritePadSectors(sectorIndex, padSectors, XISO.PAD_BYTE);
+                sectorIndex += padSectors;
             }
+
+            ProgData.Current = sectorIndex + 1;
+            Progress?.Report(ProgData);
         }
 
-        if (currentSector < totalSectors)
+        if (sectorIndex < totalSectors)
         {
-            uint padSectors = totalSectors - currentSector;
-            await WritePadSectors(currentSector, padSectors, 0);
+            uint padSectors = totalSectors - sectorIndex;
+            await WritePadSectors(sectorIndex, padSectors, 0);
         }
 
         ProgData.Current = totalSectors;
@@ -126,8 +127,8 @@ internal class Reauthor : IWriter
 
     private async Task WriteFile(Avl.Node fileNode)
     {
-        var writeSector = (uint)(fileNode.StartSector);
-        var readSector = (uint)(fileNode.OldStartSector);
+        var writeSector = (uint)fileNode.StartSector;
+        var readSector = (uint)fileNode.OldStartSector + Reader.SectorOffset;
         var remainingBytes = fileNode.FileSize;
         int bufferIndex = 0;
         Task pendingWrite = Task.CompletedTask;
