@@ -4,12 +4,12 @@ using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Exe;
 
-public class HeaderTool(IReader reader)
+public class HeaderTool()
 {
     public class XbeHeaderInfo
     {
         public required XBE.CertificateHeader CertificateHeader;
-        public required long CertificateOffset;
+        public required long FileOffset;
         public byte[]? LogoData;
         public long LogoOffset;
     }
@@ -17,24 +17,35 @@ public class HeaderTool(IReader reader)
     public class XexHeaderInfo
     {
         public required XEX.ExecutionInfo ExecutionInfo;
-        public long? ExecutionInfoOffset;
+        public long? FileOffset;
     }
 
-    private XbeHeaderInfo? _XbeInfo;
-    private XexHeaderInfo? _XexInfo;
-    private readonly IReader Reader = reader;
+    private XbeHeaderInfo? _XbeInfo = null;
+    private XexHeaderInfo? _XexInfo = null;
+    private Platform? _Platform = null;
 
     public XbeHeaderInfo XbeInfo => 
-        _XbeInfo ??= GetXbeInfo() ?? 
-        throw new InvalidOperationException("XBE info is not available.");
-    public XexHeaderInfo XexInfo => _XexInfo ??= GetXexInfo();
-    public Platform Platform => Reader.Platform;
+        _XbeInfo ?? throw new InvalidOperationException("XBE info is not available.");
+
+    public XexHeaderInfo XexInfo =>
+        _XexInfo ?? throw new InvalidOperationException("XEX info is not available.");
+
+    public Platform Platform => 
+        _Platform ?? throw new InvalidOperationException("Platform is not set.");
+
     public uint TitleId => 
-        (Platform == Platform.OriginalXbox) 
+        (Platform == Platform.Xbox) 
             ? XbeInfo.CertificateHeader.TitleID 
             : XexInfo.ExecutionInfo.TitleId;
 
-    private XbeHeaderInfo? GetXbeInfo()
+    public void Initialize(IReader reader)
+    {
+        _Platform = reader.Platform;
+        _XbeInfo = GetXbeInfo(reader);
+        _XexInfo = GetXexInfo(reader, _XbeInfo);
+    }
+
+    private static XbeHeaderInfo? GetXbeInfo(IReader Reader)
     {
         if (Reader.Platform == Platform.Xbox360)
             return null;
@@ -57,7 +68,7 @@ public class HeaderTool(IReader reader)
         byte[]? logoData = null;
 
         // size limit is arbitrary, we just dont want a 4gb buffer by accident here
-        const int MaxLogoSize = 512 * XISO.SECTOR_SIZE;
+        const int MaxLogoSize = 512 * 2 * XISO.SECTOR_SIZE;
 
         if (header.SizeOfMicrosoftLogo > 0 && header.SizeOfMicrosoftLogo < MaxLogoSize)
             logoData = Reader.ReadBytes(
@@ -67,16 +78,16 @@ public class HeaderTool(IReader reader)
         return new XbeHeaderInfo() 
         { 
             CertificateHeader = cert, 
-            CertificateOffset = certOffset, 
+            FileOffset = certOffset, 
             LogoData = logoData, 
             LogoOffset = logoOffset 
         };
     }
 
-    private XexHeaderInfo GetXexInfo()
+    private static XexHeaderInfo GetXexInfo(IReader Reader, XbeHeaderInfo? xbeInfo)
     {
-        if (Reader.Platform == Platform.OriginalXbox)
-            return new XexHeaderInfo() { ExecutionInfo = GetXexExeInfoFromXbe() };
+        if (Reader.Platform == Platform.Xbox)
+            return new XexHeaderInfo() { ExecutionInfo = GetXexExeInfoFromXbe(Reader, xbeInfo) };
 
         var exeEntry = Reader.ExecutableEntry;
         var exeOffset = (long)exeEntry.Header.StartSector * XISO.SECTOR_SIZE;
@@ -108,7 +119,7 @@ public class HeaderTool(IReader reader)
                 return new XexHeaderInfo()
                 {
                     ExecutionInfo = exeInfo,
-                    ExecutionInfoOffset = kvEntry.Value
+                    FileOffset = kvEntry.Value
                 };
             }
         }
@@ -116,10 +127,11 @@ public class HeaderTool(IReader reader)
         throw new InvalidOperationException("XEX execution info entry not found.");
     }
 
-    private XEX.ExecutionInfo GetXexExeInfoFromXbe()
+    private static XEX.ExecutionInfo GetXexExeInfoFromXbe(IReader Reader, XbeHeaderInfo? xbeInfo)
     {
         var xbe = 
-            XbeInfo ?? 
+            xbeInfo ?? 
+            GetXbeInfo(Reader) ??
             throw new InvalidOperationException("XBE certificate is unavailable.");
         var info = new XEX.ExecutionInfo();
         info.MediaId = 0;

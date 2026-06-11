@@ -6,8 +6,8 @@ public enum Platform
 {
     [Description("Unknown")]
     Unknown,
-    [Description("Original Xbox")]
-    OriginalXbox,
+    [Description("Xbox")]
+    Xbox,
     [Description("Xbox 360")]
     Xbox360
 }
