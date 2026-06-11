@@ -16,11 +16,12 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 
     public Task Initialize(long totalOutSize, IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
-        if (!Directory.Exists(Options.OutDirectory))
+        if (!Directory.Exists(Options.OutputDirectory))
         {
-            Directory.CreateDirectory(Options.OutDirectory);
-            if (!Directory.Exists(Options.OutDirectory))
-                throw new IOException($"Failed to create output directory: {Options.OutDirectory}");
+            Directory.CreateDirectory(Options.OutputDirectory);
+            
+            if (!Directory.Exists(Options.OutputDirectory))
+                throw new IOException($"Failed to create output directory: {Options.OutputDirectory}");
 
             DirectoryCreated = true;
         }
@@ -93,7 +94,7 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         {
             try
             {
-                Directory.Delete(Options.OutDirectory, true);
+                Directory.Delete(Options.OutputDirectory, true);
             }
             catch { }
         }
@@ -118,7 +119,7 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         if (index == 0)
         {
             Streams.Add(new FileStream(
-                Path.Join(Options.OutDirectory, TitleInfo.ImageName + ".iso"), 
+                Path.Join(Options.OutputDirectory, TitleInfo.ImageName + ".iso"), 
                 FileMode.Create, 
                 FileAccess.Write));
             return Streams[0];
@@ -127,7 +128,7 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         if (!FirstRenamed)
         {
             var name = Streams[0].Name;
-            var newName = Path.Join(Options.OutDirectory, $"{TitleInfo.ImageName}.1.iso");
+            var newName = Path.Join(Options.OutputDirectory, $"{TitleInfo.ImageName}.1.iso");
 
             Streams[0].Flush();
             Streams[0].Dispose();
@@ -139,7 +140,7 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         for (int i = Streams.Count; i <= index; i++)
         {
             var stream = new FileStream(
-                Path.Join(Options.OutDirectory, $"{TitleInfo.ImageName}.{i + 1}.iso"),
+                Path.Join(Options.OutputDirectory, $"{TitleInfo.ImageName}.{i + 1}.iso"),
                 FileMode.Create,
                 FileAccess.Write);
 

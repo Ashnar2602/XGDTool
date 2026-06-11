@@ -16,13 +16,13 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 
     private string PlatformString => TitleInfo.Platform switch
         {
-            Platform.OriginalXbox => GOD.Type.OriginalXbox.ToString("X8"),
+            Platform.Xbox => GOD.Type.OriginalXbox.ToString("X8"),
             Platform.Xbox360 => GOD.Type.GamesOnDemand.ToString("X8"),
             _ => throw new InvalidOperationException(
                 $"Unsupported platform: {TitleInfo.Platform}")
         };
 
-    private string GodFolderPath => Path.Join(Options.OutDirectory, TitleInfo.GodFolderName);
+    private string GodFolderPath => Path.Join(Options.OutputDirectory, TitleInfo.GodFolderName);
     private string OutDataDirectory => Path.Join(GodFolderPath, PlatformString, TitleInfo.GodUniqueName + ".data");
     private string LiveHeaderPath => Path.Join(GodFolderPath, PlatformString, TitleInfo.GodUniqueName);
 

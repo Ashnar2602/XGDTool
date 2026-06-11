@@ -2,9 +2,10 @@
 
 public interface IWriter
 {
-    public static IWriter Create(IReader reader, IWriterOptions options)
+    public static IWriter Create(IReader reader, IWriterOptions options, Title.Info? titleInfo = null)
     {
-        var titleInfo = Title.Resolver.Resolve(reader);
+        titleInfo ??= Title.Resolver.Resolve(reader);
+
         return options.WriterType switch
         {
             IWriterType.Extract => new Writer.Extract(reader, options, titleInfo),
