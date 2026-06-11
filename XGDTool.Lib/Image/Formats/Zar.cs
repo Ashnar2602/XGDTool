@@ -3,24 +3,75 @@ using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Image.Formats;
 
-public static class Zar
+public static class ZAR
 {
     public const int COMPRESSED_BLOCK_SIZE = 64 * 1024;
     public const int ENTRIES_PER_OFFSETRECORD = 16;
     public const uint ENTRY_TYPE_FILE = 0x80000000;
     public const uint FOOTER_MAGIC = 0x169f52d6;
     public const uint FOOTER_VERSION = 0x61bf3a01;
-
+    public const int FOOTER_SIZE = (16 * 6) + 32 + 8 + 4 + 4;
+    public const int COMPRESSION_OFFSET_RECORD_SIZE = 8 + (2 * ENTRIES_PER_OFFSETRECORD);
+    public const int FILE_DIRECTORY_ENTRY_SIZE = 16;
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class CompressionOffsetRecord : IMarshalable
+    public class CompressionOffsetRecordRaw : IMarshalable
     {
-        private ulong BaseOffset;
+        private ulong _BaseOffset;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = ENTRIES_PER_OFFSETRECORD)]
-        private ushort[] SizeTable = new ushort[ENTRIES_PER_OFFSETRECORD];
+        private readonly ushort[] SizeTable = new ushort[ENTRIES_PER_OFFSETRECORD];
 
-        public int Size() => 8 + (2 * ENTRIES_PER_OFFSETRECORD);
+        public ushort GetSize(int index) => Bits.FromBig(SizeTable[index]);
+        public void SetSize(int index, ushort size) => SizeTable[index] = Bits.ToBig(size);
+        public ulong BaseOffset
+        {
+            get { return Bits.FromBig(_BaseOffset); }
+            set { _BaseOffset = Bits.ToBig(value); }
+        }
+
+        public int Size() => COMPRESSION_OFFSET_RECORD_SIZE;
+    }
+
+    public class CompressionOffsetRecord
+    {
+        public ulong BaseOffset;
+        private readonly List<ushort> SizeTable = new();
+
+        public bool AddSize(ushort size)
+        {
+            if (SizeTable.Count >= ENTRIES_PER_OFFSETRECORD)
+                return false;
+
+            SizeTable.Add(size);
+            return true;
+        }
+
+        public CompressionOffsetRecordRaw ToRaw()
+        {
+            var raw = new CompressionOffsetRecordRaw
+            {
+                BaseOffset = BaseOffset
+            };
+
+            for (int i = 0; i < SizeTable.Count; i++)
+                raw.SetSize(i, SizeTable[i]);
+
+            return raw;
+        }
+
+        public static CompressionOffsetRecord FromRaw(CompressionOffsetRecordRaw raw)
+        {
+            var record = new CompressionOffsetRecord
+            {
+                BaseOffset = raw.BaseOffset
+            };
+
+            for (int i = 0; i < ENTRIES_PER_OFFSETRECORD; i++)
+                record.SizeTable.Add(raw.GetSize(i));
+
+            return record;
+        }
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -29,7 +80,7 @@ public static class Zar
         private uint NameOffsetAndTypeFlag;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-        private uint[] Record = new uint[3];
+        private readonly uint[] Record = new uint[3];
 
         private const int FileOffsetLow = 0;
         private const int FileSizeLow = 1;
@@ -98,8 +149,23 @@ public static class Zar
                     (uint)((value >> 16) & 0xFFFF0000));
             }
         }
+        public uint DirectoryNodeStartIndex
+        {
+            get { return Bits.FromBig(Record[DirNodeStartIndex]); }
+            set { Record[DirNodeStartIndex] = Bits.ToBig(value); }
+        }
+        public uint DirectoryNodeCount
+        {
+            get { return Bits.FromBig(Record[DirNodeCount]); }
+            set { Record[DirNodeCount] = Bits.ToBig(value); }
+        }
+        public uint DirectoryReserved
+        {
+            get { return Bits.FromBig(Record[DirReserved]); }
+            set { Record[DirReserved] = Bits.ToBig(value); }
+        }
 
-        public int Size() => 16;
+        public int Size() => FILE_DIRECTORY_ENTRY_SIZE;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -199,6 +265,6 @@ public static class Zar
             set { _Magic = Bits.ToBig(value); }
         }
 
-        public int Size() => ((16 * 6) + 32 + 8 + 4 + 4);
+        public int Size() => FOOTER_SIZE;
     }
 }
