@@ -26,7 +26,6 @@ internal class Extract : Base
         public required byte[] Buffer;
     }
 
-    private readonly Avl.Tree AvlTree;
     private readonly List<EEntry> EEntries = new();
     private string RootDirectory => FilePaths[0];
     private long VirtualSize = 0;
@@ -42,18 +41,17 @@ internal class Extract : Base
     {
         if (!Directory.Exists(RootDirectory))
             throw new ArgumentException($"The provided path '{RootDirectory}' is not a valid directory.");
-        
-        var dirName = Path.GetFileName(RootDirectory);
-        AvlTree = new Avl.Tree(dirName);
     }
 
     protected override Task InitializeType(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
-        AvlTree.BuildTree(RootDirectory);
-        VirtualSize = XISO.CalculateTotalSize(AvlTree.RootNode);
+        var avlTree = new Avl.Tree(Path.GetDirectoryName(RootDirectory) ?? string.Empty);
+        avlTree.BuildTree(RootDirectory);
+        
+        VirtualSize = XISO.CalculateTotalSize(avlTree.RootNode);
 
         var totalSectors = XISO.SectorCount(VirtualSize);
-        var avlIterator = new Avl.Iterator(AvlTree);
+        var avlIterator = new Avl.Iterator(avlTree);
 
         var progData = new Converter.Progress
         {
@@ -64,8 +62,8 @@ internal class Extract : Base
         progress?.Report(progData);
 
         var header = new XISO.FileHeader(
-            (uint)AvlTree.RootNode.StartSector,
-            (uint)AvlTree.RootNode.FileSize,
+            (uint)avlTree.RootNode.StartSector,
+            (uint)avlTree.RootNode.FileSize,
             totalSectors);
 
         EEntries.Add(new EDirectory
@@ -133,12 +131,30 @@ internal class Extract : Base
         var entry = GetEntryForSector(startSector);
         if (entry == null)
         {
-            if (startSector > TotalSectors)
+            if (startSector >= TotalSectors)
                 throw new ArgumentOutOfRangeException(
                     nameof(startSector),
                     "Start sector is beyond the total sectors of the image.");
 
-            buffer.Clear();
+            var nextEntry = GetNextEntryAfterSector(startSector);
+            var clearBytes = buffer.Length;
+
+            if (nextEntry != null)
+            {
+                clearBytes = Math.Min(
+                    buffer.Length,
+                    checked((int)((nextEntry.StartSector - startSector) * XISO.SECTOR_SIZE)));
+            }
+
+            buffer.Slice(0, clearBytes).Clear();
+
+            if (clearBytes < buffer.Length)
+            {
+                ReadSectors(
+                    startSector + XISO.SectorCount(clearBytes),
+                    buffer.Slice(clearBytes));
+            }
+
             return;
         }
 
@@ -158,7 +174,7 @@ internal class Extract : Base
 
             if (!XISO.IsSectorAligned(readLen))
             {
-                var padLen = (int)(XISO.SectorCount(readLen) - readLen);
+                var padLen = checked((int)(XISO.SectorCount(readLen) * XISO.SECTOR_SIZE - readLen));
                 buffer.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
                 readLen += padLen;
             }
@@ -189,12 +205,31 @@ internal class Extract : Base
         var entry = GetEntryForSector(startSector);
         if (entry == null)
         {
-            if (startSector > TotalSectors)
+            if (startSector >= TotalSectors)
                 throw new ArgumentOutOfRangeException(
                     nameof(startSector),
                     "Start sector is beyond the total sectors of the image.");
 
-            buffer.Span.Clear();
+            var nextEntry = GetNextEntryAfterSector(startSector);
+            var clearBytes = buffer.Length;
+
+            if (nextEntry != null)
+            {
+                clearBytes = Math.Min(
+                    buffer.Length,
+                    checked((int)((nextEntry.StartSector - startSector) * XISO.SECTOR_SIZE)));
+            }
+
+            buffer.Span.Slice(0, clearBytes).Clear();
+
+            if (clearBytes < buffer.Length)
+            {
+                await ReadSectorsAsync(
+                    startSector + XISO.SectorCount(clearBytes),
+                    buffer.Slice(clearBytes),
+                    ct);
+            }
+
             return;
         }
 
@@ -214,7 +249,7 @@ internal class Extract : Base
 
             if (!XISO.IsSectorAligned(readLen))
             {
-                var padLen = (int)(XISO.SectorCount(readLen) - readLen);
+                var padLen = checked((int)(XISO.SectorCount(readLen) * XISO.SECTOR_SIZE - readLen));
                 buffer.Span.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
                 readLen += padLen;
             }
@@ -266,4 +301,10 @@ internal class Extract : Base
 
     private EEntry? GetEntryForSector(uint sector) => 
         EEntries.FirstOrDefault(e => sector >= e.StartSector && sector <= e.EndSector);
+
+    private EEntry? GetNextEntryAfterSector(uint sector) =>
+        EEntries
+            .Where(e => e.StartSector > sector)
+            .OrderBy(e => e.StartSector)
+            .FirstOrDefault();
 }
