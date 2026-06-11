@@ -8,8 +8,6 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 {
     private List<SectorRange> SectorRanges = new();
 
-    protected readonly SemaphoreSlim ReadLock = new(1, 1);
-
     public abstract Format ImageFormat { get; }
     public abstract uint TotalSectors { get; protected set; }
 
@@ -27,12 +25,13 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
         await InitializeType(progress, ct);
 
-        var imgOff = DetectImageOffset();
+        {
+            var imgOff = DetectImageOffset();
+            if (!imgOff.HasValue)
+                throw new InvalidDataException("No valid image offset found, not a valid XISO image.");
 
-        if (imgOff == null)
-            throw new InvalidDataException("No valid image offset found, not a valid XISO image.");
-
-        ImageOffset = imgOff.Value;
+            ImageOffset = imgOff.Value;
+        }
 
         var progData = new Converter.Progress()
         {
@@ -97,7 +96,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
                 else if (rEntry.GetName().Equals("default.xbe", StringComparison.OrdinalIgnoreCase))
                 {
                     ExecutableEntry = rEntry;
-                    Platform = Platform.OriginalXbox;
+                    Platform = Platform.Xbox;
                 }
             }
 
@@ -124,7 +123,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         var maxDs = ds.Max(r => r.End);
         List<SectorRange>? ss = null;
 
-        if (Platform == Platform.OriginalXbox)
+        if (Platform == Platform.Xbox)
             ss = GetSecuritySectorRanges(ds, progress, ct);
 
         if (ss == null || ss.Count == 0)
@@ -212,13 +211,51 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         return Task.CompletedTask;
     }
 
+    protected static void ReadExactlyAt(FileStream stream, Span<byte> buffer, long offset)
+    {
+        int totalRead = 0;
+
+        while (totalRead < buffer.Length)
+        {
+            int read = RandomAccess.Read(
+                stream.SafeFileHandle,
+                buffer.Slice(totalRead),
+                offset + totalRead);
+
+            if (read == 0)
+                throw new EndOfStreamException("Unexpected end of stream while reading.");
+
+            totalRead += read;
+        }
+    }
+
+    protected static async Task ReadExactlyAtAsync(FileStream stream, Memory<byte> buffer, long offset, CancellationToken ct)
+    {
+        int totalRead = 0;
+        while (totalRead < buffer.Length)
+        {
+            var read = await RandomAccess.ReadAsync(
+                stream.SafeFileHandle,
+                buffer.Slice(totalRead),
+                offset + totalRead,
+                ct);
+
+            if (read == 0)
+                throw new EndOfStreamException("Unexpected end of stream while reading.");
+
+            totalRead += read;
+        }
+    }
+
     private DirectoryEntry GetRootEntry()
     {
+        var fsDesc = new XISO.XDvdFsDescriptor();
+        fsDesc.FromBytes(ReadBytes(ImageOffset + XISO.MAGIC_OFFSET, fsDesc.Size()));
+
         var rootEntry = new DirectoryEntry();
-        var rootOffset = ImageOffset + XISO.MAGIC_OFFSET + XISO.MAGIC_SIZE;
-        rootEntry.Header.StartSector = ReadUInt32(rootOffset);
-        rootEntry.Header.FileSize = ReadUInt32(rootOffset + 4);
-        rootEntry.RelativeOffset = XISO.SectorToOffset(rootEntry.Header.StartSector);
+        rootEntry.Header.StartSector = fsDesc.RootDirectoryTableSector;
+        rootEntry.Header.FileSize = fsDesc.RootDirectoryTableSize;
+        rootEntry.RelativeOffset = XISO.SectorToOffset(fsDesc.RootDirectoryTableSector);
         return rootEntry;
     }
 
