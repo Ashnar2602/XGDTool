@@ -119,14 +119,14 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         if (SectorRanges.Count > 0)
             return Task.FromResult(SectorRanges);
 
-        var ds = GetDataSectorRanges(progress, ct);
-        var maxDs = ds.Max(r => r.End);
-        List<SectorRange>? ss = null;
+        var dsRanges = GetDataSectorRanges(progress, ct);
+        var maxDs = dsRanges.Max(r => r.End);
+        List<SectorRange>? ssRanges = null;
 
         if (Platform == Platform.Xbox)
-            ss = GetSecuritySectorRanges(ds, progress, ct);
+            ssRanges = GetSecuritySectorRanges(dsRanges, progress, ct);
 
-        if (ss == null || ss.Count == 0)
+        if (ssRanges == null || ssRanges.Count == 0)
         {
             SectorRanges = new List<SectorRange>() 
             { 
@@ -135,20 +135,20 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             return Task.FromResult(SectorRanges);
         }
         
-        for (int i = 0; i < ss.Count; i++)
+        for (int i = 0; i < ssRanges.Count; i++)
         {
-            if (ss[i].Start > maxDs)
+            if (ssRanges[i].Start > maxDs)
             {
-                ss.RemoveAt(i);
+                ssRanges.RemoveAt(i);
                 i--;
             }
-            else if (ss[i].End > maxDs)
+            else if (ssRanges[i].End > maxDs)
             {
-                ss[i] = new SectorRange(ss[i].Start, maxDs);
+                ssRanges[i] = new SectorRange(ssRanges[i].Start, maxDs);
             }
         }
 
-        var sRanges = ds.Union(ss).OrderBy(s => s.Start).ToList();
+        var sRanges = dsRanges.Union(ssRanges).OrderBy(s => s.Start).ToList();
 
         for (int i = 1; i < sRanges.Count; i++)
         {
@@ -262,7 +262,9 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
     private DirectoryEntry ReadEntry(long offset, byte[]? buf = null)
     {
         if (buf == null)
-            buf = new byte[XISO.SECTOR_SIZE];
+            buf = new byte[byte.MaxValue + 1];
+        else if (buf.Length < byte.MaxValue)
+            throw new ArgumentException($"Buffer must be at least {byte.MaxValue} bytes.", nameof(buf));
 
         var entry = new DirectoryEntry();
 

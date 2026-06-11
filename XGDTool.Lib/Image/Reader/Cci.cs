@@ -61,16 +61,17 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
 
             var headerBuf = new byte[CCI.HEADER_SIZE];
             await stream.ReadExactlyAsync(headerBuf, ct);
+
             var header = MarshalableExt.FromBytes<CCI.Header>(headerBuf);
 
             if (!IsValidHeader(header))
                 throw new ArgumentException($"File '{file}' is not a valid CCI part.", nameof(file));
 
-            var numSectors = XISO.SectorCount((long)header.UncompressedSize);
+            var numSectors = XISO.SectorCount(checked((long)header.UncompressedSize));
             var sectorIndex = new uint[numSectors + 1];
             var indexBytes = new byte[sectorIndex.Length * sizeof(uint)];
 
-            stream.Seek((long)header.IndexOffset, SeekOrigin.Begin);
+            stream.Seek(checked((long)header.IndexOffset), SeekOrigin.Begin);
             await stream.ReadExactlyAsync(indexBytes, ct);
 
             MemoryMarshal.Cast<byte, uint>(indexBytes).CopyTo(sectorIndex);
@@ -126,10 +127,10 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
                         continue;
                     }
 
-                    var cur = CCI.DecodeIndexEntry(part.SectorIndex[localSector], part.Header.IndexAlignment);
+                    var curr = CCI.DecodeIndexEntry(part.SectorIndex[localSector], part.Header.IndexAlignment);
                     var next = CCI.DecodeIndexEntry(part.SectorIndex[localSector + 1], part.Header.IndexAlignment);
-                    long size = next.offset - cur.offset;
-                    bool treatAsCompressed = cur.compressed || size < XISO.SECTOR_SIZE;
+                    long size = checked(next.offset - curr.offset);
+                    bool treatAsCompressed = curr.compressed || size < XISO.SECTOR_SIZE;
                     var dest = buffer.Slice(outOffset, XISO.SECTOR_SIZE);
 
                     if (!treatAsCompressed)
@@ -140,7 +141,7 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
                                 $"Expected uncompressed sector to be {XISO.SECTOR_SIZE} bytes, but got {size} bytes.");
                         }
 
-                        ReadExactlyAt(part.Stream, dest, cur.offset);
+                        ReadExactlyAt(part.Stream, dest, curr.offset);
                     }
                     else
                     {
@@ -151,7 +152,7 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
                         }
 
                         int blockSize = checked((int)size);
-                        ReadExactlyAt(part.Stream, block.AsSpan(0, blockSize), cur.offset);
+                        ReadExactlyAt(part.Stream, block.AsSpan(0, blockSize), curr.offset);
 
                         int padLen = block[0];
                         int compressedSize = blockSize - 1 - padLen;
@@ -319,16 +320,16 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
         {
             uint currentSector = localSector + (uint)count;
 
-            var cur = CCI.DecodeIndexEntry(
+            var curr = CCI.DecodeIndexEntry(
                 part.SectorIndex[currentSector], 
                 part.Header.IndexAlignment);
             var next = CCI.DecodeIndexEntry(
                 part.SectorIndex[currentSector + 1], 
                 part.Header.IndexAlignment);
 
-            long size = next.offset - cur.offset;
+            long size = next.offset - curr.offset;
 
-            if (cur.compressed || size < XISO.SECTOR_SIZE)
+            if (curr.compressed || size < XISO.SECTOR_SIZE)
                 break;
 
             if (size != XISO.SECTOR_SIZE)
@@ -339,12 +340,13 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
 
             if (count == 0)
             {
-                runOffset = cur.offset;
+                runOffset = curr.offset;
             }
             else
             {
                 long expectedOffset = runOffset + (long)count * XISO.SECTOR_SIZE;
-                if (cur.offset != expectedOffset)
+
+                if (curr.offset != expectedOffset)
                     break;
             }
 
