@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace XGDTool.Lib.Avl;
 
-namespace XGDTool.Lib.Avl
+public enum Skew
 {
-    public enum Skew
-    {
-        None,
-        Left,
-        Right
-    }
+    None,
+    Left,
+    Right
 }
