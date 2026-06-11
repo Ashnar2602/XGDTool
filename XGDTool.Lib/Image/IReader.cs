@@ -18,9 +18,9 @@ public interface IReader
             Format.Extract => new Reader.Extract(files),
             Format.XISO => new Reader.Xiso(files),
             Format.GOD => new Reader.God(files),
-            //Type.CCI => new Reader.Cci(files),
-            //Type.CSO => new Reader.Cso(files),
-            //Type.ZAR => new Reader.Zar(files),
+            Format.CCI => new Reader.Cci(files),
+            //Format.CSO => new Reader.Cso(files),
+            //Format.ZAR => new Reader.Zar(files),
             _ => throw new NotSupportedException($"Unsupported image type: {type}")
         };
     }
