@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "XGDTool": {
-      "commandName": "Project",
-      "commandLineArgs": "cci -i \"C:\\dev\\xgdtooltesting\\Halo - Combat Evolved (USA) (Rev 2).iso\" -o \"C:\\dev\\xgdtooltesting\" --scrub",
-      "workingDirectory": "C:\\dev\\xgdtooltesting"
-    }
-  }
-}

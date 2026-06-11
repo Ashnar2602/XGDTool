@@ -6,13 +6,20 @@ class Program
     {
         try
         {
-            var cli = new CLI.Program();
-            int exitCode = cli.Run(args).GetAwaiter().GetResult();
+            int exitCode = 0;
+            if (args.Length > 0)
+            {
+                var cli = new CLI.Program();
+                exitCode = cli.Run(args).GetAwaiter().GetResult();
+            }
+            else
+            {
+                GUI.Program.Main(args);
+            }
             Environment.Exit(exitCode);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.Error.WriteLine($"Error: {ex.Message}");
             Environment.Exit(1);
         }
     }

@@ -2,8 +2,326 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:conv="clr-namespace:XGDTool.GUI.ViewConverters"
+        mc:Ignorable="d" 
+        d:DesignWidth="800" 
+        d:DesignHeight="450"
         x:Class="XGDTool.GUI.MainWindow"
-        Title="XGDTool.GUI">
-    Welcome to Avalonia!
+        x:CompileBindings="False"
+        Title="XGDTool">
+
+    <Window.Resources>
+        <conv:EnumEqualsConverter x:Key="EnumEqualsConverter"/>
+    </Window.Resources>
+
+    <DockPanel Margin="16">
+
+        <StackPanel DockPanel.Dock="Top"
+                    Spacing="16">
+
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto"
+                  RowDefinitions="Auto,Auto,Auto"
+                  ColumnSpacing="24"
+                  RowSpacing="10">
+
+                <TextBlock Grid.Row="0"
+                           Grid.Column="0"
+                           Text="Input"
+                           VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0"
+                         Grid.Column="1"
+                         Text="{Binding InputPath}"
+                         Watermark="Input files or directory"/>
+                <Button Grid.Row="0"
+                        Grid.Column="2"
+                        Content="Browse folder"
+                        Command="{Binding BrowseInputDirectoryCommand}"/>
+                <Button Grid.Row="0"
+                        Grid.Column="3"
+                        Content="Browse files"
+                        Command="{Binding AddInputFilesCommand}"
+                        HorizontalAlignment="Stretch"/>
+
+                <TextBlock Grid.Row="1"
+                           Grid.Column="0"
+                           Text="Output"
+                           VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1"
+                         Grid.Column="1"
+                         Text="{Binding OutputDirectory}"
+                         Watermark="Output directory"/>
+                <Button Grid.Row="1"
+                        Grid.Column="2"
+                        Content="Browse output"
+                        Command="{Binding BrowseOutputDirectoryCommand}"
+                        HorizontalAlignment="Stretch"/>
+
+                <TextBlock Grid.Row="2"
+                           Grid.Column="0"
+                           Text="Options"
+                           VerticalAlignment="Center"/>
+
+                <Border Grid.Row="2"
+                        Grid.Column="1"
+                        Padding="8"
+                        BorderThickness="1"
+                        BorderBrush="Gray"
+                        CornerRadius="4">
+
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,Auto"
+                          RowDefinitions="Auto,Auto"
+                          ColumnSpacing="40"
+                          RowSpacing="10">
+
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="0"
+                                   Text="Auto Convert"/>
+
+                        <Grid Grid.Row="1"
+                              Grid.Column="0"
+                              ColumnDefinitions="Auto,Auto"
+                              RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                              ColumnSpacing="16"
+                              RowSpacing="0">
+                            <RadioButton Grid.Row="0"
+                                         Grid.Column="0"
+                                         Content="None"
+                                         GroupName="AutoFormats"
+                                         IsChecked="{Binding DefaultAutoFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=None}"/>
+                            <RadioButton Grid.Row="1"
+                                         Grid.Column="0"
+                                         Content="Xbox"
+                                         GroupName="AutoFormats"
+                                         IsChecked="{Binding DefaultAutoFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=Xbox}"/>
+                            <RadioButton Grid.Row="2"
+                                         Grid.Column="0"
+                                         Content="Xbox 360"
+                                         GroupName="AutoFormats"
+                                         IsChecked="{Binding DefaultAutoFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=Xbox360}"/>
+                            <RadioButton Grid.Row="1"
+                                         Grid.Column="1"
+                                         Content="Xemu"
+                                         GroupName="AutoFormats"
+                                         IsChecked="{Binding DefaultAutoFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=Xemu}"/>
+                            <RadioButton Grid.Row="2"
+                                         Grid.Column="1"
+                                         Content="Xenia"
+                                         GroupName="AutoFormats"
+                                         IsChecked="{Binding DefaultAutoFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=Xenia}"/>
+                        </Grid>
+
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="1"
+                                   Text="Format"/>
+
+                        <Grid Grid.Row="1"
+                              Grid.Column="1"
+                              ColumnDefinitions="Auto,Auto"
+                              RowDefinitions="Auto,Auto,Auto"
+                              ColumnSpacing="16"
+                              RowSpacing="0">
+                            <RadioButton Grid.Row="0"
+                                         Grid.Column="0"
+                                         Content="Extract"
+                                         GroupName="OutputFormats"
+                                         IsChecked="{Binding DefaultOutputFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=Extract}"/>
+                            <RadioButton Grid.Row="0"
+                                         Grid.Column="1"
+                                         Content="XISO"
+                                         GroupName="OutputFormats"
+                                         IsChecked="{Binding DefaultOutputFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=XISO}"/>
+                            <RadioButton Grid.Row="1"
+                                         Grid.Column="0"
+                                         Content="GOD"
+                                         GroupName="OutputFormats"
+                                         IsChecked="{Binding DefaultOutputFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=GOD}"/>
+                            <RadioButton Grid.Row="1"
+                                         Grid.Column="1"
+                                         Content="CCI"
+                                         GroupName="OutputFormats"
+                                         IsChecked="{Binding DefaultOutputFormat,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=CCI}"/>
+                            <RadioButton Grid.Row="2"
+                                         Grid.Column="0"
+                                         Content="CSO"
+                                         GroupName="OutputFormats"
+                                         IsChecked="{Binding DefaultOutpu5Format,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=CSO}"/>
+                            <RadioButton Grid.Row="2"
+                                         Grid.Column="1"
+                                         Content="ZAR"
+                                         GroupName="OutputFormats"
+                                         IsChecked="{Binding DefaultOutpu5Format,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=ZAR}"/>
+                        </Grid>
+
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="2"
+                                   Text="Processing"/>
+
+                        <Grid Grid.Row="1"
+                              Grid.Column="2"
+                              ColumnDefinitions="Auto"
+                              RowDefinitions="Auto,Auto,Auto"
+                              ColumnSpacing="16"
+                              RowSpacing="0">
+                            <RadioButton Grid.Row="0"
+                                         Grid.Column="0"
+                                         Content="None"
+                                         GroupName="ImageProcessOptions"
+                                         IsChecked="{Binding DefaultProcessOption,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=None}"/>
+                            <RadioButton Grid.Row="1"
+                                         Grid.Column="0"
+                                         Content="Scrub"
+                                         GroupName="ImageProcessOptions"
+                                         IsChecked="{Binding DefaultProcessOption,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=Scrub}"/>
+                            <RadioButton Grid.Row="2"
+                                         Grid.Column="0"
+                                         Content="Reauthor"
+                                         GroupName="ImageProcessOptions"
+                                         IsChecked="{Binding DefaultProcessOption,
+                                                     Converter={StaticResource EnumEqualsConverter},
+                                                     ConverterParameter=Reauthor}"/>
+                        </Grid>
+                
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="3"
+                                   Text="Output"/>
+
+                        <Grid Grid.Row="1"
+                              Grid.Column="3"
+                              ColumnDefinitions="Auto"
+                              RowDefinitions="Auto,Auto,Auto"
+                              ColumnSpacing="16"
+                              RowSpacing="0">
+                            <CheckBox Grid.Row="0"
+                                      Grid.Column="0"
+                                      Content="Split"
+                                      IsChecked="{Binding DefaultSplit}"/>
+                            <CheckBox Grid.Row="1"
+                                      Grid.Column="0"
+                                      Content="Generate Attach XBE"
+                                      IsChecked="{Binding DefaultAttachXbe}"/>
+                            <CheckBox Grid.Row="2"
+                                      Grid.Column="0"
+                                      Content="Allowed Media XBE Patch"
+                                      IsChecked="{Binding DefaultAllowedMediaPatch}"/>
+                        </Grid>
+
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Border Padding="8"
+                    BorderThickness="1"
+                    BorderBrush="Gray"
+                    CornerRadius="4">
+
+                <StackPanel Orientation="Horizontal"
+                            Spacing="12">
+
+                    <Button Content="Select all"
+                            Command="{Binding SelectAllCommand}"/>
+
+                    <Button Content="Select none"
+                            Command="{Binding SelectNoneCommand}"/>
+
+                    <Button Content="Remove selected"
+                            Command="{Binding RemoveSelectedCommand}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom"
+                    Spacing="8"
+                    Margin="0,8,0,0">
+
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8">
+
+                <Button Content="Start selected"
+                        Command="{Binding StartSelectedCommand}"/>
+
+                <Button Content="Cancel"
+                        Command="{Binding CancelCommand}"/>
+
+                <TextBlock Text="{Binding StatusText}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <ProgressBar Minimum="0"
+                         Maximum="1"
+                         Value="{Binding OverallProgress}"/>
+        </StackPanel>
+
+        <DataGrid ItemsSource="{Binding Jobs}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="False"
+                  GridLinesVisibility="All"
+                  HeadersVisibility="Column"
+                  Margin="0,8,0,0">
+
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="Selected"
+                                        Binding="{Binding Selected}"/>
+
+                <DataGridTextColumn Header="Format"
+                                    Binding="{Binding InputFormat}"
+                                    IsReadOnly="True"
+                                    Width="90"/>
+
+                <DataGridTextColumn Header="Platform"
+                                    Binding="{Binding Platform}"
+                                    IsReadOnly="True"
+                                    Width="100"/>
+
+                <DataGridTextColumn Header="Disc"
+                                    Binding="{Binding DiscNumber}"
+                                    IsReadOnly="True"
+                                    Width="70"/>
+
+                <DataGridTextColumn Header="Title Name"
+                                    Binding="{Binding TitleName}"
+                                    Width="1.5*"/>
+
+                <DataGridTextColumn Header="Status"
+                                    Binding="{Binding Status}"
+                                    IsReadOnly="True"
+                                    Width="100"/>
+
+                <DataGridTextColumn Header="Progress"
+                                    Binding="{Binding Progress}"
+                                    IsReadOnly="True"
+                                    Width="100"/>
+
+                <DataGridTextColumn Header="Message"
+                                    Binding="{Binding Message}"
+                                    IsReadOnly="True"
+                                    Width="2*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
 </Window>
