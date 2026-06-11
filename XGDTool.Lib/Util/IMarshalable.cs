@@ -15,6 +15,13 @@ public static class MarshalableExt
         Marshalable.ReadInto(data, instance, instance.Size());
     }
 
+    public static T FromBytes<T>(ReadOnlySpan<byte> data) where T : IMarshalable, new()
+    {
+        var instance = new T();
+        instance.FromBytes(data);
+        return instance;
+    }
+
     public static void ToBytes(this IMarshalable value, Span<byte> buffer)
     {
         Marshalable.WriteObject(value, buffer, value.Size());
