@@ -43,6 +43,11 @@ public class Tree(string name = "Root")
 
     public void BuildTree(string rootDirectory)
     {
+        if (!Directory.Exists(rootDirectory))
+        {
+            throw new DirectoryNotFoundException(
+                $"The specified root directory '{rootDirectory}' does not exist.");
+        }
         _RootNode = new Node(RootName);
         _RootNode.StartSector = XISO.ROOT_DIRECTORY_SECTOR;
         TotalBytes = 0;
@@ -104,22 +109,24 @@ public class Tree(string name = "Root")
         while (queue.Count > 0)
         {
             var entry = queue.Dequeue();
-            var node = new Node(entry.GetName());
-            node.OldStartSector = entry.Header.StartSector;
-            node.FileSize = entry.Header.FileSize;
-            node.FilePath = entry.Filepath;
+            var node = new Node(entry.GetName()) 
+            {
+                OldStartSector = entry.Header.StartSector,
+                FileSize = entry.Header.FileSize,
+                FilePath = entry.FilePath
+            };
 
             if (entry.Header.Attributes.HasFlag(XISO.DirAttribute.Directory))
             {
                 var subEntries = new Queue<Image.Reader.DirectoryEntry>();
                 var remainingQueue = new Queue<Image.Reader.DirectoryEntry>();
-                var currentPath = entry.Filepath;
+                var currentPath = entry.FilePath;
 
                 while (queue.Count > 0)
                 {
                     var item = queue.Dequeue();
-                    if (item.Filepath.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase) &&
-                        !currentPath.Equals(item.Filepath))
+                    if (item.FilePath.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase) &&
+                        !currentPath.Equals(item.FilePath))
                     {
                         subEntries.Enqueue(item);
                     }
