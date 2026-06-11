@@ -27,7 +27,11 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
 
         try
         {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var stream = new FileStream(
+                path, 
+                FileMode.Open, 
+                FileAccess.Read, 
+                FileShare.Read);
             var headerBuf = new byte[CCI.HEADER_SIZE];
             stream.ReadExactly(headerBuf);
             var header = MarshalableExt.FromBytes<CCI.Header>(headerBuf);

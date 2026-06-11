@@ -127,8 +127,8 @@ internal class God : Base
         uint shtIndex = (uint)(dataBlockInFile / GOD.DATA_BLOCKS_PER_SHT);
 
         long newOffset = GOD.BLOCK_SIZE; // master hashtable
-        newOffset += ((shtIndex + 1) * GOD.BLOCK_SIZE); // Add subhash table blocks
-        newOffset += (dataBlockInFile * GOD.BLOCK_SIZE); // Add data blocks
+        newOffset += (shtIndex + 1) * GOD.BLOCK_SIZE; // Add subhash table blocks
+        newOffset += dataBlockInFile * GOD.BLOCK_SIZE; // Add data blocks
         newOffset += (sector * XISO.SECTOR_SIZE) % GOD.BLOCK_SIZE; // Add offset within data block
 
         // Just provide remaining bytes in the current block for simplicity

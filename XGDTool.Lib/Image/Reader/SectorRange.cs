@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace XGDTool.Lib.Image.Reader;
+﻿namespace XGDTool.Lib.Image.Reader;
 
 public readonly struct SectorRange(uint start, uint end)
 {
