@@ -12,7 +12,12 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         public required FileStream Stream;
     }
 
-    private record CompressedSector(bool Compressed, byte[] Data, int Length);
+    private struct CompressedSector
+    {
+        public byte[]? Data;
+        public int CompressedSize;
+        public byte PadLen;
+    }
 
     private readonly IWriterOptions Options = options;
     private readonly Title.Info TitleInfo = titleInfo;
@@ -26,13 +31,13 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 
     private string GetFilePath(int? index = null) => 
         Path.Join(
-            Options.OutDirectory, 
+            Options.OutputDirectory, 
             TitleInfo.FolderName, 
             $"{TitleInfo.ImageName}{(index.HasValue ? $".{index.Value + 1}" : "")}.cci");
 
     public Task Initialize(long totalOutSize, IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
-        var dir = Path.Join(Options.OutDirectory, TitleInfo.FolderName);
+        var dir = Path.Join(Options.OutputDirectory, TitleInfo.FolderName);
         if (!Directory.Exists(dir))
         {
             Directory.CreateDirectory(dir);
@@ -41,10 +46,8 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 
         OutFiles.Add(new FileEntry()
         {
-            Stream = new FileStream(GetFilePath(), FileMode.Create, FileAccess.Write)
+            Stream = CreateOutputStream(GetFilePath())
         });
-
-        CurrentFile.Stream.Seek(CCI.HEADER_SIZE, SeekOrigin.Begin);
         TotalUncompressedSize = totalOutSize;
         return Task.CompletedTask;
     }
@@ -62,9 +65,9 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         try
         {
             if (startSector > NextWriteSector)
-                await WritePaddingAsync(NextWriteSector, (int)(startSector - NextWriteSector), ct);
+                WritePadSectors(NextWriteSector, (int)(startSector - NextWriteSector), ct);
 
-            await CompressAndWriteSectors(startSector, buffer, ct);
+            CompressAndWriteSectors(startSector, buffer, ct);
         }
         finally
         {
@@ -78,7 +81,7 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         try
         {
             if (XISO.SectorCount(TotalUncompressedSize) > NextWriteSector)
-                await WritePaddingAsync(
+                WritePadSectors(
                     NextWriteSector, 
                     (int)(XISO.SectorCount(TotalUncompressedSize) - NextWriteSector), 
                     ct);
@@ -126,13 +129,13 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         {
             try
             {
-                Directory.Delete(Path.Join(Options.OutDirectory, TitleInfo.FolderName), true);
+                Directory.Delete(Path.Join(Options.OutputDirectory, TitleInfo.FolderName), true);
             }
             catch { }
         }
     }
 
-    private async Task WritePaddingAsync(uint startSector, int sectorCount, CancellationToken ct = default)
+    private void WritePadSectors(uint startSector, int sectorCount, CancellationToken ct = default)
     {
         if (startSector != NextWriteSector)
             throw new Exception(
@@ -144,9 +147,9 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         {
             ct.ThrowIfCancellationRequested();
 
-            int padSectors = (int)Math.Min(BufferSectors, sectorCount);
+            int padSectors = Math.Min(BufferSectors, sectorCount);
 
-            await CompressAndWriteSectors(
+            CompressAndWriteSectors(
                 startSector,
                 emptySectors.Slice(0, padSectors * XISO.SECTOR_SIZE),
                 ct);
@@ -156,7 +159,7 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         }
     }
 
-    private async Task CompressAndWriteSectors(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
+    private void CompressAndWriteSectors(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
     {
         if (startSector != NextWriteSector)
             throw new Exception(
@@ -164,101 +167,128 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 
         int sectorCount = buffer.Length / XISO.SECTOR_SIZE;
         var results = new CompressedSector[sectorCount];
+        byte[] zeroPad = new byte[1 << CCI.INDEX_ALIGNMENT];
         const int alignMult = 1 << CCI.INDEX_ALIGNMENT;
 
-        await Parallel.ForEachAsync(
-            Enumerable.Range(0, sectorCount),
+        try
+        {
+            Parallel.For(
+            0, 
+            sectorCount,
             new ParallelOptions
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
                 CancellationToken = ct
             },
-            async (i, token) =>
+            i =>
             {
                 var sector = buffer.Slice(i * XISO.SECTOR_SIZE, XISO.SECTOR_SIZE);
 
                 int maxCompressedSize = LZ4Codec.MaximumOutputSize(XISO.SECTOR_SIZE);
-                byte[] compressed = new byte[maxCompressedSize];
+                byte[]? rented = System.Buffers.ArrayPool<byte>.Shared.Rent(maxCompressedSize);
 
-                int compressedSize = LZ4Codec.Encode(
-                    sector.Span,
-                    compressed.AsSpan(),
-                    LZ4Level.L12_MAX);
+                try
+                {
+                    int compressedSize = LZ4Codec.Encode(
+                        sector.Span,
+                        rented.AsSpan(0, maxCompressedSize),
+                        LZ4Level.L12_MAX);
 
-                var isCompressed =
-                    compressedSize > 0 &&
-                    compressedSize < (XISO.SECTOR_SIZE - (4 + alignMult));
+                    var isCompressed =
+                        compressedSize > 0 &&
+                        compressedSize < (XISO.SECTOR_SIZE - (4 + alignMult));
 
-                results[i] = new CompressedSector
-                (
-                    isCompressed,
-                    isCompressed
-                        ? compressed.AsSpan(0, compressedSize).ToArray()
-                        : sector.ToArray(),
-                    compressedSize
-                );
+                    if (!isCompressed)
+                    {
+                        System.Buffers.ArrayPool<byte>.Shared.Return(rented);
+                        rented = null;
+                        results[i] = default;
+                        return;
+                    }
 
-                await ValueTask.CompletedTask;
+                    byte padLen = (byte)
+                        (((compressedSize + 1 + alignMult - 1) / alignMult * alignMult) -
+                         (compressedSize + 1));
+
+                    results[i].Data = rented;
+                    results[i].CompressedSize = compressedSize;
+                    results[i].PadLen = padLen;
+
+                    rented = null;
+                }
+                finally
+                {
+                    if (rented != null)
+                        System.Buffers.ArrayPool<byte>.Shared.Return(rented);
+                }
             });
 
-        for (int i = 0; i < sectorCount; i++)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            var result = results[i];
-            byte padLen = 0;
-            int writeLen = 0;
-
-            if (result.Compressed)
+            for (int i = 0; i < sectorCount; i++)
             {
-                padLen = (byte)
-                    (((result.Data.Length + 1 + alignMult - 1) / alignMult * alignMult) -
-                     (result.Data.Length + 1));
-                writeLen = result.Data.Length + 1 + padLen;
-            }
-            else
-            {
-                writeLen = result.Data.Length;
-            }
+                ct.ThrowIfCancellationRequested();
 
-            uint currentPos = (uint)CurrentFile.Stream.Position;
-            CurrentFile.IndexEntries.Add(CCI.EncodeIndexEntry(currentPos, result.Compressed));
+                var result = results[i];
+                var sourceSector = buffer.Slice(i * XISO.SECTOR_SIZE, XISO.SECTOR_SIZE);
 
-            if (result.Compressed)
-            {
-                CurrentFile.Stream.WriteByte(padLen);
-                CurrentFile.Stream.Write(result.Data);
+                long currentPos = CurrentFile.Stream.Position;
+                CurrentFile.IndexEntries.Add(CCI.EncodeIndexEntry((uint)currentPos, result.Data != null));
 
-                if (padLen > 0)
-                    CurrentFile.Stream.Write(new byte[padLen]);
-            }
-            else
-            {
-                CurrentFile.Stream.Write(result.Data);
-            }
-
-            if (CurrentFile.Stream.Position > CCI.SPLIT_OFFSET)
-            {
-                if (OutFiles.Count == 1)
+                if (result.Data != null)
                 {
-                    OutFiles[0].Stream.Dispose();
-                    var currentName = OutFiles[0].Stream.Name;
-                    var newName = GetFilePath(0);
-                    File.Move(currentName, newName);
-                    OutFiles[0].Stream = new FileStream(newName, FileMode.Open, FileAccess.Write);
-                    OutFiles[0].Stream.Seek(0, SeekOrigin.End);
+                    CurrentFile.Stream.WriteByte(result.PadLen);
+                    CurrentFile.Stream.Write(result.Data, 0, result.CompressedSize);
+
+                    if (result.PadLen > 0)
+                        CurrentFile.Stream.Write(zeroPad, 0, result.PadLen);
+                }
+                else
+                {
+                    CurrentFile.Stream.Write(sourceSector.Span);
                 }
 
-                OutFiles.Add(new FileEntry()
+                if (CurrentFile.Stream.Position > CCI.SPLIT_OFFSET)
                 {
-                    Stream = new FileStream(GetFilePath(OutFiles.Count), FileMode.Create, FileAccess.Write)
-                });
+                    if (OutFiles.Count == 1)
+                    {
+                        var currentName = OutFiles[0].Stream.Name;
+                        OutFiles[0].Stream.Dispose();
 
-                if (CurrentFile.Stream.Position == 0)
-                    CurrentFile.Stream.Seek(CCI.HEADER_SIZE, SeekOrigin.Begin);
+                        var newName = GetFilePath(0);
+                        File.Move(currentName, newName);
+
+                        OutFiles[0].Stream = new FileStream(newName, FileMode.Open, FileAccess.Write);
+                        OutFiles[0].Stream.Seek(0, SeekOrigin.End);
+                    }
+
+                    OutFiles.Add(new FileEntry()
+                    {
+                        Stream = CreateOutputStream(GetFilePath(OutFiles.Count))
+                    });
+                }
+            }
+        }
+        finally
+        {
+            foreach (var result in results)
+            {
+                if (result.Data != null)
+                    System.Buffers.ArrayPool<byte>.Shared.Return(result.Data);
             }
         }
 
         NextWriteSector = startSector + (uint)sectorCount;
+    }
+
+    private static FileStream CreateOutputStream(string path)
+    {
+        var stream = new FileStream(
+            path,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 1024 * 1024,
+            options: FileOptions.Asynchronous | FileOptions.SequentialScan);
+        stream.Seek(CCI.HEADER_SIZE, SeekOrigin.Begin);
+        return stream;
     }
 }
