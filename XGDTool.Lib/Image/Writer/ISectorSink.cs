@@ -16,7 +16,7 @@ internal interface ISectorSink
             Format.GOD => new SectorSink.God(options, titleInfo),
             Format.CCI => new SectorSink.Cci(options, titleInfo),
             //Type.CSO => new SectorSinks.Cso(options, titleInfo),
-            _ => throw new NotSupportedException($"Image type {options.OutputFormat} is not supported for writing."),
+            _ => throw new NotSupportedException($"Image type {options.OutputFormat} is not supported for ISectorSink."),
         };
     }
 
