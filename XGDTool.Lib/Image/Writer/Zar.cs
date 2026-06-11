@@ -94,7 +94,7 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
     {
         foreach (var node in EnumerateNodes(rootNode).Skip(1))
         {
-            node.NameIndex = GetOrAddName(node.Name, context);
+            node.NameIndex = GetOrAddName(node.FileName, context);
 
             if (node.IsFile)
             {
@@ -120,7 +120,7 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
         context.Ct.ThrowIfCancellationRequested();
 
         if (node.Context == null)
-            throw new InvalidOperationException($"File node '{node.Name}' is missing reader context.");
+            throw new InvalidOperationException($"File node '{node.FileName}' is missing reader context.");
 
         long readOffset = Reader.ImageOffset + ((long)node.Context.Header.StartSector * XISO.SECTOR_SIZE);
         long remainingBytes = node.Context.Header.FileSize;
@@ -329,7 +329,7 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
 
             var orderedChildren = node.SubEntries
                 .Cast<PathNode>()
-                .OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(n => n.FileName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             node.NodeStartIndex = currentIndex;
@@ -351,7 +351,7 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
             yield return node;
 
             var children = sortChildren
-                ? node.SubEntries.Cast<PathNode>().OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase)
+                ? node.SubEntries.Cast<PathNode>().OrderBy(n => n.FileName, StringComparer.OrdinalIgnoreCase)
                 : node.SubEntries.Cast<PathNode>();
 
             foreach (var child in children)

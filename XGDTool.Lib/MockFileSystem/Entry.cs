@@ -18,7 +18,7 @@ public class Entry<TSelf, TContext> where TSelf : Entry<TSelf, TContext>
     public bool IsRoot => Parent == null;
     public bool IsFile { get; init; }
     public bool IsDirectory => !IsFile;
-    public string Name { get; init; } = "";
+    public string FileName { get; init; } = "";
     public TContext? Context { get; init; }
     public IReadOnlyList<TSelf> SubEntries => _SubEntries;
 
@@ -43,9 +43,9 @@ public class Entry<TSelf, TContext> where TSelf : Entry<TSelf, TContext>
     public string GetFullPath()
     {
         if (Parent == null)
-            return Name;
+            return FileName;
 
-        return Path.Combine(Parent.GetFullPath(), Name);
+        return Path.Combine(Parent.GetFullPath(), FileName);
     }
 
     public string GetRelativePath()
@@ -54,6 +54,6 @@ public class Entry<TSelf, TContext> where TSelf : Entry<TSelf, TContext>
             return string.Empty;
 
         var parentRelativePath = Parent.GetRelativePath();
-        return parentRelativePath == string.Empty ? Name : Path.Combine(parentRelativePath, Name);
+        return parentRelativePath == string.Empty ? FileName : Path.Combine(parentRelativePath, FileName);
     }
 }

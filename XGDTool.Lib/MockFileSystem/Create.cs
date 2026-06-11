@@ -9,7 +9,7 @@ public static class Create
     {
         var root = new T
         {
-            Name = "", 
+            FileName = "", 
             IsFile = false, 
             Context = null
         };
@@ -30,7 +30,7 @@ public static class Create
             var dirEntry = dQueue.Dequeue();
             var subFsEntry = new T
             {
-                Name = Path.GetFileName(dirEntry.FilePath),
+                FileName = Path.GetFileName(dirEntry.FilePath),
                 IsFile = !dirEntry.Header.Attributes.HasFlag(XISO.DirAttribute.Directory),
                 Context = dirEntry
             };
