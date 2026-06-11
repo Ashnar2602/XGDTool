@@ -30,17 +30,10 @@ public static class Bits
         if (BitConverter.IsLittleEndian)
             return value;
 
-        int size = value.GetByteCount();
+        int size = Unsafe.SizeOf<T>();
         Span<byte> bytes = stackalloc byte[size];
-        value.WriteBigEndian(bytes);
-        bytes.Reverse();
-        return T.ReadLittleEndian(
-            bytes.ToArray(),
-            isUnsigned:
-                typeof(T) != typeof(long) &&
-                typeof(T) != typeof(int) &&
-                typeof(T) != typeof(short) &&
-                typeof(T) != typeof(sbyte));
+        value.WriteLittleEndian(bytes);
+        return T.ReadBigEndian(bytes, isUnsigned: IsUnsigned<T>());
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -49,16 +42,22 @@ public static class Bits
         if (!BitConverter.IsLittleEndian)
             return value;
 
-        int size = value.GetByteCount();
+        int size = Unsafe.SizeOf<T>();
         Span<byte> bytes = stackalloc byte[size];
-        value.WriteLittleEndian(bytes);
-        bytes.Reverse();
-        return T.ReadBigEndian(
-            bytes.ToArray(), 
-            isUnsigned: 
-                typeof(T) != typeof(long) && 
-                typeof(T) != typeof(int) && 
-                typeof(T) != typeof(short) && 
-                typeof(T) != typeof(sbyte));
+        value.WriteBigEndian(bytes);
+        return T.ReadLittleEndian(bytes, isUnsigned: IsUnsigned<T>());
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsUnsigned<T>() where T : IBinaryInteger<T>
+    {
+        var type = typeof(T);
+
+        return type == typeof(byte) ||
+               type == typeof(ushort) ||
+               type == typeof(uint) ||
+               type == typeof(ulong) ||
+               type == typeof(nuint) ||
+               type == typeof(UInt128);
     }
 }

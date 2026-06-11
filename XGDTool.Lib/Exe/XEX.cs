@@ -40,7 +40,7 @@ public static class XEX
 		EXPORTS_BY_NAME               = 0x00E10402
     }
 
-	public static uint MAGIC => BinaryPrimitives.ReverseEndianness(Bits.UintFromString("XEX2"));
+	public static uint MAGIC => Bits.FromBig(Bits.UintFromString("XEX2"));
 	public const int HEADER_SIZE = 0x18;
 	public const int DIRECTORY_ENTRY_SIZE = 8;
 	public const int EXECUTION_INFO_SIZE = 24;
@@ -58,6 +58,10 @@ public static class XEX
 		private readonly uint _HeaderCount;
 
 		public uint Magic => Bits.FromBig(_Magic);
+		public uint ModuleFlags => Bits.FromBig(_ModuleFlags);
+		public uint SizeOfHeaders => Bits.FromBig(_SizeOfHeaders);
+		public uint SizeOfDiscardableHeaders => Bits.FromBig(_SizeOfDiscardableHeaders);
+		public uint SecurityInfo => Bits.FromBig(_SecurityInfo);
         public uint HeaderCount => Bits.FromBig(_HeaderCount);
 
         public int Size() => HEADER_SIZE;
