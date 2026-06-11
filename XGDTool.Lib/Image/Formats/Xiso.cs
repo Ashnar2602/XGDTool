@@ -116,7 +116,61 @@ public static class XISO
             Array.Copy(nameBytes, 0, bytes, headerBytes.Length, Header.NameLength);
             return bytes;
         }
-    };
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public class XDvdFsDescriptor : IMarshalable
+    {
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAGIC_SIZE)]
+        public byte[] Magic1 = new byte[MAGIC_SIZE];
+        public uint RootDirectoryTableSector;
+        public uint RootDirectoryTableSize;
+        public ulong FileTime;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = SECTOR_SIZE - MAGIC_SIZE - 36)]
+        public byte[] Reserved = new byte[SECTOR_SIZE - MAGIC_SIZE - 36];
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAGIC_SIZE)]
+        public byte[] Magic2 = new byte[MAGIC_SIZE];
+
+        public int Size() => SECTOR_SIZE;
+    }
+
+    //internal class Ecma119Descriptor : IMarshalable
+    //{
+    //    public byte VolumeDescriptorType;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5 - 1 + 1)]
+    //    public byte[] StandardIdentifier = new byte[5 - 1 + 1];
+    //    public byte VolumeDescriptorVersion;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 39 - 8 + 1)]
+    //    public byte[] SystemIdentifier = new byte[39 - 8 + 1];
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 71 - 40 + 1)]
+    //    public byte[] VolumeIdentifier = new byte[71 - 40 + 1];
+    //    public uint VolumeSpaceSizeLittle;
+    //    public uint VolumeSpaceSizeBig;
+    //    public ushort VolumeSetSizeLittle;
+    //    public ushort VolumesetSizeBig;
+    //    public ushort VolumeSequenceNumberLittle;
+    //    public ushort VolumeSequenceNumberBig;
+    //    public ushort LogicalBlockSizeLittle;
+    //    public ushort LogicalBlockSizeBig;
+    //    public uint PathTableSizeLittle;
+    //    public uint PathTableSizeBig;
+    //    public uint LbaOfLPathTableLittle;
+    //    public uint LbaOfOptionalLPathTableLittle;
+    //    public uint LbaOfMPathTableBig;
+    //    public uint LbaOfOptionalMPathTableBig;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 189 - 156 + 1)]
+    //    public byte[] RootDirectoryRecord = new byte[189 - 156 + 1];
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 317 - 190 + 1)]
+    //    public byte[] VolumeSetIdentifier = new byte[317 - 190 + 1];
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 445 - 318 + 1)]
+    //    public byte[] PublisherIdentifier = new byte[445 - 318 + 1];
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 573 - 446 + 1)]
+    //    public byte[] DataPreparerIdentifier = new byte[573 - 446 + 1];
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 701 - 574 + 1)]
+    //    public byte[] ApplicationIdentifier = new byte[701 - 574 + 1];
+
+    //    public int Size() => 702;
+    //}
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     internal class Ecma119Header : IMarshalable
@@ -176,8 +230,8 @@ public static class XISO
         private readonly byte[] OptimizedTag = new byte[ECMA119_DATA_START - OPTIMIZED_TAG_OFFSET];
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = ECMA119_HEADER_SIZE)]
         private readonly byte[] Ecma119Header = new byte[ECMA119_HEADER_SIZE];
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAGIC_OFFSET - ECMA119_DATA_START + ECMA119_HEADER_SIZE)]
-        private readonly byte[] Reserved3 = new byte[MAGIC_OFFSET - ECMA119_DATA_START + ECMA119_HEADER_SIZE];
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAGIC_OFFSET - (ECMA119_DATA_START + ECMA119_HEADER_SIZE))]
+        private readonly byte[] Reserved3 = new byte[MAGIC_OFFSET - (ECMA119_DATA_START + ECMA119_HEADER_SIZE)];
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAGIC_SIZE)]
         private readonly byte[] Magic1 = new byte[MAGIC_SIZE];
         private readonly uint RootSector;
@@ -210,7 +264,7 @@ public static class XISO
         var nodes = new List<Avl.Node>();
         var root = rootNode;
 
-        Avl.Tree.Traverse(Avl.Traversal.Prefix, ref root, 0, CollectNodesCb, ref nodes);
+        Avl.Tree.Traverse(Avl.Traversal.Prefix, root, 0, CollectNodesCb, ref nodes);
 
         var maxStartSector = nodes.Max(n => n.StartSector);
 
@@ -251,7 +305,7 @@ public static class XISO
     {
         var entry = new DirectoryEntry();
         ref var header = ref entry.Header;
-        var subDirEmpy = node.Subdirectory is Avl.EmptyNode;
+        var subDirEmpy = node.Subdirectory is Avl.EmptySubdirectoryNode;
 
         header.LeftOffset =
             (node.LeftChild != null)
@@ -285,15 +339,15 @@ public static class XISO
         return entry;
     }
 
-    private static void CollectNodesCb(ref Avl.Node node, int depth, ref List<Avl.Node> nodes)
+    private static void CollectNodesCb(Avl.Node? node, int depth, ref List<Avl.Node> nodes)
     {
-        if (node is Avl.EmptyNode)
+        if (node is null || node is Avl.EmptySubdirectoryNode)
             return;
 
         nodes.Add(node);
 
         if (node.Subdirectory != null)
-            Avl.Tree.Traverse(Avl.Traversal.Prefix, ref node.Subdirectory, 0, CollectNodesCb, ref nodes);
+            Avl.Tree.Traverse(Avl.Traversal.Prefix, node.Subdirectory, 0, CollectNodesCb, ref nodes);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

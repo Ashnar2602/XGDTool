@@ -25,8 +25,6 @@ public static class CCI
         public byte IndexAlignment;
         public short Reserved;
 
-        public int Size() => (int)HEADER_SIZE;
-
         public Header() { }
         public Header(ulong uncompressedSize, ulong indexOffset)
         {
@@ -38,6 +36,8 @@ public static class CCI
             Version = VERSION;
             IndexAlignment = INDEX_ALIGNMENT;
         }
+
+        public int Size() => (int)HEADER_SIZE;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -45,10 +45,10 @@ public static class CCI
         ((offset >> INDEX_ALIGNMENT) | (compressed ? COMPRESSED_FLAG : 0u));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static (uint offset, bool compressed) DecodeIndexEntry(uint entry)
+    public static (uint offset, bool compressed) DecodeIndexEntry(uint entry, byte align = INDEX_ALIGNMENT)
     {
         bool compressed = (entry & COMPRESSED_FLAG) != 0;
-        uint offset = (entry & ~COMPRESSED_FLAG) << INDEX_ALIGNMENT;
+        uint offset = (entry & ~COMPRESSED_FLAG) << align;
         return (offset, compressed);
     }
 }
