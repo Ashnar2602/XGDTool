@@ -84,10 +84,10 @@ internal static class Marshalable
 
     public static void ReadInto(ReadOnlySpan<byte> data, IMarshalable instance, int size)
     {
-        //if (data.Length < size)
-        //    throw new ArgumentException("Buffer too small.");
+        if (data.Length < size)
+           throw new ArgumentException("Buffer too small.");
 
-        byte[] temp = data.Slice(0, data.Length).ToArray();
+        byte[] temp = data.Slice(0, size).ToArray();
         var handle = GCHandle.Alloc(temp, GCHandleType.Pinned);
         try
         {
