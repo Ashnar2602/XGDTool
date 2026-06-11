@@ -14,14 +14,12 @@ internal class Xiso : Base
         foreach (var file in files)
         {
             var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+
             if (!XISO.IsSectorAligned(stream.Length))
-            {
-                stream.Dispose();
-                Streams.Clear();
                 throw new ArgumentException(
                     $"File '{file}' length is not aligned to sector size.", 
                     nameof(files));
-            }
+
             Streams.Add(stream);
         }
 
@@ -34,27 +32,20 @@ internal class Xiso : Base
             throw new ArgumentException(
                 "Buffer length must be aligned to sector size.", nameof(buffer));
 
-        ReadLock.Wait();
-        try
+        uint sector = startSector;
+        int bufferOffset = 0;
+        int remainingBytes = buffer.Length;
+
+        while (remainingBytes > 0)
         {
-            var (stream, offset) = GetStreamForSector(startSector);
-            var maxReadBytes = (int)Math.Min(stream.Length - offset, buffer.Length);
+            var (stream, offset, available) = GetStreamForSector(sector);
+            var toRead = (int)Math.Min(available, remainingBytes);
 
-            stream.Seek(offset, SeekOrigin.Begin);
-            var len = stream.Read(buffer.Slice(0, maxReadBytes));
+            ReadExactlyAt(stream, buffer.Slice(bufferOffset, toRead), offset);
 
-            if (len != maxReadBytes)
-                throw new IOException(
-                    $"Expected to read {maxReadBytes} bytes but only read {len} bytes from stream.");
-
-            if (maxReadBytes < buffer.Length)
-                ReadSectors(
-                    startSector + XISO.SectorCount(maxReadBytes),
-                    buffer.Slice(maxReadBytes));
-        }
-        finally
-        {
-            ReadLock.Release();
+            bufferOffset += toRead;
+            remainingBytes -= toRead;
+            sector += XISO.SectorCount(toRead);
         }
     }
 
@@ -64,28 +55,22 @@ internal class Xiso : Base
             throw new ArgumentException(
                 "Buffer length must be aligned to sector size.", nameof(buffer));
 
-        await ReadLock.WaitAsync(ct);
-        try
+        uint sector = startSector;
+        int bufferOffset = 0;
+        int remainingBytes = buffer.Length;
+
+        while (remainingBytes > 0)
         {
-            var (stream, offset) = GetStreamForSector(startSector);
-            var maxReadBytes = (int)Math.Min(stream.Length - offset, buffer.Length);
+            ct.ThrowIfCancellationRequested();
 
-            stream.Seek(offset, SeekOrigin.Begin);
-            var len = await stream.ReadAsync(buffer.Slice(0, maxReadBytes), ct);
+            var (stream, offset, available) = GetStreamForSector(sector);
+            var toRead = (int)Math.Min(available, remainingBytes);
 
-            if (len != maxReadBytes)
-                throw new IOException(
-                    $"Expected to read {maxReadBytes} bytes but only read {len} bytes from stream.");
+            await ReadExactlyAtAsync(stream, buffer.Slice(bufferOffset, toRead), offset, ct);
 
-            if (maxReadBytes < buffer.Length)
-                await ReadSectorsAsync(
-                    startSector + XISO.SectorCount(maxReadBytes),
-                    buffer.Slice(maxReadBytes),
-                    ct);
-        }
-        finally
-        {
-            ReadLock.Release();
+            bufferOffset += toRead;
+            remainingBytes -= toRead;
+            sector += XISO.SectorCount(toRead);
         }
     }
 
@@ -106,14 +91,14 @@ internal class Xiso : Base
         return false;
     }
 
-    private (FileStream stream, long offset) GetStreamForSector(uint sector)
+    private (FileStream stream, long offset, long available) GetStreamForSector(uint sector)
     {
         long byteOffset = XISO.SectorToOffset(sector);
 
         foreach (var stream in Streams)
         {
             if (byteOffset < stream.Length)
-                return (stream, byteOffset);
+                return (stream, byteOffset, stream.Length - byteOffset);
 
             byteOffset -= stream.Length;
         }

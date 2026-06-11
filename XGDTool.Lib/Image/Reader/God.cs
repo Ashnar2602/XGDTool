@@ -34,13 +34,14 @@ internal class God : Base
             Streams.Add(new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read));
         }
 
-        long totalBlocks = (Streams.Count - 1) * GOD.DATA_BLOCKS_PER_PART;
+        long totalDataBlocks = (Streams.Count - 1) * GOD.DATA_BLOCKS_PER_PART;
         var lastStream = Streams.Last();
         var lastShtCount = GOD.SubHashTableCount(lastStream.Length);
-        totalBlocks += (lastShtCount - 1) * GOD.DATA_BLOCKS_PER_SHT;
+        totalDataBlocks += (lastShtCount - 1) * GOD.DATA_BLOCKS_PER_SHT;
         var lastDataOffset = (long)(((lastShtCount - 1) * (GOD.DATA_BLOCKS_PER_SHT + 1)) + 1) * GOD.BLOCK_SIZE;
-        totalBlocks += (lastStream.Length - lastDataOffset) / GOD.BLOCK_SIZE;
-        TotalSectors = (uint)(totalBlocks * (GOD.BLOCK_SIZE / XISO.SECTOR_SIZE));
+        totalDataBlocks += (lastStream.Length - lastDataOffset) / GOD.BLOCK_SIZE;
+
+        TotalSectors = XISO.SectorCount(totalDataBlocks * GOD.BLOCK_SIZE);
     }
 
     public override void ReadSectors(uint startSector, Span<byte> buffer)
@@ -54,27 +55,20 @@ internal class God : Base
                 nameof(startSector),
                 "Start sector is out of range for the total sectors in the image.");
 
-        ReadLock.Wait();
-        try
+        uint sector = startSector;
+        int bufferOffset = 0;
+        int remainingBytes = buffer.Length;
+
+        while (remainingBytes > 0)
         {
-            var (stream, offset, remaining) = GetStreamForSector(startSector);
-            var maxReadBytes = (int)Math.Min(remaining, buffer.Length);
+            var (stream, offset, available) = GetStreamForSector(startSector);
+            int toRead = checked((int)Math.Min(available, remainingBytes));
 
-            stream.Seek(offset, SeekOrigin.Begin);
-            var len = stream.Read(buffer.Slice(0, maxReadBytes));
+            ReadExactlyAt(stream, buffer.Slice(bufferOffset, toRead), offset);
 
-            if (len != maxReadBytes)
-                throw new IOException(
-                    $"Expected to read {maxReadBytes} bytes but only read {len} bytes from stream.");
-
-            if (maxReadBytes < buffer.Length)
-                ReadSectors(
-                    startSector + XISO.SectorCount(maxReadBytes),
-                    buffer.Slice(maxReadBytes));
-        }
-        finally
-        {
-            ReadLock.Release();
+            bufferOffset += toRead;
+            remainingBytes -= toRead;
+            sector += XISO.SectorCount(toRead);
         }
     }
 
@@ -89,27 +83,22 @@ internal class God : Base
                 nameof(startSector),
                 "Start sector is out of range for the total sectors in the image.");
 
-        await ReadLock.WaitAsync(ct);
-        try
+        uint sector = startSector;
+        int bufferOffset = 0;
+        int remainingBytes = buffer.Length;
+
+        while (remainingBytes > 0) 
         {
-            var (stream, offset, remaining) = GetStreamForSector(startSector);
-            var maxReadBytes = (int)Math.Min(remaining, buffer.Length);
+            ct.ThrowIfCancellationRequested();
 
-            stream.Seek(offset, SeekOrigin.Begin);
-            var len = await stream.ReadAsync(buffer.Slice(0, maxReadBytes), ct);
+            var (stream, offset, available) = GetStreamForSector(startSector);
+            int toRead = checked((int)Math.Min(available, remainingBytes));
 
-            if (len != maxReadBytes)
-                throw new IOException(
-                    $"Expected to read {maxReadBytes} bytes but only read {len} bytes from stream.");
+            await ReadExactlyAtAsync(stream, buffer.Slice(bufferOffset, toRead), offset, ct);
 
-            if (maxReadBytes < buffer.Length)
-                await ReadSectorsAsync(
-                    startSector + XISO.SectorCount(maxReadBytes),
-                    buffer.Slice(maxReadBytes), ct);
-        }
-        finally
-        {
-            ReadLock.Release();
+            bufferOffset += toRead;
+            remainingBytes -= toRead;
+            sector += XISO.SectorCount(toRead);
         }
     }
 
@@ -141,6 +130,9 @@ internal class God : Base
         newOffset += ((shtIndex + 1) * GOD.BLOCK_SIZE); // Add subhash table blocks
         newOffset += (dataBlockInFile * GOD.BLOCK_SIZE); // Add data blocks
         newOffset += (sector * XISO.SECTOR_SIZE) % GOD.BLOCK_SIZE; // Add offset within data block
+
+        // Just provide remaining bytes in the current block for simplicity
+        // can be revisited later
         long remaining = GOD.BLOCK_SIZE - ((sector * XISO.SECTOR_SIZE) % GOD.BLOCK_SIZE);
 
         if (fileIndex >= Streams.Count)
