@@ -17,6 +17,12 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
     public Platform Platform { get; private set; } = Platform.Unknown;
     public List<DirectoryEntry> DirectoryEntries { get; } = new();
     public DirectoryEntry ExecutableEntry { get; private set; } = new();
+    public long TotalSizeOfFiles => DirectoryEntries.Sum(e =>
+    {
+        if (e.Header.Attributes.HasFlag(XISO.DirAttribute.Directory))
+            return 0;
+        return e.Header.FileSize;
+    });
 
     public async Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
     {
@@ -76,7 +82,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
                 var dEntry = rEntry.Clone();
                 dEntry.LROffsetFromParent = 0;
                 dEntry.RelativeOffset = XISO.SectorToOffset(rEntry.Header.StartSector);
-                dEntry.Filepath = Path.Join(cEntry.Filepath, rEntry.GetName());
+                dEntry.FilePath = Path.Join(cEntry.FilePath, rEntry.GetName());
 
                 DirectoryEntries.Add(dEntry);
 
@@ -85,7 +91,7 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             }
             else if (rEntry.Header.FileSize > 0)
             {
-                rEntry.Filepath = Path.Join(cEntry.Filepath, rEntry.GetName());
+                rEntry.FilePath = Path.Join(cEntry.FilePath, rEntry.GetName());
                 DirectoryEntries.Add(rEntry.Clone());
 
                 if (rEntry.GetName().Equals("default.xex", StringComparison.OrdinalIgnoreCase))

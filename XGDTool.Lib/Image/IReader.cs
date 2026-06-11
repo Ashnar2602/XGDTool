@@ -10,6 +10,7 @@ public interface IReader
     public List<Reader.DirectoryEntry> DirectoryEntries { get; }
     public Reader.DirectoryEntry ExecutableEntry { get; }
     public List<string> FilePaths { get; }
+    public long TotalSizeOfFiles { get; }
 
     public static IReader Create(Format type, IReadOnlyList<string> files)
     {

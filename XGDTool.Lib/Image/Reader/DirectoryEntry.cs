@@ -12,7 +12,7 @@ public class DirectoryEntry : XISO.DirectoryEntry
 {
     public long RelativeOffset;
     public long LROffsetFromParent;
-    public string Filepath = "";
+    public string FilePath = "";
 
     public DirectoryEntry Clone()
     {
@@ -20,7 +20,7 @@ public class DirectoryEntry : XISO.DirectoryEntry
         {
             RelativeOffset = this.RelativeOffset,
             LROffsetFromParent = this.LROffsetFromParent,
-            Filepath = this.Filepath,
+            FilePath = this.FilePath,
         };
         newDir.Header.FromBytes(this.Header.ToBytes());
         newDir.SetName(this.GetName());
