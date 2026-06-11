@@ -9,6 +9,11 @@ public class Program
 {
     private Commands Commands = new();
 
+    private class ParsedOptions : OutputOptions
+    {
+        public required string[] InputPaths;
+    }
+
     public async Task<int> Run(string[] args)
     {
         Console.WriteLine("XGDTool - Xbox Game Disc Tool");
@@ -20,6 +25,10 @@ public class Program
         Commands.Cci.SetAction(HandleCci);
         Commands.Cso.SetAction(HandleCso);
         Commands.Zar.SetAction(HandleZar);
+        Commands.AutoXbox.SetAction(HandleAutoXbox);
+        Commands.AutoXbox360.SetAction(HandleAutoXbox360);
+        Commands.AutoXemu.SetAction(HandleAutoXemu);
+        Commands.AutoXenia.SetAction(HandleAutoXenia);
 
         RootCommand rootCmd = new("XGDTool - A tool for working with Xbox game discs.")
         {
@@ -28,20 +37,23 @@ public class Program
             Commands.God,
             Commands.Cci,
             Commands.Cso,
-            Commands.Zar
+            Commands.Zar,
+            Commands.AutoXbox,
+            Commands.AutoXbox360,
+            Commands.AutoXemu,
+            Commands.AutoXenia
         };
 
-        var parseResult = rootCmd.Parse(args);
-        return await parseResult.InvokeAsync();
+        return await rootCmd.Parse(args).InvokeAsync();
     }
 
-    private static async Task ProcessOptions(InputHelper.Options options)
+    private static async Task ProcessOptions(ParsedOptions options)
     {
         var startTime = DateTime.Now;
-        var entries = new List<Entry>();
+        var entries = new List<InputEntry>();
         try
         {
-            entries = InputHelper.GenerateEntries(options);
+            entries = InputHelper.GenerateEntries(options.InputPaths);
         }
         catch (Exception ex)
         {
@@ -104,7 +116,9 @@ public class Program
                         PrintProgress(p.Percent, stageStartTime);
                     }
                 }
-                else if (p.Current >= p.Total || (p.Percent - prevPercent) >= 0.01)
+                else if (p.Current >= p.Total || 
+                         (p.Percent - prevPercent) >= 0.01 || 
+                         (DateTime.Now - stageStartTime) > TimeSpan.FromSeconds(1))
                 {
                     lock (consoleLock)
                     {
@@ -117,7 +131,7 @@ public class Program
 
             try
             {
-                var paths = await Process.ConvertEntry(entry, reporter);
+                var paths = await Process.ConvertEntry(entry, options, reporter);
                 var elapsed = DateTime.Now - entryStartTime;
 
                 Console.WriteLine($"\nTask completed ({elapsed:hh\\:mm\\:ss}), output files:");
@@ -156,7 +170,79 @@ public class Program
     private async Task HandleZar(ParseResult results) =>
         await ProcessOptions(ParseOptions(Format.ZAR, results));
 
-    private InputHelper.Options ParseOptions(Format format, ParseResult results)
+    private async Task HandleAutoXbox(ParseResult results)
+    {
+        await ProcessOptions(new ParsedOptions
+        {
+            InputPaths = results.GetRequiredValue(Commands.Options.Input),
+            OutputDirectory = results.GetValue(Commands.Options.Output) ?? Environment.CurrentDirectory,
+            OutputFormat = Format.Extract,
+            WriterType = IWriterType.Extract,
+            Scrub = null,
+            Split = null,
+            AttachXbe = null,
+            RenameXbe = true,
+            RenameTo = null,
+            AllowedMediaPatch = true,
+            IconPath = null
+        });
+    }
+
+    private async Task HandleAutoXbox360(ParseResult results)
+    {
+        await ProcessOptions(new ParsedOptions
+        {
+            InputPaths = results.GetRequiredValue(Commands.Options.Input),
+            OutputDirectory = results.GetValue(Commands.Options.Output) ?? Environment.CurrentDirectory,
+            OutputFormat = Format.GOD,
+            WriterType = IWriterType.Rewrite,
+            Scrub = true,
+            Split = null,
+            AttachXbe = null,
+            RenameXbe = null,
+            RenameTo = null,
+            AllowedMediaPatch = null,
+            IconPath = null
+        });
+    }
+
+    private async Task HandleAutoXemu(ParseResult results)
+    {
+        await ProcessOptions(new ParsedOptions
+        {
+            InputPaths = results.GetRequiredValue(Commands.Options.Input),
+            OutputDirectory = results.GetValue(Commands.Options.Output) ?? Environment.CurrentDirectory,
+            OutputFormat = Format.XISO,
+            WriterType = IWriterType.Reauthor,
+            Scrub = null,
+            Split = null,
+            AttachXbe = null,
+            RenameXbe = null,
+            RenameTo = null,
+            AllowedMediaPatch = true,
+            IconPath = null
+        });
+    }
+
+    private async Task HandleAutoXenia(ParseResult results)
+    {
+        await ProcessOptions(new ParsedOptions
+        {
+            InputPaths = results.GetRequiredValue(Commands.Options.Input),
+            OutputDirectory = results.GetValue(Commands.Options.Output) ?? Environment.CurrentDirectory,
+            OutputFormat = Format.ZAR,
+            WriterType = IWriterType.Zar,
+            Scrub = null,
+            Split = null,
+            AttachXbe = null,
+            RenameXbe = true,
+            RenameTo = null,
+            AllowedMediaPatch = true,
+            IconPath = null
+        });
+    }
+
+    private ParsedOptions ParseOptions(Format format, ParseResult results)
     {
         var writerType = format switch
         {
@@ -167,17 +253,17 @@ public class Program
                 : IWriterType.Rewrite
         };
 
-        return new InputHelper.Options()
+        return new ParsedOptions()
         {
             InputPaths = results.GetRequiredValue(Commands.Options.Input),
-            OutputDirectory = results.GetValue(Commands.Options.Output),
+            OutputDirectory = results.GetValue(Commands.Options.Output) ?? Environment.CurrentDirectory,
             OutputFormat = format,
             WriterType = writerType,
             Scrub = results.GetValue(Commands.Options.Scrub),
             Split = results.GetValue(Commands.Options.Split),
-            GenAttachXbe = results.GetValue(Commands.Options.Xbe),
-            Rename = !string.IsNullOrEmpty(results.GetValue(Commands.Options.Rename)),
-            NewName = results.GetValue(Commands.Options.Rename),
+            AttachXbe = results.GetValue(Commands.Options.Xbe),
+            RenameXbe = !string.IsNullOrEmpty(results.GetValue(Commands.Options.Rename)),
+            RenameTo = results.GetValue(Commands.Options.Rename),
             AllowedMediaPatch = results.GetValue(Commands.Options.AllowedMedia),
             IconPath = results.GetValue(Commands.Options.Icon)
         };

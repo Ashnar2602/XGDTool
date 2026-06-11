@@ -60,6 +60,10 @@ internal class Commands
     public Command Cci;
     public Command Cso;
     public Command Zar;
+    public Command AutoXbox;
+    public Command AutoXbox360;
+    public Command AutoXemu;
+    public Command AutoXenia;
 
     public Commands()
     {
@@ -69,6 +73,10 @@ internal class Commands
         Cci = CciNew(Options);
         Cso = CsoNew(Options);
         Zar = ZarNew(Options);
+        AutoXbox = AutoXboxNew(Options);
+        AutoXbox360 = AutoXbox360New(Options);
+        AutoXemu = AutoXemuNew(Options);
+        AutoXenia = AutoXeniaNew(Options);
     }
 
     private static Command ExtractNew(Options options)
@@ -140,6 +148,38 @@ internal class Commands
     private static Command ZarNew(Options options)
     {
         var cmd = new Command("zar", "Converts an Xbox game disc image to ZAR format.");
+        cmd.Options.Add(options.Input);
+        cmd.Options.Add(options.Output);
+        return cmd;
+    }
+
+    private static Command AutoXboxNew(Options options)
+    {
+        var cmd = new Command("autoxbox", "Automatically configures options for Xbox format.");
+        cmd.Options.Add(options.Input);
+        cmd.Options.Add(options.Output);
+        return cmd;
+    }
+
+    private static Command AutoXbox360New(Options options)
+    {
+        var cmd = new Command("autoxbox360", "Automatically configures options for Xbox 360 format.");
+        cmd.Options.Add(options.Input);
+        cmd.Options.Add(options.Output);
+        return cmd;
+    }
+
+    private static Command AutoXemuNew(Options options)
+    {
+        var cmd = new Command("autoxemu", "Automatically configures options for Xemu.");
+        cmd.Options.Add(options.Input);
+        cmd.Options.Add(options.Output);
+        return cmd;
+    }
+
+    private static Command AutoXeniaNew(Options options)
+    {
+        var cmd = new Command("autoxenia", "Automatically configures options for Xenia.");
         cmd.Options.Add(options.Input);
         cmd.Options.Add(options.Output);
         return cmd;
