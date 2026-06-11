@@ -2,12 +2,16 @@
 
 public static class Process
 {
-    public static async Task<IReadOnlyList<string>> ConvertEntry(Entry entry, IProgress<Progress>? progress = null, CancellationToken ct = default)
+    public static async Task<IReadOnlyList<string>> ConvertEntry(
+        InputEntry inEntry, 
+        OutputOptions outOptions, 
+        IProgress<Progress>? progress = null, 
+        CancellationToken ct = default)
     {
-        var reader = Image.IReader.Create(entry.InputFormat, entry.InputPaths);
+        var reader = Image.IReader.Create(inEntry.InputFormat, inEntry.InputPaths);
         await reader.Initialize(progress, ct);
 
-        var writer = Image.IWriter.Create(reader, entry);
+        var writer = Image.IWriter.Create(reader, outOptions);
         IReadOnlyList<string> ret;
 
         try
@@ -17,7 +21,7 @@ public static class Process
         catch (Exception ex)
         {
             writer.CleanupCancelled();
-            throw new Exception($"Failed to convert {entry.InputFormat} with paths: {string.Join(", ", entry.InputPaths)}", ex);
+            throw new Exception($"Failed to convert {inEntry.InputFormat} with paths: {string.Join(", ", inEntry.InputPaths)}", ex);
         }
 
         //if (entry.AttachXbe == true)

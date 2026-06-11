@@ -2,9 +2,8 @@
 
 namespace XGDTool.Lib.Converter;
 
-public class Entry : IWriterOptions
+public class InputEntry
 {
     public List<string> InputPaths { get; set; } = new();
     public Format InputFormat { get; set; } = Format.Unknown;
-    public bool? AttachXbe { get; set; } = null;
 }

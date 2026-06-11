@@ -1,43 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using XGDTool.Lib.Image;
+﻿using XGDTool.Lib.Image;
 
 namespace XGDTool.Lib.Converter;
 
 public static class InputHelper
 {
-    public class Options
+    public static List<InputEntry> GenerateEntries(string[] inputPaths, int maxDepth = 1)
     {
-        public string[] InputPaths { get; set; } = Array.Empty<string>();
-        public string? OutputDirectory { get; set; } = null;
-        public Format OutputFormat { get; set; } = Format.XISO;
-        public IWriterType WriterType { get; set; } = IWriterType.Rewrite;
-        public bool? Scrub { get; set; } = null;
-        public bool? Split { get; set; } = null;
-        public bool? GenAttachXbe { get; set; } = null;
-        public bool? Rename { get; set; } = null;
-        public string? NewName { get; set; } = null;
-        public bool? AllowedMediaPatch { get; set; } = null;
-        public string? IconPath { get; set; } = null;
-    }
-
-    public static List<Entry> GenerateEntries(Options options)
-    {
-        var entries = new List<Entry>();
-        RecursiveDetect(options, 0, 1, ref entries);
+        var entries = new List<InputEntry>();
+        RecursiveDetect(inputPaths, 0, maxDepth, ref entries);
         return entries;
     }
 
-    private static void RecursiveDetect(Options options, int depth, int limit, ref List<Entry> entries)
+    public static Task<List<InputEntry>> GenerateEntriesAsync(string[] inputPaths, int maxDepth = 1, CancellationToken ct = default)
+    {
+        var entries = new List<InputEntry>();
+        RecursiveDetect(inputPaths, 0, maxDepth, ref entries, ct);
+        return Task.FromResult(entries);
+    }
+
+    private static void RecursiveDetect(string[] inputPaths, int depth, int limit, ref List<InputEntry> entries, CancellationToken ct = default)
     {
         if (depth > limit)
             return;
 
-        foreach (var inPath in options.InputPaths)
+        foreach (var inPath in inputPaths)
         {
+            ct.ThrowIfCancellationRequested();
+
             var path = inPath;
             var type = DetectType(ref path, out var imageOffset);
 
@@ -49,18 +38,18 @@ public static class InputHelper
                     var dirs = dirInfo.GetDirectories("*", SearchOption.TopDirectoryOnly);
                     var files = dirInfo.GetFiles("*.*", SearchOption.TopDirectoryOnly);
 
-                    var newOptions = options;
+                    var newInputPaths = inputPaths;
 
                     foreach (var dir in dirs)
                     {
-                        newOptions.InputPaths = new string[] { dir.FullName };
-                        RecursiveDetect(newOptions, depth + 1, limit, ref entries);
+                        newInputPaths = new string[] { dir.FullName };
+                        RecursiveDetect(newInputPaths, depth + 1, limit, ref entries, ct);
                     }
 
                     foreach (var file in files)
                     {
-                        newOptions.InputPaths = new string[] { file.FullName };
-                        RecursiveDetect(newOptions, depth + 1, limit, ref entries);
+                        newInputPaths = new string[] { file.FullName };
+                        RecursiveDetect(newInputPaths, depth + 1, limit, ref entries, ct);
                     }
                 }
             }
@@ -84,19 +73,10 @@ public static class InputHelper
                 if (entries.Any(e => e.InputPaths.SequenceEqual(newPaths)))
                     continue;
 
-                entries.Add(new Entry
+                entries.Add(new InputEntry
                 {
-                    OutputFormat = options.OutputFormat,
-                    WriterType = options.WriterType,
-                    OutDirectory = options.OutputDirectory ?? Environment.CurrentDirectory,
-                    Scrub = options.Scrub,
-                    Split = options.Split,
-                    RenameXbe = options.Rename,
-                    RenameTo = options.NewName,
-                    AllowedMediaPatch = options.AllowedMediaPatch,
                     InputPaths = newPaths,
                     InputFormat = type,
-                    AttachXbe = options.GenAttachXbe
                 });
             }
         }
@@ -143,8 +123,8 @@ public static class InputHelper
         {
             if (Image.Reader.Xiso.IsValid(path))
                 return Format.XISO;
-            //else if (Image.Reader.Cci.IsValid(path))
-            //    return Image.Type.CCI;
+            else if (Image.Reader.Cci.IsValid(path))
+               return Format.CCI;
         }
 
         return Format.Unknown;
