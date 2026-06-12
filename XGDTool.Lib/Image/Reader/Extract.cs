@@ -121,7 +121,7 @@ internal class Extract : Base
         return Task.CompletedTask;
     }
 
-    public override void ReadSectors(uint startSector, Span<byte> buffer)
+    public override void ReadSectors(uint startSector, Span<byte> buffer, CancellationToken ct = default)
     {
         if (!XISO.IsSectorAligned(buffer.Length))
             throw new ArgumentException(
@@ -152,7 +152,8 @@ internal class Extract : Base
             {
                 ReadSectors(
                     startSector + XISO.SectorCount(clearBytes),
-                    buffer.Slice(clearBytes));
+                    buffer.Slice(clearBytes),
+                    ct);
             }
 
             return;
@@ -191,85 +192,86 @@ internal class Extract : Base
         {
             ReadSectors(
                 startSector + XISO.SectorCount(copyLen),
-                buffer.Slice((int)copyLen));
-        }
-    }
-
-    public override async Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default)
-    {
-        if (!XISO.IsSectorAligned(buffer.Length))
-            throw new ArgumentException(
-                "Buffer length must be sector aligned.", 
-                nameof(buffer));
-
-        var entry = GetEntryForSector(startSector);
-        if (entry == null)
-        {
-            if (startSector >= TotalSectors)
-                throw new ArgumentOutOfRangeException(
-                    nameof(startSector),
-                    "Start sector is beyond the total sectors of the image.");
-
-            var nextEntry = GetNextEntryAfterSector(startSector);
-            var clearBytes = buffer.Length;
-
-            if (nextEntry != null)
-            {
-                clearBytes = Math.Min(
-                    buffer.Length,
-                    checked((int)((nextEntry.StartSector - startSector) * XISO.SECTOR_SIZE)));
-            }
-
-            buffer.Span.Slice(0, clearBytes).Clear();
-
-            if (clearBytes < buffer.Length)
-            {
-                await ReadSectorsAsync(
-                    startSector + XISO.SectorCount(clearBytes),
-                    buffer.Slice(clearBytes),
-                    ct);
-            }
-
-            return;
-        }
-
-        var offsetInEntry = (int)(startSector - entry.StartSector) * XISO.SECTOR_SIZE;
-        var remainingLen = buffer.Length;
-        var copyLen = Math.Min(remainingLen, entry.Size - offsetInEntry);
-
-        if (entry is EDirectory dir)
-        {
-            dir.Buffer.AsSpan(offsetInEntry, (int)copyLen).CopyTo(buffer.Span);
-            remainingLen -= (int)copyLen;
-        }
-        else if (entry is EFile file)
-        {
-            var readLen = (int)Math.Min(copyLen, file.Stream.Length - offsetInEntry);
-            await ReadExactlyAtAsync(file.Stream, buffer.Slice(0, readLen), offsetInEntry, ct);
-
-            if (!XISO.IsSectorAligned(readLen))
-            {
-                var padLen = checked((int)(XISO.SectorCount(readLen) * XISO.SECTOR_SIZE - readLen));
-                buffer.Span.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
-                readLen += padLen;
-            }
-
-            copyLen = readLen;
-            remainingLen -= readLen;
-        }
-        else
-        {
-            throw new InvalidOperationException("Unknown entry type.");
-        }
-
-        if (remainingLen > 0)
-        {
-            await ReadSectorsAsync(
-                startSector + XISO.SectorCount(copyLen),
                 buffer.Slice((int)copyLen),
                 ct);
         }
     }
+
+    // public override async Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default)
+    // {
+    //     if (!XISO.IsSectorAligned(buffer.Length))
+    //         throw new ArgumentException(
+    //             "Buffer length must be sector aligned.", 
+    //             nameof(buffer));
+
+    //     var entry = GetEntryForSector(startSector);
+    //     if (entry == null)
+    //     {
+    //         if (startSector >= TotalSectors)
+    //             throw new ArgumentOutOfRangeException(
+    //                 nameof(startSector),
+    //                 "Start sector is beyond the total sectors of the image.");
+
+    //         var nextEntry = GetNextEntryAfterSector(startSector);
+    //         var clearBytes = buffer.Length;
+
+    //         if (nextEntry != null)
+    //         {
+    //             clearBytes = Math.Min(
+    //                 buffer.Length,
+    //                 checked((int)((nextEntry.StartSector - startSector) * XISO.SECTOR_SIZE)));
+    //         }
+
+    //         buffer.Span.Slice(0, clearBytes).Clear();
+
+    //         if (clearBytes < buffer.Length)
+    //         {
+    //             await ReadSectorsAsync(
+    //                 startSector + XISO.SectorCount(clearBytes),
+    //                 buffer.Slice(clearBytes),
+    //                 ct);
+    //         }
+
+    //         return;
+    //     }
+
+    //     var offsetInEntry = (int)(startSector - entry.StartSector) * XISO.SECTOR_SIZE;
+    //     var remainingLen = buffer.Length;
+    //     var copyLen = Math.Min(remainingLen, entry.Size - offsetInEntry);
+
+    //     if (entry is EDirectory dir)
+    //     {
+    //         dir.Buffer.AsSpan(offsetInEntry, (int)copyLen).CopyTo(buffer.Span);
+    //         remainingLen -= (int)copyLen;
+    //     }
+    //     else if (entry is EFile file)
+    //     {
+    //         var readLen = (int)Math.Min(copyLen, file.Stream.Length - offsetInEntry);
+    //         await ReadExactlyAtAsync(file.Stream, buffer.Slice(0, readLen), offsetInEntry, ct);
+
+    //         if (!XISO.IsSectorAligned(readLen))
+    //         {
+    //             var padLen = checked((int)(XISO.SectorCount(readLen) * XISO.SECTOR_SIZE - readLen));
+    //             buffer.Span.Slice(readLen, padLen).Fill(XISO.PAD_BYTE);
+    //             readLen += padLen;
+    //         }
+
+    //         copyLen = readLen;
+    //         remainingLen -= readLen;
+    //     }
+    //     else
+    //     {
+    //         throw new InvalidOperationException("Unknown entry type.");
+    //     }
+
+    //     if (remainingLen > 0)
+    //     {
+    //         await ReadSectorsAsync(
+    //             startSector + XISO.SectorCount(copyLen),
+    //             buffer.Slice((int)copyLen),
+    //             ct);
+    //     }
+    // }
 
     public static bool IsValid(string dirPath)
     {

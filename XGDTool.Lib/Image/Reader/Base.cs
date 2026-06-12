@@ -174,9 +174,13 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
         return Task.FromResult(SectorRanges);
     }
 
-    public abstract void ReadSectors(uint startSector, Span<byte> buffer);
+    public abstract void ReadSectors(uint startSector, Span<byte> buffer, CancellationToken ct = default);
 
-    public abstract Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default);
+    public virtual Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default)
+    {
+        ReadSectors(startSector, buffer.Span, ct);
+        return Task.CompletedTask;
+    }
 
     public int ReadBytes(long offset, Span<byte> buffer)
     {

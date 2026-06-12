@@ -44,7 +44,7 @@ internal class God : Base
         TotalSectors = XISO.SectorCount(totalDataBlocks * GOD.BLOCK_SIZE);
     }
 
-    public override void ReadSectors(uint startSector, Span<byte> buffer)
+    public override void ReadSectors(uint startSector, Span<byte> buffer, CancellationToken ct = default)
     {
         if (!XISO.IsSectorAligned(buffer.Length))
             throw new ArgumentException(
@@ -61,6 +61,8 @@ internal class God : Base
 
         while (remainingBytes > 0)
         {
+            ct.ThrowIfCancellationRequested();
+
             var (stream, offset, available) = GetStreamForSector(startSector);
             int toRead = checked((int)Math.Min(available, remainingBytes));
 
@@ -72,35 +74,35 @@ internal class God : Base
         }
     }
 
-    public override async Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default)
-    {
-        if (!XISO.IsSectorAligned(buffer.Length))
-            throw new ArgumentException(
-                "Buffer length must be aligned to sector size.", nameof(buffer));
+    // public override async Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default)
+    // {
+    //     if (!XISO.IsSectorAligned(buffer.Length))
+    //         throw new ArgumentException(
+    //             "Buffer length must be aligned to sector size.", nameof(buffer));
 
-        if (startSector >= TotalSectors)
-            throw new ArgumentOutOfRangeException(
-                nameof(startSector),
-                "Start sector is out of range for the total sectors in the image.");
+    //     if (startSector >= TotalSectors)
+    //         throw new ArgumentOutOfRangeException(
+    //             nameof(startSector),
+    //             "Start sector is out of range for the total sectors in the image.");
 
-        uint sector = startSector;
-        int bufferOffset = 0;
-        int remainingBytes = buffer.Length;
+    //     uint sector = startSector;
+    //     int bufferOffset = 0;
+    //     int remainingBytes = buffer.Length;
 
-        while (remainingBytes > 0) 
-        {
-            ct.ThrowIfCancellationRequested();
+    //     while (remainingBytes > 0) 
+    //     {
+    //         ct.ThrowIfCancellationRequested();
 
-            var (stream, offset, available) = GetStreamForSector(startSector);
-            int toRead = checked((int)Math.Min(available, remainingBytes));
+    //         var (stream, offset, available) = GetStreamForSector(startSector);
+    //         int toRead = checked((int)Math.Min(available, remainingBytes));
 
-            await ReadExactlyAtAsync(stream, buffer.Slice(bufferOffset, toRead), offset, ct);
+    //         await ReadExactlyAtAsync(stream, buffer.Slice(bufferOffset, toRead), offset, ct);
 
-            bufferOffset += toRead;
-            remainingBytes -= toRead;
-            sector += XISO.SectorCount(toRead);
-        }
-    }
+    //         bufferOffset += toRead;
+    //         remainingBytes -= toRead;
+    //         sector += XISO.SectorCount(toRead);
+    //     }
+    // }
 
     public static bool IsValid(string path)
     {

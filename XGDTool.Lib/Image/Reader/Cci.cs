@@ -94,7 +94,7 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
         TotalSectors = (uint)FileParts.Sum(p => p.NumSectors);
     }
 
-    public override void ReadSectors(uint startSector, Span<byte> buffer)
+    public override void ReadSectors(uint startSector, Span<byte> buffer, CancellationToken ct = default)
     {
         if (!XISO.IsSectorAligned(buffer.Length))
         {
@@ -117,6 +117,8 @@ internal class Cci(IReadOnlyList<string> files) : Base(files)
 
                 while (remaining > 0 && localSector < part.NumSectors)
                 {
+                    ct.ThrowIfCancellationRequested();
+                    
                     int runCount = GetContiguousUncompressedRun(part, localSector, remaining, out long runOffset);
 
                     if (runCount > 0)

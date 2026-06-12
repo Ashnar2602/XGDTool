@@ -21,7 +21,7 @@ public interface IReader
             Format.GOD => new Reader.God(files),
             Format.CCI => new Reader.Cci(files),
             //Format.CSO => new Reader.Cso(files),
-            //Format.ZAR => new Reader.Zar(files),
+            Format.ZAR => new Reader.Zar(files),
             _ => throw new NotSupportedException($"Unsupported image type: {type}")
         };
     }
@@ -29,7 +29,7 @@ public interface IReader
     public Task Initialize(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default);
     public Task<List<Reader.SectorRange>> GetSectorRanges(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default);
     public Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default);
-    public void ReadSectors(uint startSector, Span<byte> buffer);
+    public void ReadSectors(uint startSector, Span<byte> buffer, CancellationToken ct = default);
     public int ReadBytes(long offset, Span<byte> buffer);
     public byte[] ReadBytes(long offset, int count);
     public uint ReadUInt32(long offset);

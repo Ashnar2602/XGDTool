@@ -26,7 +26,7 @@ internal class Xiso : Base
         TotalSectors = XISO.SectorCount(Streams.Sum(s => s.Length));
     }
 
-    public override void ReadSectors(uint startSector, Span<byte> buffer)
+    public override void ReadSectors(uint startSector, Span<byte> buffer, CancellationToken ct = default)
     {
         if (!XISO.IsSectorAligned(buffer.Length))
             throw new ArgumentException(
@@ -49,30 +49,30 @@ internal class Xiso : Base
         }
     }
 
-    public override async Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default)
-    {
-        if (!XISO.IsSectorAligned(buffer.Length))
-            throw new ArgumentException(
-                "Buffer length must be aligned to sector size.", nameof(buffer));
+    // public override async Task ReadSectorsAsync(uint startSector, Memory<byte> buffer, CancellationToken ct = default)
+    // {
+    //     if (!XISO.IsSectorAligned(buffer.Length))
+    //         throw new ArgumentException(
+    //             "Buffer length must be aligned to sector size.", nameof(buffer));
 
-        uint sector = startSector;
-        int bufferOffset = 0;
-        int remainingBytes = buffer.Length;
+    //     uint sector = startSector;
+    //     int bufferOffset = 0;
+    //     int remainingBytes = buffer.Length;
 
-        while (remainingBytes > 0)
-        {
-            ct.ThrowIfCancellationRequested();
+    //     while (remainingBytes > 0)
+    //     {
+    //         ct.ThrowIfCancellationRequested();
 
-            var (stream, offset, available) = GetStreamForSector(sector);
-            var toRead = (int)Math.Min(available, remainingBytes);
+    //         var (stream, offset, available) = GetStreamForSector(sector);
+    //         var toRead = (int)Math.Min(available, remainingBytes);
 
-            await ReadExactlyAtAsync(stream, buffer.Slice(bufferOffset, toRead), offset, ct);
+    //         await ReadExactlyAtAsync(stream, buffer.Slice(bufferOffset, toRead), offset, ct);
 
-            bufferOffset += toRead;
-            remainingBytes -= toRead;
-            sector += XISO.SectorCount(toRead);
-        }
-    }
+    //         bufferOffset += toRead;
+    //         remainingBytes -= toRead;
+    //         sector += XISO.SectorCount(toRead);
+    //     }
+    // }
 
     public static bool IsValid(string path)
     {

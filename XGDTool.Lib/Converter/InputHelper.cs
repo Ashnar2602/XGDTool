@@ -113,7 +113,7 @@ public static class InputHelper
             if (Image.Reader.Extract.IsValid(path))
                 return Format.Extract;
 
-            if (RecurseGodDirectory(path, 0, 2, out var newPath))
+            if (RecurseGodDirectory(path, 0, 3, out var newPath))
             {
                 path = newPath;
                 return Format.GOD;
@@ -125,6 +125,8 @@ public static class InputHelper
                 return Format.XISO;
             else if (Image.Reader.Cci.IsValid(path))
                return Format.CCI;
+            else if (Image.Reader.Zar.IsValid(path))
+                return Format.ZAR;
         }
 
         return Format.Unknown;

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using XGDTool.Lib.Image.Formats;
+using XGDTool.Lib.MockFileSystem;
 
 namespace XGDTool.Lib.Avl;
 
@@ -38,6 +39,17 @@ public class Tree(string name = "Root")
         TotalBytes = 0;
         TotalFiles = 0;
         GenerateFromEntries(entries);
+        ResolveOffsets();
+    }
+
+    public void BuildTree<T>(Entry<T, Image.Reader.DirectoryEntry> root) 
+        where T : Entry<T, Image.Reader.DirectoryEntry>
+    {
+        _RootNode = new Node(RootName);
+        _RootNode.StartSector = XISO.ROOT_DIRECTORY_SECTOR;
+        TotalBytes = 0;
+        TotalFiles = 0;
+        GenerateFromMockFileSystem(root);
         ResolveOffsets();
     }
 
@@ -97,7 +109,55 @@ public class Tree(string name = "Root")
         RecurseEntries(ref queue, ref RootNode.Subdirectory, 0);
     }
 
-    private void GenerateFromDirectory(string dirPath) => RecurseDirectories(dirPath, dirPath, ref RootNode.Subdirectory, 0);
+    private void GenerateFromMockFileSystem<T>(Entry<T, Image.Reader.DirectoryEntry> root) 
+        where T : Entry<T, Image.Reader.DirectoryEntry> => 
+            RecurseMockFileSystem(root, ref RootNode.Subdirectory, 0);
+
+    private void GenerateFromDirectory(string dirPath) => 
+        RecurseDirectories(dirPath, dirPath, ref RootNode.Subdirectory, 0);
+
+    private void RecurseMockFileSystem<T>(Entry<T, Image.Reader.DirectoryEntry> parent, ref Node? dirNode, int depth) 
+        where T : Entry<T, Image.Reader.DirectoryEntry>
+    {
+        if (depth > MAX_RECURSE_DEPTH)
+        {
+            throw new InvalidOperationException(
+                $"Maximum recursion depth of {MAX_RECURSE_DEPTH} exceeded while processing mock filesystem entries.");
+        }
+
+        foreach (var entry in parent.SubEntries)
+        {
+            var node = new Node(entry.FileName)
+            {
+                FilePath = entry.GetRelativePath(),
+                SystemPath = entry.GetFullPath()
+            };
+
+            if (entry.IsDirectory)
+            {
+                RecurseMockFileSystem(entry, ref node.Subdirectory, depth + 1);
+                node.Subdirectory ??= new EmptySubdirectoryNode();
+            }
+            else
+            {
+                var context = entry.Context;
+                if (context == null || context.Header.FileSize == 0)
+                    continue;
+
+                node.FileSize = context.Header.FileSize;
+                node.OldStartSector = context.Header.StartSector;
+                node.FilePath = context.FilePath;
+                TotalBytes += context.Header.FileSize;
+                TotalFiles++;
+            }
+
+            if (InsertNode(ref dirNode, node) == Result.Error)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to insert node with filename '{node.Filename}' into the AVL tree.");
+            }
+        }
+    }
 
     private void RecurseEntries(ref Queue<Image.Reader.DirectoryEntry> queue, ref Node? dirNode, int depth)
     {
