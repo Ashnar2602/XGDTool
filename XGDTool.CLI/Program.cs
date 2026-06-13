@@ -61,6 +61,12 @@ public class Program
             return;
         }
 
+        if (entries.Count == 0)
+        {
+            Console.WriteLine("No valid input files found.");
+            return;
+        }
+
         var consoleLock = new object();
 
         static void PrintProgress(double progress, DateTime stageStartTime)
@@ -184,6 +190,7 @@ public class Program
             RenameXbe = true,
             RenameTo = null,
             AllowedMediaPatch = true,
+            SkipSystemUpdate = null,
             IconPath = null
         });
     }
@@ -202,6 +209,7 @@ public class Program
             RenameXbe = null,
             RenameTo = null,
             AllowedMediaPatch = null,
+            SkipSystemUpdate = true,
             IconPath = null
         });
     }
@@ -220,6 +228,7 @@ public class Program
             RenameXbe = null,
             RenameTo = null,
             AllowedMediaPatch = true,
+            SkipSystemUpdate = null,
             IconPath = null
         });
     }
@@ -238,6 +247,7 @@ public class Program
             RenameXbe = true,
             RenameTo = null,
             AllowedMediaPatch = true,
+            SkipSystemUpdate = true,
             IconPath = null
         });
     }
@@ -261,10 +271,11 @@ public class Program
             WriterType = writerType,
             Scrub = results.GetValue(Commands.Options.Scrub),
             Split = results.GetValue(Commands.Options.Split),
-            AttachXbe = results.GetValue(Commands.Options.Xbe),
+            AttachXbe = results.GetValue(Commands.Options.GenerateXbe),
             RenameXbe = !string.IsNullOrEmpty(results.GetValue(Commands.Options.Rename)),
             RenameTo = results.GetValue(Commands.Options.Rename),
             AllowedMediaPatch = results.GetValue(Commands.Options.AllowedMedia),
+            SkipSystemUpdate = results.GetValue(Commands.Options.SkipSystemUpdate),
             IconPath = results.GetValue(Commands.Options.Icon)
         };
     }

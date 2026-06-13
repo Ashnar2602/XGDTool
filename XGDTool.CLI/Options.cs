@@ -30,9 +30,14 @@ internal class Options
         Description = "Whether to split the output file(s) into 4GB parts."
     };
 
-    public Option<bool?> Xbe = new("--xbe", "-x")
+    public Option<bool?> GenerateXbe = new("--xbe", "-x")
     {
         Description = "Generate an attach XBE file for the output file(s)."
+    };
+
+    public Option<bool?> SkipSystemUpdate = new("--systemupdate", "-u")
+    {
+        Description = "Skip the system update files for Xbox 360 images."
     };
 
     public Option<string?> Rename = new("--rename", "-n")
@@ -85,6 +90,7 @@ internal class Commands
         cmd.Options.Add(options.Input);
         cmd.Options.Add(options.Output);
         cmd.Options.Add(options.Rename);
+        cmd.Options.Add(options.SkipSystemUpdate);
         cmd.Options.Add(options.Icon);
         return cmd;
     }
@@ -97,9 +103,10 @@ internal class Commands
         cmd.Options.Add(options.Scrub);
         cmd.Options.Add(options.Split);
         cmd.Options.Add(options.Reauthor);
-        cmd.Options.Add(options.Xbe);
-        cmd.Options.Add(options.Rename);
         cmd.Options.Add(options.AllowedMedia);
+        cmd.Options.Add(options.SkipSystemUpdate);
+        cmd.Options.Add(options.GenerateXbe);
+        cmd.Options.Add(options.Rename);
         cmd.Options.Add(options.Icon);
         return cmd;
     }
@@ -111,7 +118,7 @@ internal class Commands
         cmd.Options.Add(options.Output);
         cmd.Options.Add(options.Scrub);
         cmd.Options.Add(options.Reauthor);
-        cmd.Options.Add(options.Xbe);
+        cmd.Options.Add(options.SkipSystemUpdate);
         cmd.Options.Add(options.Rename);
         cmd.Options.Add(options.Icon);
         return cmd;
@@ -125,7 +132,7 @@ internal class Commands
         cmd.Options.Add(options.Scrub);
         cmd.Options.Add(options.Reauthor);
         cmd.Options.Add(options.Split);
-        cmd.Options.Add(options.Xbe);
+        cmd.Options.Add(options.GenerateXbe);
         cmd.Options.Add(options.Rename);
         cmd.Options.Add(options.Icon);
         return cmd;
@@ -139,7 +146,7 @@ internal class Commands
         cmd.Options.Add(options.Scrub);
         cmd.Options.Add(options.Reauthor);
         cmd.Options.Add(options.Split);
-        cmd.Options.Add(options.Xbe);
+        cmd.Options.Add(options.GenerateXbe);
         cmd.Options.Add(options.Rename);
         cmd.Options.Add(options.Icon);
         return cmd;
@@ -150,6 +157,7 @@ internal class Commands
         var cmd = new Command("zar", "Converts an Xbox game disc image to ZAR format.");
         cmd.Options.Add(options.Input);
         cmd.Options.Add(options.Output);
+        cmd.Options.Add(options.SkipSystemUpdate);
         return cmd;
     }
 
