@@ -4,7 +4,7 @@ public static class Process
 {
     public static async Task<IReadOnlyList<string>> ConvertEntry(
         InputEntry inEntry, 
-        OutputOptions outOptions, 
+        OutputOptions outOptions,
         IProgress<Progress>? progress = null, 
         CancellationToken ct = default)
     {

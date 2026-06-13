@@ -1,12 +1,12 @@
 ﻿namespace XGDTool.Lib.Converter;
 
-public struct Progress
+public class Progress
 {
-    public Stage Stage;
-    public double Current;
-    public double Total;
+    public Stage Stage { get; set; }
+    public double Current { get; set; }
+    public double Total { get; set; }
 
-    public readonly double Percent => 
+    public double Percent => 
         (Current >= Total) 
             ? 1.0 
             : (Total == 0) 
