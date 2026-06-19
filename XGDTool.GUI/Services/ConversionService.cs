@@ -18,7 +18,7 @@ public sealed class ConversionService
         //List<InputEntry> inEntries;
         //try
         //{
-            var inEntries = await InputHelper.GenerateEntriesAsync(new[] { inputPath }, 1, ct);
+            var inEntries = await InputHelper.GenerateEntriesAsync([ inputPath ], 1, ct);
         //}
         //catch
         //{
@@ -34,7 +34,7 @@ public sealed class ConversionService
                 var reader = Lib.Image.IReader.Create(entry.InputFormat, entry.InputPaths);
                 await reader.Initialize(ct: ct);
 
-                var headerTool = new Lib.Exe.HeaderTool();
+                var headerTool = Lib.Exe.IHeaderTool.Create(reader.Platform);
                 headerTool.Initialize(reader);
 
                 var titleInfo = new Lib.Title.Info(headerTool);
