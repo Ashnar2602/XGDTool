@@ -158,6 +158,7 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
 
             readOffset += bytesToRead;
             remainingBytes -= bytesToRead;
+
             context.ProgData.Current += bytesToRead;
             context.Progress?.Report(context.ProgData);
         }
@@ -207,7 +208,9 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
         using (var compressor = new Compressor(6))
             compressed = compressor.Wrap(block.ToArray()).ToArray();
 
-        ReadOnlySpan<byte> outData = compressed.Length >= ZAR.COMPRESSED_BLOCK_SIZE ? block : compressed;
+        ReadOnlySpan<byte> outData = compressed.Length >= ZAR.COMPRESSED_BLOCK_SIZE 
+            ? block 
+            : compressed;
 
         if (!context.CurrentOffsetRecord.AddSize((ushort)(outData.Length - 1)))
             throw new InvalidOperationException("Failed to add compressed block size to the current ZAR offset record.");
@@ -420,7 +423,11 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
             [string.Empty] = root
         };
 
-        foreach (var entry in directoryEntries.OrderBy(e => e.FilePath.Count(c => c == Path.DirectorySeparatorChar || c == Path.AltDirectorySeparatorChar)).ThenBy(e => e.FilePath, StringComparer.OrdinalIgnoreCase))
+        var eEntries = directoryEntries
+            .OrderBy(e => e.FilePath.Count(c => c == Path.DirectorySeparatorChar || c == Path.AltDirectorySeparatorChar))
+            .ThenBy(e => e.FilePath, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in eEntries)
         {
             var normalizedPath = NormalizePath(entry.FilePath);
             if (string.IsNullOrEmpty(normalizedPath))
@@ -438,7 +445,9 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
 
             var node = new PathNode
             {
-                FileName = string.IsNullOrWhiteSpace(entry.FileName) ? Path.GetFileName(normalizedPath) : entry.FileName,
+                FileName = string.IsNullOrWhiteSpace(entry.FileName) 
+                    ? Path.GetFileName(normalizedPath) 
+                    : entry.FileName,
                 FilePath = normalizedPath,
                 IsFile = isFile,
                 Context = entry
@@ -484,7 +493,10 @@ internal class Zar(IReader reader, IWriterOptions options, Title.Info titleInfo)
     }
 
     private static string NormalizePath(string path) =>
-        path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).Trim(Path.DirectorySeparatorChar);
+        path.Replace(
+                Path.AltDirectorySeparatorChar, 
+                Path.DirectorySeparatorChar)
+            .Trim(Path.DirectorySeparatorChar);
 
     private static string GetParentPath(string path)
     {
