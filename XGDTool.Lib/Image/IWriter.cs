@@ -8,10 +8,10 @@ public interface IWriter
 
         return options.WriterType switch
         {
-            IWriterType.Rewrite => new Writer.Rewrite(reader, options, titleInfo),
-            IWriterType.Reauthor => new Writer.Reauthor(reader, options, titleInfo),
-            IWriterType.Extract => new Writer.Extract(reader, options, titleInfo),
-            IWriterType.Zar => new Writer.Zar(reader, options, titleInfo),
+            IWriterType.Rewrite => new Writers.Rewrite(reader, options, titleInfo),
+            IWriterType.Reauthor => new Writers.Reauthor(reader, options, titleInfo),
+            IWriterType.Extract => new Writers.Extract(reader, options, titleInfo),
+            IWriterType.Zar => new Writers.Zar(reader, options, titleInfo),
             _ => throw new NotSupportedException($"Unsupported convert type: {options.WriterType}")
         };
     }
