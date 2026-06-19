@@ -7,12 +7,12 @@ namespace XGDTool.CLI;
 
 public class Program
 {
-    private Commands Commands = new();
-
     private class ParsedOptions : OutputOptions
     {
         public required string[] InputPaths;
     }
+
+    private Commands Commands = new();
 
     public async Task<int> Run(string[] args)
     {
