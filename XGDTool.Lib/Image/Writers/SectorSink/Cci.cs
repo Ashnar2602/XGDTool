@@ -83,14 +83,15 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         await WriteLock.WaitAsync(ct);
         try
         {
-            if (XDVDFS.SectorCount(TotalUncompressedSize) > NextWriteSector)
+            var totalSectors = XDVDFS.SectorCount(TotalUncompressedSize);
+            if (totalSectors > NextWriteSector)
                 WritePadSectors(
                     NextWriteSector, 
-                    (int)(XDVDFS.SectorCount(TotalUncompressedSize) - NextWriteSector), 
+                    (int)(totalSectors - NextWriteSector), 
                     ct);
 
-            Debug.Assert(TotalUncompressedSize == NextWriteSector * XDVDFS.SECTOR_SIZE);
-            Debug.Assert(OutFiles.Sum(f => f.IndexEntries.Count - 1) == XDVDFS.SectorCount(TotalUncompressedSize));
+            Debug.Assert(totalSectors == NextWriteSector);
+            Debug.Assert(OutFiles.Sum(f => f.IndexEntries.Count) == NextWriteSector);
 
             foreach (var file in OutFiles)
             {
@@ -111,7 +112,7 @@ internal class Cci(IWriterOptions options, Title.Info titleInfo) : ISectorSink
                 file.Stream.Dispose();
             }
 
-            return [.. OutFiles.Select(f => f.Stream.Name)];
+            return [..OutFiles.Select(f => f.Stream.Name)];
         }
         finally
         {
