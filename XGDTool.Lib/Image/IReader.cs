@@ -37,7 +37,7 @@ public interface IReader
     public uint ReadUInt32(long offset);
     public ushort ReadUInt16(long offset);
     public byte ReadByte(long offset);
-    public XDVDFS.VolumeDescriptor ReadVolumeDescriptor();
+    public XDVDFS.VolumeDescriptor ReadVolumeDescriptor(long? imageOffset = null);
     public DirectoryEntryExt GetRootEntry();
     public DirectoryEntryExt ReadEntry(long offset, byte[]? buf = null);
 }
