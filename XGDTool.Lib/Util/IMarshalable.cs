@@ -1,134 +1,65 @@
-﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+﻿// using System.Runtime.InteropServices;
 
-namespace XGDTool.Lib.Util;
+// namespace XGDTool.Lib.Util;
 
-public interface IMarshalable
-{
-    int Size();
-}
+// public interface IMarshalable<TSelf> where TSelf : IMarshalable<TSelf>
+// {
+//     static abstract int SIZE { get; }
+// }
 
-public static class MarshalableExt
-{
-    public static void FromBytes(this IMarshalable instance, ReadOnlySpan<byte> data)
-    {
-        Marshalable.ReadInto(data, instance, instance.Size());
-    }
+// public static class Marshalable
+// {
+//     public static void FromBytes<TSelf>(this TSelf instance, ReadOnlySpan<byte> data)
+//         where TSelf : class, IMarshalable<TSelf>
+//     {
+//         if (data.Length < TSelf.SIZE)
+//             throw new ArgumentException("Buffer too small.");
 
-    public static T FromBytes<T>(ReadOnlySpan<byte> data) where T : IMarshalable, new()
-    {
-        var instance = new T();
-        instance.FromBytes(data);
-        return instance;
-    }
+//         byte[] temp = data.Slice(0, TSelf.SIZE).ToArray();
+//         var handle = GCHandle.Alloc(temp, GCHandleType.Pinned);
+//         try
+//         {
+//             Marshal.PtrToStructure(handle.AddrOfPinnedObject(), instance);
+//         }
+//         finally
+//         {
+//             handle.Free();
+//         }
+//     }
 
-    public static void ToBytes(this IMarshalable value, Span<byte> buffer)
-    {
-        Marshalable.WriteObject(value, buffer, value.Size());
-    }
+//     public static TSelf FromBytes<TSelf>(ReadOnlySpan<byte> data)
+//         where TSelf : class, IMarshalable<TSelf>, new()
+//     {
+//         var instance = new TSelf();
+//         instance.FromBytes(data);
+//         return instance;
+//     }
 
-    public static byte[] ToBytes(this IMarshalable value)
-    {
-        var data = new byte[value.Size()];
-        value.ToBytes(data);
-        return data;
-    }
-}
+//     public static void ToBytes<TSelf>(this TSelf value, Span<byte> buffer)
+//         where TSelf : class, IMarshalable<TSelf>
+//     {
+//         if (buffer.Length < TSelf.SIZE)
+//             throw new ArgumentException("Buffer too small.");
 
-internal static class Marshalable
-{
-    public static T Read<T>(ReadOnlySpan<byte> data) where T : struct
-    {
-        int size = Marshal.SizeOf<T>();
-        if (data.Length < size) throw new ArgumentException("Buffer too small.");
+//         byte[] temp = new byte[TSelf.SIZE];
+//         var handle = GCHandle.Alloc(temp, GCHandleType.Pinned);
+//         try
+//         {
+//             Marshal.StructureToPtr(value, handle.AddrOfPinnedObject(), false);
+//         }
+//         finally
+//         {
+//             handle.Free();
+//         }
 
-        if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-            return MemoryMarshal.Read<T>(data);
+//         temp.AsSpan().CopyTo(buffer);
+//     }
 
-        byte[] temp = data.Slice(0, size).ToArray();
-        var handle = GCHandle.Alloc(temp, GCHandleType.Pinned);
-        try
-        {
-            return Marshal.PtrToStructure<T>(handle.AddrOfPinnedObject());
-        }
-        finally
-        {
-            handle.Free();
-        }
-    }
-
-    public static void Write<T>(in T value, Span<byte> buffer) where T : struct
-    {
-        int size = Marshal.SizeOf<T>();
-        if (buffer.Length < size) throw new ArgumentException("Buffer too small.");
-
-        if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-        {
-            MemoryMarshal.Write(buffer, in value);
-            return;
-        }
-
-        byte[] temp = new byte[size];
-        var handle = GCHandle.Alloc(temp, GCHandleType.Pinned);
-        try
-        {
-            Marshal.StructureToPtr(value, handle.AddrOfPinnedObject(), false);
-        }
-        finally
-        {
-            handle.Free();
-        }
-
-        temp.AsSpan().CopyTo(buffer);
-    }
-
-    public static void ReadInto(ReadOnlySpan<byte> data, IMarshalable instance, int size)
-    {
-        if (data.Length < size)
-           throw new ArgumentException("Buffer too small.");
-
-        byte[] temp = data.Slice(0, size).ToArray();
-        var handle = GCHandle.Alloc(temp, GCHandleType.Pinned);
-        try
-        {
-            Marshal.PtrToStructure(handle.AddrOfPinnedObject(), instance);
-        }
-        finally
-        {
-            handle.Free();
-        }
-    }
-
-    public static void WriteObject(IMarshalable value, Span<byte> buffer, int size)
-    {
-        if (buffer.Length < size)
-            throw new ArgumentException("Buffer too small.");
-
-        byte[] temp = new byte[size];
-        var handle = GCHandle.Alloc(temp, GCHandleType.Pinned);
-        try
-        {
-            Marshal.StructureToPtr(value, handle.AddrOfPinnedObject(), false);
-        }
-        finally
-        {
-            handle.Free();
-        }
-
-        temp.AsSpan().CopyTo(buffer);
-    }
-
-    public static T FromBytes<T>(ReadOnlySpan<byte> data) where T : IMarshalable, new()
-    {
-        var instance = new T();
-        instance.FromBytes(data);
-        return instance;
-    }
-
-    public static byte[] ToBytes<T>(this T value) where T : IMarshalable
-    {
-        var data = new byte[value.Size()];
-        value.ToBytes(data);
-        return data;
-    }
-}
+//     public static byte[] ToBytes<TSelf>(this TSelf value)
+//         where TSelf : class, IMarshalable<TSelf>
+//     {
+//         var data = new byte[TSelf.SIZE];
+//         value.ToBytes(data);
+//         return data;
+//     }
+// }
