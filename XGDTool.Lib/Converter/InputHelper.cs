@@ -42,13 +42,13 @@ public static class InputHelper
 
                     foreach (var dir in dirs)
                     {
-                        newInputPaths = new string[] { dir.FullName };
+                        newInputPaths = [ dir.FullName ];
                         RecursiveDetect(newInputPaths, depth + 1, limit, ref entries, ct);
                     }
 
                     foreach (var file in files)
                     {
-                        newInputPaths = new string[] { file.FullName };
+                        newInputPaths = [ file.FullName ];
                         RecursiveDetect(newInputPaths, depth + 1, limit, ref entries, ct);
                     }
                 }
@@ -67,7 +67,7 @@ public static class InputHelper
                 }
                 else
                 {
-                    newPaths = new List<string>() { path };
+                    newPaths = [ path ];
                 }
 
                 if (entries.Any(e => e.InputPaths.SequenceEqual(newPaths)))
@@ -89,7 +89,7 @@ public static class InputHelper
         if (depth > limit)
             return false;
 
-        if (!Image.Reader.God.IsValid(path))
+        if (!Image.Readers.God.IsValid(path))
         {
             var dirs = Directory.GetDirectories(path, "*", SearchOption.TopDirectoryOnly);
             foreach (var dir in dirs)
@@ -110,7 +110,7 @@ public static class InputHelper
 
         if (Directory.Exists(path))
         {
-            if (Image.Reader.Extract.IsValid(path))
+            if (Image.Readers.Extract.IsValid(path))
                 return Format.Extract;
 
             if (RecurseGodDirectory(path, 0, 3, out var newPath))
@@ -121,12 +121,14 @@ public static class InputHelper
         }
         else if (File.Exists(path))
         {
-            if (Image.Reader.Xiso.IsValid(path))
+            if (Image.Readers.Xiso.IsValid(path))
                 return Format.XISO;
-            else if (Image.Reader.Cci.IsValid(path))
+            else if (Image.Readers.Cci.IsValid(path))
                return Format.CCI;
-            else if (Image.Reader.Zar.IsValid(path))
+            else if (Image.Readers.Zar.IsValid(path))
                 return Format.ZAR;
+            else if (Image.Readers.Cso.IsValid(path))
+                return Format.CSO;
         }
 
         return Format.Unknown;
@@ -140,18 +142,18 @@ public static class InputHelper
         var baseName = Path.GetFileNameWithoutExtension(path);
 
         if (!char.IsDigit(baseName[^1]))
-            return new() { path };
+            return [ path ];
 
         
         var dir = Path.GetDirectoryName(path);
         if (dir == null)
-            return new() { path };
+            return [ path ];
 
         baseName = baseName.Substring(0, baseName.Length - 1);
         var files = Directory.GetFiles(dir, baseName + "*.*", SearchOption.TopDirectoryOnly);
 
         if (files.Length < 2)
-            return new() { path };
+            return [ path ];
 
         var parts = new List<string>();
 
