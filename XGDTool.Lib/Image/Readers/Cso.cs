@@ -78,7 +78,7 @@ internal class Cso(IReadOnlyList<string> files) : Base(files)
             var indexEntry = BitConverter.ToUInt32(indexBuf, i * sizeof(uint));
             var offset = CSO.DecodeIndexEntry(indexEntry, Header.IndexAlignment).offset;
             var lastOffset = CsoFiles[currFileIdx].IndexEntries.Count > 0
-                ? CSO.DecodeIndexEntry(CsoFiles[currFileIdx].IndexEntries[^1]).offset
+                ? CSO.DecodeIndexEntry(CsoFiles[currFileIdx].IndexEntries[^1], Header.IndexAlignment).offset
                 : 0u;
 
             if (offset < lastOffset) 
@@ -103,10 +103,10 @@ internal class Cso(IReadOnlyList<string> files) : Base(files)
             if (i == indexCount - 1)
             {
                 var currFile = CsoFiles[currFileIdx];
-                var lastSize = checked((uint)Math.Min(XDVDFS.SECTOR_SIZE, currFile.Stream.Length - lastOffset));
+                var lastSize = checked((uint)Math.Min(XDVDFS.SECTOR_SIZE, currFile.Stream.Length - offset));
                 currFile.IndexEntries.Add(
                     CSO.EncodeIndexEntry(
-                        lastOffset + lastSize, 
+                        offset + lastSize, 
                         false, 
                         Header.IndexAlignment
                     ));
@@ -141,11 +141,11 @@ internal class Cso(IReadOnlyList<string> files) : Base(files)
                     ct.ThrowIfCancellationRequested();
 
                     var (offset, compressed) = CSO.DecodeIndexEntry(
-                        part.IndexEntries[(int)localSector], 
+                        part.IndexEntries[checked((int)localSector)], 
                         Header.IndexAlignment);
 
                     var nextOffset = CSO.DecodeIndexEntry(
-                        part.IndexEntries[(int)localSector + 1], 
+                        part.IndexEntries[checked((int)localSector) + 1], 
                         Header.IndexAlignment).offset;
 
                     long size = nextOffset - offset;
@@ -162,11 +162,11 @@ internal class Cso(IReadOnlyList<string> files) : Base(files)
                         while (runCount < remaining && localSector + runCount < part.SectorsInFile)
                         {
                             var (localOffset, localCompressed) = CSO.DecodeIndexEntry(
-                                part.IndexEntries[(int)(localSector + runCount)], 
+                                part.IndexEntries[checked((int)(localSector + runCount))], 
                                 Header.IndexAlignment);
 
                             var localNextOffset = CSO.DecodeIndexEntry(
-                                part.IndexEntries[(int)(localSector + runCount + 1)], 
+                                part.IndexEntries[checked((int)(localSector + runCount + 1))], 
                                 Header.IndexAlignment).offset;
 
                             if (localCompressed || localNextOffset - localOffset != XDVDFS.SECTOR_SIZE) 
