@@ -1,12 +1,11 @@
 ﻿using System.Buffers.Binary;
-using System.Runtime.InteropServices;
 using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Exe;
 
 public static class XEX
 {
-    public enum DirectoryEntryKey : uint
+    public enum EntryKey : uint
     {
 		RESOURCE_INFO                 = 0x000002FF,
 		FILE_FORMAT_INFO              = 0x000003FF,
@@ -40,99 +39,131 @@ public static class XEX
 		EXPORTS_BY_NAME               = 0x00E10402
     }
 
-	public static uint MAGIC => Bits.FromBig(Bits.UintFromString("XEX2"));
-	public const int HEADER_SIZE = 0x18;
-	public const int DIRECTORY_ENTRY_SIZE = 8;
-	public const int EXECUTION_INFO_SIZE = 24;
+	public static uint MAGIC => BinaryPrimitives.ReadUInt32BigEndian("XEX2"u8);
     public const int TITLE_NAME_MAX_CHARS = 40;
     public const int TITLE_NAME_MAX_LENGTH = TITLE_NAME_MAX_CHARS * 2;
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public class FileHeader : IMarshalable
+	public class FileHeader : ISerializable
     {
-		private readonly uint _Magic;
-		private readonly uint _ModuleFlags;
-		private readonly uint _SizeOfHeaders;
-		private readonly uint _SizeOfDiscardableHeaders;
-		private readonly uint _SecurityInfo;
-		private readonly uint _HeaderCount;
+		public uint Magic;
+		public uint ModuleFlags;
+		public uint SizeOfHeaders;
+		public uint SizeOfDiscardableHeaders;
+		public uint SecurityInfo;
+		public uint HeaderCount;
 
-		public uint Magic => Bits.FromBig(_Magic);
-		public uint ModuleFlags => Bits.FromBig(_ModuleFlags);
-		public uint SizeOfHeaders => Bits.FromBig(_SizeOfHeaders);
-		public uint SizeOfDiscardableHeaders => Bits.FromBig(_SizeOfDiscardableHeaders);
-		public uint SecurityInfo => Bits.FromBig(_SecurityInfo);
-        public uint HeaderCount => Bits.FromBig(_HeaderCount);
-
-        public int Size() => HEADER_SIZE;
+        public const int SIZE = 0x18;
+		public int Size() => SIZE;
 		public bool IsValid() => (Magic == MAGIC);
+		
+		public void Deserialize(ReadOnlySpan<byte> data)
+		{
+			if (data.Length < SIZE)
+				throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
+			
+			Magic = BinaryPrimitives.ReadUInt32BigEndian(data);
+			ModuleFlags = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(4, 4));
+			SizeOfHeaders = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(8, 4));
+			SizeOfDiscardableHeaders = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(12, 4));
+			SecurityInfo = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(16, 4));
+			HeaderCount = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(20, 4));
+		}
+
+		public void Serialize(Span<byte> buffer)
+		{
+			if (buffer.Length < SIZE)
+				throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
+
+			BinaryPrimitives.WriteUInt32BigEndian(buffer, Magic);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(4, 4), ModuleFlags);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(8, 4), SizeOfHeaders);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(12, 4), SizeOfDiscardableHeaders);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(16, 4), SecurityInfo);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(20, 4), HeaderCount);
+		}
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public class DirectoryEntry : IMarshalable
+	public class DirectoryEntry : ISerializable
 	{
-		private readonly uint _Key;
-		private readonly uint _Value;
+		public EntryKey Key;
+		public uint Value;
 
-		public DirectoryEntryKey Key => (DirectoryEntryKey)Bits.FromBig(_Key);
-		public uint Value => Bits.FromBig(_Value);
+        public const int SIZE = 8;
+		public int Size() => SIZE;
+		public void Deserialize(ReadOnlySpan<byte> data)
+		{
+			if (data.Length < SIZE)
+				throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
 
-        public int Size() => DIRECTORY_ENTRY_SIZE;
+			Key = (EntryKey)BinaryPrimitives.ReadUInt32BigEndian(data);
+			Value = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(4, 4));
+		}
+		public void Serialize(Span<byte> buffer)
+		{
+			if (buffer.Length < SIZE)
+				throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
+
+			BinaryPrimitives.WriteUInt32BigEndian(buffer, (uint)Key);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(4, 4), Value);
+		}
     }
 
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public class ExecutionInfo : IMarshalable
+	public class ExecutionInfo : ISerializable
 	{
-		private uint _MediaId;
-        private uint _Version;
-		private uint _BaseVersion;
-		private uint _TitleId;
+		public uint MediaId;
+        public uint Version;
+		public uint BaseVersion;
+		public uint TitleId;
 		public byte Platform;
 		public byte ExecutableType;
 		public byte DiscNumber;
 		public byte DiscCount;
-		private uint _SavegameId;
+		public uint SavegameId;
 
-        public uint MediaId
-        {
-            get { return Bits.FromBig(_MediaId); }
-            set { _MediaId = Bits.ToBig(value); }
-        }
+        public byte VersionMajor { get => Bits.Get4At(Version, 0); set => Version = Bits.Set4At(Version, value, 0); }
+        public byte VersionMinor { get => Bits.Get4At(Version, 4); set => Version = Bits.Set4At(Version, value, 4); }
+        public ushort VersionBuild { get => Bits.Get16At(Version, 8); set => Version = Bits.Set16At(Version, value, 8); }
+        public byte VersionQfe { get => Bits.Get8At(Version, 24); set => Version = Bits.Set8At(Version, value, 24); }
 
-        public uint Version
-        {
-            get { return Bits.FromBig(_Version); }
-            set { _Version = Bits.ToBig(value); }
-        }
+        public byte BaseMajor { get => Bits.Get4At(BaseVersion, 0); set => BaseVersion = Bits.Set4At(BaseVersion, value, 0); }
+        public byte BaseMinor { get => Bits.Get4At(BaseVersion, 4); set => BaseVersion = Bits.Set4At(BaseVersion, value, 4); }
+        public ushort BaseBuild { get => Bits.Get16At(BaseVersion, 8); set => BaseVersion = Bits.Set16At(BaseVersion, value, 8); }
+        public byte BaseQfe { get => Bits.Get8At(BaseVersion, 24); set => BaseVersion = Bits.Set8At(BaseVersion, value, 24); }
 
-        public uint BaseVersion
-        {
-            get { return Bits.FromBig(_BaseVersion); }
-            set { _BaseVersion = Bits.ToBig(value); }
-        }
+        public ushort PublisherId { get => Bits.Upper16(TitleId); set => TitleId = Bits.Combine32(value, GameId); }
+        public ushort GameId { get => Bits.Lower16(TitleId); set => TitleId = Bits.Combine32(PublisherId, value); }
 
-        public uint TitleId
-        {
-            get { return Bits.FromBig(_TitleId); }
-            set { _TitleId = Bits.ToBig(value); }
-        }
+        public const int SIZE = 24;
+		public int Size() => SIZE;
+		public void Deserialize(ReadOnlySpan<byte> data)
+		{
+			if (data.Length < SIZE)
+				throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
 
-        // version bitfields
-        public uint VersionMajor { get => (Version >> 28) & 0xF; set => Version = (Version & 0x0FFFFFFF) | ((value & 0xF) << 28); }
-        public uint VersionMinor { get => (Version >> 24) & 0xF; set => Version = (Version & 0xF0FFFFFF) | ((value & 0xF) << 24); }
-        public uint VersionBuild { get => (Version >> 8) & 0xFFFF; set => Version = (Version & 0xFF0000FF) | ((value & 0xFFFF) << 8); }
-        public uint VersionQfe { get => Version & 0xFF; set => Version = (Version & 0xFFFFFF00) | (value & 0xFF); }
+			MediaId = BinaryPrimitives.ReadUInt32BigEndian(data);
+			Version = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(4, 4));
+			BaseVersion = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(8, 4));
+			TitleId = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(12, 4));
+			Platform = data[16];
+			ExecutableType = data[17];
+			DiscNumber = data[18];
+			DiscCount = data[19];
+			SavegameId = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(20, 4));
+		}
+		public void Serialize(Span<byte> buffer)
+		{
+			if (buffer.Length < SIZE)
+				throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
 
-        // base version bitfields
-        public uint BaseMajor { get => (BaseVersion >> 28) & 0xF; set => BaseVersion = (BaseVersion & 0x0FFFFFFF) | ((value & 0xF) << 28); }
-        public uint BaseMinor { get => (BaseVersion >> 24) & 0xF; set => BaseVersion = (BaseVersion & 0xF0FFFFFF) | ((value & 0xF) << 24); }
-        public uint BaseBuild { get => (BaseVersion >> 8) & 0xFFFF; set => BaseVersion = (BaseVersion & 0xFF0000FF) | ((value & 0xFFFF) << 8); }
-        public uint BaseQfe { get => BaseVersion & 0xFF; set => BaseVersion = (BaseVersion & 0xFFFFFF00) | (value & 0xFF); }
-
-        // title union view
-        public ushort PublisherId { get => (ushort)(TitleId >> 16); set => TitleId = (TitleId & 0x0000FFFF) | ((uint)value << 16); }
-        public ushort GameId { get => (ushort)(TitleId & 0xFFFF); set => TitleId = (TitleId & 0xFFFF0000) | value; }
-
-        public int Size() => EXECUTION_INFO_SIZE;
+			BinaryPrimitives.WriteUInt32BigEndian(buffer, MediaId);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(4, 4), Version);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(8, 4), BaseVersion);
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(12, 4), TitleId);
+			buffer[16] = Platform;
+			buffer[17] = ExecutableType;
+			buffer[18] = DiscNumber;
+			buffer[19] = DiscCount;
+			BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(20, 4), SavegameId);
+		}
     }
 }

@@ -11,21 +11,21 @@ public static class XBE
     [Flags]
     public enum InitFlags : uint
     {
-        MountUtilityDrive = (1 << 0),
-        FormatUtilityDrive = (1 << 1),
-        Limit64MB = (1 << 2),
-        DontSetupHarddisk = (1 << 3)
+        MountUtilityDrive = 1 << 0,
+        FormatUtilityDrive = 1 << 1,
+        Limit64MB = 1 << 2,
+        DontSetupHarddisk = 1 << 3
     }
 
     [Flags]
     public enum SectionFlags : uint
     {
-        Writable = (1 << 0),
-        Preload = (1 << 1),
-        Executable = (1 << 2),
-        InsertedFile = (1 << 3),
-        HeadPageRO = (1 << 4),
-        TailPageRO = (1 << 5)
+        Writable = 1 << 0,
+        Preload = 1 << 1,
+        Executable = 1 << 2,
+        InsertedFile = 1 << 3,
+        HeadPageRO = 1 << 4,
+        TailPageRO = 1 << 5
     }
 
     [Flags]
@@ -49,6 +49,8 @@ public static class XBE
 
     public enum Region : uint
     {
+        [Description("UNK")]
+        UNK = 0,
         [Description("USA")]
         USA = 0x00000001,
         [Description("JPN")]
@@ -63,20 +65,15 @@ public static class XBE
         DBG = 0x80000000
     }
 
-    public static uint MAGIC => Bits.UintFromString("XBEH");
-    public const int HEADER_SIZE = 376;
-    public const int SECTION_HEADER_SIZE = 56;
-    public const int CERTIFICATE_SIZE = 464;
+    public static uint MAGIC => StringExt.GetUint("XBEH");
     public const int TITLE_NAME_CHARS_MAX = 40;
     public const int TITLE_NAME_BYTE_COUNT = TITLE_NAME_CHARS_MAX * 2;
     public const int FATX_MAX_FILENAME_LENGTH = 42;
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class FileHeader : IMarshalable
+    public class FileHeader : ISerializable
     {
         public uint Magic;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = (2048 / 8))]
-        public byte[] Signature = new byte[2048 / 8];
+        public readonly byte[] Signature = new byte[2048 / 8];
         public uint BaseAddress; //memory load address
         public uint SizeOfHeaders;
         public uint SizeOfImage;
@@ -107,52 +104,170 @@ public static class XBE
         public uint MicrosoftLogo; //memory address of the Microsoft logo
         public uint SizeOfMicrosoftLogo;
 
-        public int Size() => HEADER_SIZE;
+        public const int SIZE = 376;
+        public int Size() => SIZE;
         public bool IsValid() => (Magic == MAGIC);
+
+        public void Serialize(Span<byte> buffer)
+        {
+            if (buffer.Length < SIZE)
+                throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
+
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer, Magic);
+            Signature.CopyTo(buffer.Slice(4, Signature.Length));
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(4 + Signature.Length, 4), BaseAddress);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(8 + Signature.Length, 4), SizeOfHeaders);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(12 + Signature.Length, 4), SizeOfImage);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(16 + Signature.Length, 4), SizeOfImageHeader);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(20 + Signature.Length, 4), TimeStamp);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(24 + Signature.Length, 4), Certificate);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(28 + Signature.Length, 4), NumberOfSections);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(32 + Signature.Length, 4), SectionHeaders);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(36 + Signature.Length, 4), (uint)InitFlags);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(40 + Signature.Length, 4), AddressOfEntryPoint);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(44 + Signature.Length, 4), TlsDirectory);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(48 + Signature.Length, 4), SizeOfStackCommit);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(52 + Signature.Length, 4), SizeOfHeapReserve);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(56 + Signature.Length, 4), SizeOfHeapCommit);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(60 + Signature.Length, 4), NtBaseOfDll);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(64 + Signature.Length, 4), NtSizeOfImage);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(68 + Signature.Length, 4), NtChecksum);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(72 + Signature.Length, 4), NtTimestamp);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(76 + Signature.Length, 4), DebugPathName);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(80 + Signature.Length, 4), DebugFileName);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(84 + Signature.Length, 4), DebugUnicodeFileName);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(88 + Signature.Length, 4), XboxKernelThunkData);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(92 + Signature.Length, 4), ImportDirectory);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(96 + Signature.Length, 4), NumberOfLibraryVersions);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(100 + Signature.Length, 4), LibraryVersion);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(104 + Signature.Length, 4), XboxKernelLibraryVersion);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(108 + Signature.Length, 4), XapiLibraryVersion);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(112 + Signature.Length, 4), MicrosoftLogo);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(116 + Signature.Length, 4), SizeOfMicrosoftLogo);
+        }
+
+        public void Deserialize(ReadOnlySpan<byte> data)
+        {
+            if (data.Length < SIZE)
+                throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
+
+            Magic = BinaryPrimitives.ReadUInt32LittleEndian(data);
+            data.Slice(4, Signature.Length).CopyTo(Signature);
+            BaseAddress = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(4 + Signature.Length, 4));
+            SizeOfHeaders = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(8 + Signature.Length, 4));
+            SizeOfImage = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(12 + Signature.Length, 4));
+            SizeOfImageHeader = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(16 + Signature.Length, 4));
+            TimeStamp = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(20 + Signature.Length, 4));
+            Certificate = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(24 + Signature.Length, 4));
+            NumberOfSections = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(28 + Signature.Length, 4));
+            SectionHeaders = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(32 + Signature.Length, 4));
+            InitFlags = (InitFlags)BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(36 + Signature.Length, 4));
+            AddressOfEntryPoint = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(40 + Signature.Length, 4));
+            TlsDirectory = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(44 + Signature.Length, 4));
+            SizeOfStackCommit = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(48 + Signature.Length, 4));
+            SizeOfHeapReserve = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(52 + Signature.Length, 4));
+            SizeOfHeapCommit = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(56 + Signature.Length, 4));
+            NtBaseOfDll = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(60 + Signature.Length, 4));
+            NtSizeOfImage = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(64 + Signature.Length, 4));
+            NtChecksum = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(68 + Signature.Length, 4));
+            NtTimestamp = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(72 + Signature.Length, 4));
+            DebugPathName = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(76 + Signature.Length, 4));
+            DebugFileName = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(80 + Signature.Length, 4));
+            DebugUnicodeFileName = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(84 + Signature.Length, 4));
+            XboxKernelThunkData = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(88 + Signature.Length, 4));
+            ImportDirectory = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(92 + Signature.Length, 4));
+            NumberOfLibraryVersions = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(96 + Signature.Length, 4));
+            LibraryVersion = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(100 + Signature.Length, 4));
+            XboxKernelLibraryVersion = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(104 + Signature.Length, 4));
+            XapiLibraryVersion = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(108 + Signature.Length, 4));
+            MicrosoftLogo = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(112 + Signature.Length, 4));
+            SizeOfMicrosoftLogo = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(116 + Signature.Length, 4));
+        }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class CertificateHeader : IMarshalable
+    public class CertificateHeader : ISerializable
     {
         public uint SizeOfCertificate;
         public uint TimeStamp; //unix time
-        public uint TitleID;                                       // 0x0008 - title id
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 40)]
-        private ushort[] TitleName = new ushort[40];                 // 0x000C - title name (unicode)
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public uint[] AlternateTitleId = new uint[16];              // 0x005C - alternate title ids
+        public uint TitleID;                                        // 0x0008 - title id
+        public readonly ushort[] TitleName = new ushort[40];        // 0x000C - title name (unicode)
+        public readonly uint[] AlternateTitleId = new uint[16];     // 0x005C - alternate title ids
         public AllowedMedia AllowedMedia;                           // 0x009C - allowed media types
         public Region GameRegion;                                   // 0x00A0 - game region
         public uint GameRatings;                                    // 0x00A4 - game ratings
         public uint DiskNumber;                                     // 0x00A8 - disk number
         public uint Version;                                        // 0x00AC - version
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] LanKey = new byte[16];                        // 0x00B0 - lan key
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] SignatureKey = new byte[16];                  // 0x00C0 - signature key
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-        public byte[] TitleAlternateSignatureKey = new byte[256];   // 0x00D0 - alternate signature keys (16 keys * 16 bytes)
+        public readonly byte[] LanKey = new byte[16];                        // 0x00B0 - lan key
+        public readonly byte[] SignatureKey = new byte[16];                  // 0x00C0 - signature key
+        public readonly byte[] TitleAlternateSignatureKey = new byte[256];   // 0x00D0 - alternate signature keys (16 keys * 16 bytes)
 
-        public int Size() => CERTIFICATE_SIZE;
+        public const int SIZE = 464;
+        public int Size() => SIZE;
 
-        public string GetTitleName()
+        public void Deserialize(ReadOnlySpan<byte> data)
         {
-            ReadOnlySpan<byte> bytes = MemoryMarshal.Cast<ushort, byte>(TitleName);
-            return Encoding.Unicode.GetString(bytes).TrimEnd('\0');
+            if (data.Length < SIZE)
+                throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
+
+            SizeOfCertificate = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(0x0000, 4));
+            TimeStamp = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(0x0004, 4));
+            TitleID = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(0x0008, 4));
+            AllowedMedia = (AllowedMedia)BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(0x009C, 4));
+            GameRegion = (Region)BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(0x00A0, 4));
+            GameRatings = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(0x00A4, 4));
+            DiskNumber = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(0x00A8, 4));
+            Version = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(0x00AC, 4));
+
+            for (int i = 0; i < TitleName.Length; i++)
+            {
+                int offset = 0x000C + (i * 2);
+                TitleName[i] = BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, 2));
+            }
+
+            for (int i = 0; i < AlternateTitleId.Length; i++)
+            {
+                int offset = 0x005C + (i * 4);
+                AlternateTitleId[i] = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, 4));
+            }
+
+            data.Slice(0x00B0, 16).CopyTo(LanKey);
+            data.Slice(0x00C0, 16).CopyTo(SignatureKey);
+            data.Slice(0x00D0, 256).CopyTo(TitleAlternateSignatureKey);
         }
 
-        public void SetTitleName(string name)
+        public void Serialize(Span<byte> buffer)
         {
-            Array.Clear(TitleName, 0, TitleName.Length);
-            var maxChars = Math.Min(name.Length, TitleName.Length);
+            if (buffer.Length < SIZE)
+                throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
 
-            for (int i = 0; i < maxChars; i++)
-                TitleName[i] = name[i];
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(0x0000, 4), SizeOfCertificate);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(0x0004, 4), TimeStamp);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(0x0008, 4), TitleID);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(0x009C, 4), (uint)AllowedMedia);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(0x00A0, 4), (uint)GameRegion);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(0x00A4, 4), GameRatings);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(0x00A8, 4), DiskNumber);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(0x00AC, 4), Version);
+
+            for (int i = 0; i < TitleName.Length; i++)
+            {
+                int offset = 0x000C + (i * 2);
+                BinaryPrimitives.WriteUInt16LittleEndian(buffer.Slice(offset, 2), TitleName[i]);
+            }
+
+            for (int i = 0; i < AlternateTitleId.Length; i++)
+            {
+                int offset = 0x005C + (i * 4);
+                BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(offset, 4), AlternateTitleId[i]);
+            }
+
+            LanKey.CopyTo(buffer.Slice(0x00B0, 16));
+            SignatureKey.CopyTo(buffer.Slice(0x00C0, 16));
+            TitleAlternateSignatureKey.CopyTo(buffer.Slice(0x00D0, 256));
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class SectionHeader : IMarshalable
+    public class SectionHeader : ISerializable
     {
         public SectionFlags Flags;
         public uint VirtualAddr;                                // virtual address
@@ -163,9 +278,41 @@ public static class XBE
         public uint SectionRefCount;                            // section reference count
         public uint HeadSharedRefCountAddr;                     // head shared page reference count address
         public uint TailSharedRefCountAddr;                     // tail shared page reference count address
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 20)]
-        public byte[] SectionDigest = new byte[20];             // section digest
+        public readonly byte[] SectionDigest = new byte[20];    // section digest
 
-        public int Size() => SECTION_HEADER_SIZE;
+        public const int SIZE = 56;
+        public int Size() => SIZE;
+        public void Deserialize(ReadOnlySpan<byte> data)
+        {
+            if (data.Length < SIZE)
+                throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
+
+            Flags = (SectionFlags)BinaryPrimitives.ReadUInt32LittleEndian(data);
+            VirtualAddr = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(4, 4));
+            VirtualSize = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(8, 4));
+            RawAddr = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(12, 4));
+            SizeofRaw = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(16, 4));
+            SectionNameAddr = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(20, 4));
+            SectionRefCount = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(24, 4));
+            HeadSharedRefCountAddr = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(28, 4));
+            TailSharedRefCountAddr = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(32, 4));
+            data.Slice(36, 20).CopyTo(SectionDigest);
+        }
+        public void Serialize(Span<byte> buffer)
+        {
+            if (buffer.Length < SIZE)
+                throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
+
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer, (uint)Flags);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(4, 4), VirtualAddr);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(8, 4), VirtualSize);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(12, 4), RawAddr);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(16, 4), SizeofRaw);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(20, 4), SectionNameAddr);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(24, 4), SectionRefCount);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(28, 4), HeadSharedRefCountAddr);
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(32, 4), TailSharedRefCountAddr);
+            SectionDigest.CopyTo(buffer.Slice(36, 20));
+        }
     }
 }
