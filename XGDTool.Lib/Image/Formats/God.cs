@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace XGDTool.Lib.Image.Formats;
 
@@ -24,11 +19,11 @@ public static class GOD
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int SubHashTableCount(long size)
     {
-        var blocksRemaining = GOD.AlignUpToBlock(size);
+        var blocksRemaining = AlignUpToBlock(size);
         var count =
             (blocksRemaining - 1) /
-            (GOD.DATA_BLOCKS_PER_SHT + 1) +
-            ((blocksRemaining - 1) % (GOD.DATA_BLOCKS_PER_SHT + 1) > 0 ? 1 : 0);
+            (DATA_BLOCKS_PER_SHT + 1) +
+            ((blocksRemaining - 1) % (DATA_BLOCKS_PER_SHT + 1) > 0 ? 1 : 0);
         return (int)count; 
     }
 

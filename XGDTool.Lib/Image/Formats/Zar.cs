@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+using System.Buffers.Binary;
 using XGDTool.Lib.Util;
 
 namespace XGDTool.Lib.Image.Formats;
@@ -6,265 +6,213 @@ namespace XGDTool.Lib.Image.Formats;
 public static class ZAR
 {
     public const int COMPRESSED_BLOCK_SIZE = 64 * 1024;
-    public const int ENTRIES_PER_OFFSETRECORD = 16;
     public const uint ENTRY_TYPE_FILE = 0x80000000;
-    public const uint FOOTER_MAGIC = 0x169f52d6;
-    public const uint FOOTER_VERSION = 0x61bf3a01;
-    public const int FOOTER_SIZE = (16 * 6) + 32 + 8 + 4 + 4;
-    public const int COMPRESSION_OFFSET_RECORD_SIZE = 8 + (2 * ENTRIES_PER_OFFSETRECORD);
-    public const int FILE_DIRECTORY_ENTRY_SIZE = 16;
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class CompressionOffsetRecordRaw : IMarshalable
-    {
-        private ulong _BaseOffset;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = ENTRIES_PER_OFFSETRECORD)]
-        private readonly ushort[] SizeTable = new ushort[ENTRIES_PER_OFFSETRECORD];
-
-        public ushort GetSize(int index) => Bits.FromBig(SizeTable[index]);
-        public void SetSize(int index, ushort size) => SizeTable[index] = Bits.ToBig(size);
-        public ulong BaseOffset
-        {
-            get { return Bits.FromBig(_BaseOffset); }
-            set { _BaseOffset = Bits.ToBig(value); }
-        }
-
-        public int Size() => COMPRESSION_OFFSET_RECORD_SIZE;
-    }
-
-    public class CompressionOffsetRecord
+    public class CompressedOffsetRecord : ISerializable
     {
         public ulong BaseOffset;
-        private readonly List<ushort> SizeTable = new();
+        private readonly List<ushort> _SizeTable = [];
+        public IReadOnlyList<ushort> SizeTableEntries => _SizeTable;
+
+        public const int ENTRIES_MAX = 16;
+        public const int SIZE = sizeof(ulong) + (sizeof(ushort) * ENTRIES_MAX);
+
+        public int Size() => SIZE;
 
         public bool AddSize(ushort size)
         {
-            if (SizeTable.Count >= ENTRIES_PER_OFFSETRECORD)
+            if (_SizeTable.Count >= ENTRIES_MAX)
                 return false;
 
-            SizeTable.Add(size);
+            _SizeTable.Add(size);
             return true;
         }
 
-        public CompressionOffsetRecordRaw ToRaw()
+        public void Serialize(Span<byte> buffer)
         {
-            var raw = new CompressionOffsetRecordRaw
+            if (buffer.Length < SIZE)
+                throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
+
+            BinaryPrimitives.WriteUInt64BigEndian(buffer, BaseOffset);
+            for (int i = 0; i < ENTRIES_MAX; i++)
             {
-                BaseOffset = BaseOffset
-            };
-
-            for (int i = 0; i < SizeTable.Count; i++)
-                raw.SetSize(i, SizeTable[i]);
-
-            return raw;
+                ushort size = i < _SizeTable.Count ? _SizeTable[i] : (ushort)0;
+                BinaryPrimitives.WriteUInt16BigEndian(buffer.Slice(8 + (i * 2), 2), size);
+            }
         }
 
-        public static CompressionOffsetRecord FromRaw(CompressionOffsetRecordRaw raw)
+        public void Deserialize(ReadOnlySpan<byte> data)
         {
-            var record = new CompressionOffsetRecord
-            {
-                BaseOffset = raw.BaseOffset
-            };
+            if (data.Length < SIZE)
+                throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
 
-            for (int i = 0; i < ENTRIES_PER_OFFSETRECORD; i++)
-                record.SizeTable.Add(raw.GetSize(i));
+            BaseOffset = BinaryPrimitives.ReadUInt64BigEndian(data);
+            _SizeTable.Clear();
 
-            return record;
+            for (int i = 0; i < ENTRIES_MAX; i++)
+                _SizeTable.Add(BinaryPrimitives.ReadUInt16BigEndian(data.Slice(8 + (i * 2), 2)));
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class FileDirectoryEntry : IMarshalable
+    public abstract class PathEntry : ISerializable
     {
-        private uint NameOffsetAndTypeFlag;
+        public uint NameOffset;
 
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-        private readonly uint[] Record = new uint[3];
+        public const int SIZE = 16;
 
-        private const int FileOffsetLow = 0;
-        private const int FileSizeLow = 1;
-        private const int FileOffsetAndSizeHigh = 2;
-        private const int DirNodeStartIndex = 0;
-        private const int DirNodeCount = 1;
-        private const int DirReserved = 2;
+        public int Size() => SIZE;
 
-        public bool IsFile 
-        { 
-            get { return (Bits.FromBig(NameOffsetAndTypeFlag) & ENTRY_TYPE_FILE) != 0; }
-            set 
-            { 
-                NameOffsetAndTypeFlag = Bits.ToBig(
-                    (Bits.FromBig(NameOffsetAndTypeFlag) & ~ENTRY_TYPE_FILE) | 
-                    (value ? ENTRY_TYPE_FILE : 0)); 
-            }
-        }
-        public bool IsDirectory
+        public static PathEntry DeserializeToType(ReadOnlySpan<byte> data)
         {
-            get { return (Bits.FromBig(NameOffsetAndTypeFlag) & ENTRY_TYPE_FILE) == 0; }
-            set 
-            { 
-                NameOffsetAndTypeFlag = Bits.ToBig(
-                    (Bits.FromBig(NameOffsetAndTypeFlag) & ~ENTRY_TYPE_FILE) | 
-                    (value ? 0 : ENTRY_TYPE_FILE)); 
-            }
-        }
-        public uint NameOffset
-        {
-            get { return Bits.FromBig(NameOffsetAndTypeFlag) & ~ENTRY_TYPE_FILE; }
-            set 
-            { 
-                NameOffsetAndTypeFlag = Bits.ToBig(
-                    (Bits.FromBig(NameOffsetAndTypeFlag) & ENTRY_TYPE_FILE) | 
-                    (value & ~ENTRY_TYPE_FILE)); 
-            }
-        }
-        public ulong FileOffset
-        {
-            get 
-            { 
-                return (ulong)Bits.FromBig(Record[FileOffsetLow]) | 
-                       (((ulong)Bits.FromBig(Record[FileOffsetAndSizeHigh]) & 0xFFFF) << 32); 
-            }
-            set
-            {
-                Record[FileOffsetLow] = Bits.ToBig((uint)(value & 0xFFFFFFFF));
-                Record[FileOffsetAndSizeHigh] = Bits.ToBig(
-                    (Bits.FromBig(Record[FileOffsetAndSizeHigh]) & 0xFFFF0000) | 
-                    (uint)((value >> 32) & 0xFFFF));
-            }
-        }
-        public ulong FileSize
-        {
-            get 
-            { 
-                return (ulong)Bits.FromBig(Record[FileSizeLow]) | 
-                       (((ulong)Bits.FromBig(Record[FileOffsetAndSizeHigh]) & 0xFFFF0000) << 16); 
-            }
-            set
-            {
-                Record[FileSizeLow] = Bits.ToBig((uint)(value & 0xFFFFFFFF));
-                Record[FileOffsetAndSizeHigh] = Bits.ToBig(
-                    (Bits.FromBig(Record[FileOffsetAndSizeHigh]) & 0x0000FFFF) | 
-                    (uint)((value >> 16) & 0xFFFF0000));
-            }
-        }
-        public uint DirectoryNodeStartIndex
-        {
-            get { return Bits.FromBig(Record[DirNodeStartIndex]); }
-            set { Record[DirNodeStartIndex] = Bits.ToBig(value); }
-        }
-        public uint DirectoryNodeCount
-        {
-            get { return Bits.FromBig(Record[DirNodeCount]); }
-            set { Record[DirNodeCount] = Bits.ToBig(value); }
-        }
-        public uint DirectoryReserved
-        {
-            get { return Bits.FromBig(Record[DirReserved]); }
-            set { Record[DirReserved] = Bits.ToBig(value); }
+            if (data.Length < SIZE)
+                throw new ArgumentException($"Data must be at least {SIZE} bytes long");
+                
+            var nameOffset = BinaryPrimitives.ReadUInt32BigEndian(data);
+
+            if ((nameOffset & ENTRY_TYPE_FILE) != 0) 
+                return ISerializable.Deserialize<FileEntry>(data);
+            else 
+                return ISerializable.Deserialize<DirectoryEntry>(data);
         }
 
-        public int Size() => FILE_DIRECTORY_ENTRY_SIZE;
+        public abstract void Deserialize(ReadOnlySpan<byte> data);
+
+        public abstract void Serialize(Span<byte> buffer);
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class Footer : IMarshalable
+    public class DirectoryEntry : PathEntry
     {
-        private ulong _SectionCompressedDataOffset;
-        private ulong _SectionCompressedDataSize;
-        private ulong _SectionOffsetRecordsOffset;
-        private ulong _SectionOffsetRecordsSize;
-        private ulong _SectionNamesOffset;
-        private ulong _SectionNamesSize;
-        private ulong _SectionFileTreeOffset;
-        private ulong _SectionFileTreeSize;
-        private ulong _SectionMetaDirectoryOffset;
-        private ulong _SectionMetaDirectorySize;
-        private ulong _SectionMetaDataOffset;
-        private ulong _SectionMetaDataSize;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-        public byte[] IntegrityHash = new byte[32];
-        private ulong _TotalSize;
-        private uint _Version;
-        private uint _Magic;
+        public uint NodeStartIndex;
+        public uint NodeCount;
 
-        public ulong SectionCompressedDataOffset 
-        { 
-            get { return Bits.FromBig(_SectionCompressedDataOffset); }
-            set { _SectionCompressedDataOffset = Bits.ToBig(value); }
-        }
-        public ulong SectionCompressedDataSize
+        public override void Serialize(Span<byte> buffer)
         {
-            get { return Bits.FromBig(_SectionCompressedDataSize); }
-            set { _SectionCompressedDataSize = Bits.ToBig(value); }
-        }
-        public ulong SectionOffsetRecordsOffset
-        {
-            get { return Bits.FromBig(_SectionOffsetRecordsOffset); }
-            set { _SectionOffsetRecordsOffset = Bits.ToBig(value); }
-        }
-        public ulong SectionOffsetRecordsSize
-        {
-            get { return Bits.FromBig(_SectionOffsetRecordsSize); }
-            set { _SectionOffsetRecordsSize = Bits.ToBig(value); }
-        }
-        public ulong SectionNamesOffset
-        {
-            get { return Bits.FromBig(_SectionNamesOffset); }
-            set { _SectionNamesOffset = Bits.ToBig(value); }
-        }
-        public ulong SectionNamesSize
-        {
-            get { return Bits.FromBig(_SectionNamesSize); }
-            set { _SectionNamesSize = Bits.ToBig(value); }
-        }
-        public ulong SectionFileTreeOffset
-        {
-            get { return Bits.FromBig(_SectionFileTreeOffset); }
-            set { _SectionFileTreeOffset = Bits.ToBig(value); }
-        }
-        public ulong SectionFileTreeSize
-        {
-            get { return Bits.FromBig(_SectionFileTreeSize); }
-            set { _SectionFileTreeSize = Bits.ToBig(value); }
-        }
-        public ulong SectionMetaDirectoryOffset
-        {
-            get { return Bits.FromBig(_SectionMetaDirectoryOffset); }
-            set { _SectionMetaDirectoryOffset = Bits.ToBig(value); }
-        }
-        public ulong SectionMetaDirectorySize
-        {
-            get { return Bits.FromBig(_SectionMetaDirectorySize); }
-            set { _SectionMetaDirectorySize = Bits.ToBig(value); }
-        }
-        public ulong SectionMetaDataOffset
-        {
-            get { return Bits.FromBig(_SectionMetaDataOffset); }
-            set { _SectionMetaDataOffset = Bits.ToBig(value); }
-        }
-        public ulong SectionMetaDataSize
-        {
-            get { return Bits.FromBig(_SectionMetaDataSize); }
-            set { _SectionMetaDataSize = Bits.ToBig(value); }
-        }
-        public ulong TotalSize
-        {
-            get { return Bits.FromBig(_TotalSize); }
-            set { _TotalSize = Bits.ToBig(value); }
-        }
-        public uint Version
-        {
-            get { return Bits.FromBig(_Version); }
-            set { _Version = Bits.ToBig(value); }
-        }
-        public uint Magic
-        {
-            get { return Bits.FromBig(_Magic); }
-            set { _Magic = Bits.ToBig(value); }
+            if (buffer.Length < SIZE)
+                throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
+
+            BinaryPrimitives.WriteUInt32BigEndian(buffer, NameOffset & ~ENTRY_TYPE_FILE);
+            BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(4, 4), NodeStartIndex);
+            BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(8, 4), NodeCount);
         }
 
-        public int Size() => FOOTER_SIZE;
+        public override void Deserialize(ReadOnlySpan<byte> data)
+        {
+            NameOffset = BinaryPrimitives.ReadUInt32BigEndian(data) & ~ENTRY_TYPE_FILE;
+            NodeStartIndex = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(4, 4));
+            NodeCount = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(8, 4));
+        }
+    }
+
+    public class FileEntry : PathEntry
+    {
+        public ulong FileOffset;
+        public ulong FileSize;
+
+        public override void Serialize(Span<byte> buffer)
+        {
+            if (buffer.Length < SIZE)
+                throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
+
+            BinaryPrimitives.WriteUInt32BigEndian(buffer, NameOffset | ENTRY_TYPE_FILE);
+            
+            var record0 = (uint)(FileOffset & 0xFFFFFFFF);
+            var record1 = (uint)(FileSize & 0xFFFFFFFF);
+            var record2 = (uint)(((FileOffset >> 32) & 0xFFFF) | ((FileSize >> 16) & 0xFFFF0000));
+
+            BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(4, 4), record0);
+            BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(8, 4), record1);
+            BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(12, 4), record2);
+        }
+
+        public override void Deserialize(ReadOnlySpan<byte> data)
+        {
+            NameOffset = BinaryPrimitives.ReadUInt32BigEndian(data) & ~ENTRY_TYPE_FILE;
+
+            var record0 = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(4, 4));
+            var record1 = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(8, 4));
+            var record2 = BinaryPrimitives.ReadUInt32BigEndian(data.Slice(12, 4));
+
+            FileOffset = (ulong)record0 | (((ulong)record2 & 0xFFFF) << 32);
+            FileSize = (ulong)record1 | (((ulong)record2 & 0xFFFF0000) << 16);
+        }
+    }
+
+    public class SectionRecord : ISerializable
+    {
+        public ulong Offset;
+        public ulong Length;
+
+        public const int SIZE = sizeof(ulong) * 2;
+
+        public int Size() => SIZE;
+
+        public void Serialize(Span<byte> buffer)
+        {
+            if (buffer.Length < SIZE)
+                throw new ArgumentException($"Buffer length must be at least {SIZE} bytes.", nameof(buffer));
+
+            BinaryPrimitives.WriteUInt64BigEndian(buffer, Offset);
+            BinaryPrimitives.WriteUInt64BigEndian(buffer.Slice(sizeof(ulong), sizeof(ulong)), Length);
+        }
+
+        public void Deserialize(ReadOnlySpan<byte> data)
+        {
+            if (data.Length < SIZE)
+                throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
+
+            Offset = BinaryPrimitives.ReadUInt64BigEndian(data);
+            Length = BinaryPrimitives.ReadUInt64BigEndian(data.Slice(sizeof(ulong), sizeof(ulong)));
+        }
+    }
+
+    public class Footer : ISerializable
+    {
+        public SectionRecord CompressedData = new();
+        public SectionRecord OffsetRecords = new();
+        public SectionRecord Names = new();
+        public SectionRecord FileTree = new();
+        public SectionRecord MetaDirectory = new();
+        public SectionRecord MetaData = new();
+        public readonly byte[] IntegrityHash = new byte[32];
+        public ulong TotalSize;
+        public uint Version;
+        public uint Magic;
+
+        public const uint MAGIC = 0x169f52d6;
+        public const uint VERSION = 0x61bf3a01;
+        public const int SIZE = (SectionRecord.SIZE * 6) + 32 + sizeof(ulong) + sizeof(uint) + sizeof(uint);
+
+        public int Size() => SIZE;
+
+        public void Serialize(Span<byte> buffer)
+        {
+            CompressedData.Serialize(buffer);
+            OffsetRecords.Serialize(buffer.Slice(SectionRecord.SIZE, SectionRecord.SIZE));
+            Names.Serialize(buffer.Slice(SectionRecord.SIZE * 2, SectionRecord.SIZE));
+            FileTree.Serialize(buffer.Slice(SectionRecord.SIZE * 3, SectionRecord.SIZE));
+            MetaDirectory.Serialize(buffer.Slice(SectionRecord.SIZE * 4, SectionRecord.SIZE));
+            MetaData.Serialize(buffer.Slice(SectionRecord.SIZE * 5, SectionRecord.SIZE));
+            IntegrityHash.CopyTo(buffer.Slice(SectionRecord.SIZE * 6, IntegrityHash.Length));
+            BinaryPrimitives.WriteUInt64BigEndian(buffer.Slice((SectionRecord.SIZE * 6) + IntegrityHash.Length, sizeof(ulong)), TotalSize);
+            BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice((SectionRecord.SIZE * 6) + IntegrityHash.Length + sizeof(ulong), sizeof(uint)), Version);
+            BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice((SectionRecord.SIZE * 6) + IntegrityHash.Length + sizeof(ulong) + sizeof(uint), sizeof(uint)), Magic);
+        }
+
+        public void Deserialize(ReadOnlySpan<byte> data)
+        {
+            if (data.Length < SIZE)
+                throw new ArgumentException($"Data must be at least {SIZE} bytes long", nameof(data));
+
+            CompressedData = ISerializable.Deserialize<SectionRecord>(data);
+            OffsetRecords = ISerializable.Deserialize<SectionRecord>(data.Slice(SectionRecord.SIZE, SectionRecord.SIZE));
+            Names = ISerializable.Deserialize<SectionRecord>(data.Slice(SectionRecord.SIZE * 2, SectionRecord.SIZE));
+            FileTree = ISerializable.Deserialize<SectionRecord>(data.Slice(SectionRecord.SIZE * 3, SectionRecord.SIZE));
+            MetaDirectory = ISerializable.Deserialize<SectionRecord>(data.Slice(SectionRecord.SIZE * 4, SectionRecord.SIZE));
+            MetaData = ISerializable.Deserialize<SectionRecord>(data.Slice(SectionRecord.SIZE * 5, SectionRecord.SIZE));
+            data.Slice(SectionRecord.SIZE * 6, IntegrityHash.Length).CopyTo(IntegrityHash);
+            TotalSize = BinaryPrimitives.ReadUInt64BigEndian(data.Slice((SectionRecord.SIZE * 6) + IntegrityHash.Length, sizeof(ulong)));
+            Version = BinaryPrimitives.ReadUInt32BigEndian(data.Slice((SectionRecord.SIZE * 6) + IntegrityHash.Length + sizeof(ulong), sizeof(uint)));
+            Magic = BinaryPrimitives.ReadUInt32BigEndian(data.Slice((SectionRecord.SIZE * 6) + IntegrityHash.Length + sizeof(ulong) + sizeof(uint), sizeof(uint)));
+        }
     }
 }
