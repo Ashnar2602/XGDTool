@@ -30,7 +30,9 @@ public class XDvdFsAuthorer()
     public void CreateTree(IReadOnlyList<DirectoryEntryExt> entries, uint rootSector = DefaultRootSector, int maxDepth = MaxRecursionDepth)
     {
         if (rootSector <= XDVDFS.VOLUME_DESCRIPTOR_SECTOR + 1)
-            throw new ArgumentException($"Root sector must be greater than {XDVDFS.VOLUME_DESCRIPTOR_SECTOR + 1} to avoid overwriting volume descriptors.", nameof(rootSector));
+            throw new ArgumentException(
+                $"Root sector must be greater than {XDVDFS.VOLUME_DESCRIPTOR_SECTOR + 1} to avoid overwriting volume descriptors.", 
+                nameof(rootSector));
 
         void RecurseEntries(ref Queue<DirectoryEntryExt> queue, ref DirectoryNode? parent, int depth)
         {
@@ -83,7 +85,8 @@ public class XDvdFsAuthorer()
                 }
 
                 if (Tree<DirectoryNode>.InsertNode(ref parent, newNode) == InsertResult.Error)
-                    throw new InvalidOperationException($"Failed to insert node for entry '{entry.FilePath}' into AVL tree.");
+                    throw new InvalidOperationException(
+                        $"Failed to insert node for entry '{entry.FilePath}' into AVL tree.");
             }
         }
 

@@ -71,7 +71,9 @@ public static class CCI
     static bool IsHeaderValid(Header header) => 
         header.Magic == MAGIC && 
         header.Version == VERSION && 
-        header.BlockSize == XDVDFS.SECTOR_SIZE;
+        header.BlockSize == XDVDFS.SECTOR_SIZE &&
+        header.HeaderSize == Header.SIZE &&
+        (XDVDFS.SECTOR_SIZE & ((1u << header.IndexAlignment) - 1)) == 0;
 
     public static uint EncodeIndexEntry(uint offset, bool compressed) => 
 #if DEBUG
