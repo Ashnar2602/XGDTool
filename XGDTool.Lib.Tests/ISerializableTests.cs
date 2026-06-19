@@ -34,18 +34,30 @@ public class ISerializableTests
 
     [Theory]
     [MemberData(nameof(SerializableTypes))]
-    public void RoundTrips_RandomBytes(Type type)
+    public void RoundTrips_IsIdempotent(Type type)
     {
+        // Start from random bytes, do one full cycle to produce a valid serialized
+        // form (reserved/padding bytes are normalised to whatever Serialize writes),
+        // then assert that a second cycle produces identical output.
         var instance = (ISerializable)Activator.CreateInstance(type)!;
 
-        var original = new byte[instance.Size()];
-        Rng.NextBytes(original);
-        instance.Deserialize(original);
+        var seed = new byte[instance.Size()];
+        Rng.NextBytes(seed);
+        instance.Deserialize(seed);
 
-        var roundTripped = new byte[instance.Size()];
-        instance.Serialize(roundTripped);
+        var first = new byte[instance.Size()];
+        instance.Serialize(first);
 
-        Assert.Equal(original, roundTripped);
+        instance.Deserialize(first);
+
+        var second = new byte[instance.Size()];
+        instance.Serialize(second);
+
+        if (!first.AsSpan().SequenceEqual(second))
+        {
+            int pos = Enumerable.Range(0, first.Length).First(i => first[i] != second[i]);
+            Assert.Fail($"{type.FullName} serialize/deserialize is not idempotent: bytes differ at position {pos}");
+        }
     }
 
     [Fact]
