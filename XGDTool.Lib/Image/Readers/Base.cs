@@ -159,9 +159,9 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
     public byte ReadByte(long offset) => ReadBytes(offset, 1)[0];
 
-    public XDVDFS.VolumeDescriptor ReadVolumeDescriptor() => 
+    public XDVDFS.VolumeDescriptor ReadVolumeDescriptor(long? imageOffset = null) => 
         ISerializable.Deserialize<XDVDFS.VolumeDescriptor>(
-            ReadBytes(ImageOffset + XDVDFS.MAGIC_OFFSET, XDVDFS.VolumeDescriptor.SIZE));
+            ReadBytes((imageOffset ?? ImageOffset) + XDVDFS.MAGIC_OFFSET, XDVDFS.VolumeDescriptor.SIZE));
 
     public DirectoryEntryExt GetRootEntry()
     {
@@ -237,13 +237,10 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
 
     private long? DetectImageOffset()
     {
-        var buf = new byte[XDVDFS.MAGIC_SIZE];
-
         foreach (var offset in XDVDFS.ImageOffsets)
         {
-            ReadBytes(offset + XDVDFS.MAGIC_OFFSET, buf);
-
-            if (XDVDFS.MAGIC.SequenceEqual(buf))
+            var volDesc = ReadVolumeDescriptor(offset);
+            if (XDVDFS.MAGIC.SequenceEqual(volDesc.Magic1))
                 return offset;
         }
 

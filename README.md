@@ -1,120 +1,198 @@
 # XGDTool
-<img src="https://github.com/wiredopposite/XGDTool/blob/master/resources/Screenshot.png" alt="App" width="700"/>
+XGDTool is an original Xbox and Xbox 360 disc utility written in C# on .NET 8, with both GUI and CLI workflows.
 
-XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to and from any mainstream format. It's available as a GUI or CLI app.
+Version 2.0 is a full rewrite of the original C++ codebase, with the goal of keeping the feature set, simplifying maintenance, and improving speed.
 
-This program is still in initial testing. If you experience an issue, please report it in the Issues tab and help make this program better!
+## Highlights
+- Fast conversion pipeline between Xbox disc formats.
+- All conversion happens in memory, zero temp files are required.
+- Low memory footprint, the CLI app usually runs at around 30MB total.
+- Comprehensive built-in title database for accurate renaming, v2.0 does away with online database lookup.
+- Unified app entry point that supports both GUI and CLI workflows.
+- Reauthor mode for compact output image layouts.
+- Scrub mode to clear and trim unused sectors.
+- Multithreaded CCI and CSO compression.
+- Batch input handling from one or more paths.
+- Automatic input format detection and validation.
+- Automatic detection of split file parts with numbered suffixes.
+- Handles low-level format details like sector-level transforms, directory metadata authoring, and container conversion.
 
-## Features
-- Supports convertion between following formats:
-    - ISO / XISO
-    - Extracted files (Xex / Xbe / HDD Ready)
-    - GoD / Games on Demand
-    - CCI
-    - CSO
-    - ZAR
-- Seamless conversion, e.g. you can directly extract a GoD image, convert an ISO to ZAR archive, or extracted directory to CCI archive, without writing any temporary files. The only format requiring temporary files is ZAR when provided as input.
-- Image scrubbing ("Partial Scrub"), gets rid of random padding and trims the output file to the shortest length possible.
-- Image reauthoring ("Full Scrub"), completely rewrites the structure of the disc for the smallest possible output file.
-- Image authoring, takes your extracted files and creates a new image with them.
-- Multithreaded compression for CCI and CSO formats.
-- Batch processing, a folder full of different game formats can be batch converted to a single format.
-- Automatically finds split files when only one part is provided as an input path, assuming they're named in this format: ```name.1.extension``` ```name.2.extension```.
-- Option to select your target app/machine (Xemu, Xenia, OG Xbox, Xbox 360) and let XGDTool decide which settings to use.
-- Attach XBE generation for OG Xbox.
-- Online database lookup for accurate file naming (can be disabled).
+## Performance
+XGDTool version 2.0 is significantly faster than the legacy 1.0 version, especially for compression-heavy outputs and unused sector detection (scrubbing).
+
+Actual throughput still depends on source format, storage speed, CPU, and selected options (for example, scrub and reauthor).
+
+### Benchmarks
+Conducted with an AMD Ryzen 7 5800X (3.80 GHz, 8-Core), 3600 MT/s DDR4, NMVe PCIe 4.0
+
+- **Halo: CE (Rev 2)** - Redump ISO to CCI, Scrub/Trim
+| XGDTool v2.0.0 | XGDTool v1.0.0 | Repackinator v2.0.4 | 
+| ---- | ---- | ---- |
+
+## Current Format Support
+- **Extracted**: i.e. XEX, XBE, HDD Ready
+- **ISO**: Redump, XISO
+- **GOD**: Games On Demand
+- **CCI**: LZ4 Compressed ISO
+- **CSO**: LZ4 Compressed ISO
+- **ZAR**: ZSTD compressed filesystem container
+
+Auto target commands:
+- **autoxbox**
+- **autoxbox360**
+- **autoxemu**
+- **autoxenia**
+
+Notes:
+- CSO and ZAR are currently output targets, not general input reader formats.
+- Attach XBE generation is available through options where supported.
 
 ## CLI Usage
-```XGDTool.exe <output_format> <settings_flags> <input_path> <output_directory>```
+Run from the built app:
 
-or on Linux
+```text
+XGDTool.exe <command> [options]
+```
 
-```XGDTool <output_format> <settings_flags> <input_path> <output_directory>```
+On non-Windows with dotnet:
 
-Settings flags and output directory are optional.
+```text
+dotnet run --project XGDTool -- <command> [options]
+```
 
-### Output format arguments (mutually exclusive)
-- ```--extract```   Extracts all files to a directory
-- ```--xiso```      Creates an Xiso image
-- ```--god```       Creates a Games on Demand image/directory structure
-- ```--cci```       Creates a CCI archive (automatically split if too large for Xbox)
-- ```--cso```       Creates a CSO archive (automatically split if too large for Xbox)
-- ```--zar```       Creates a ZAR archive
-- ```--xbe```       Generates an attach XBE file, does not convert the input file
-- ```--ogxbox```    Automatically choose format and settings for use with OG Xbox
-- ```--xbox360```   Automatically choose format and settings for use with Xbox 360
-- ```--xemu```      Automatically choose format and settings for use with Xemu
-- ```--xenia```     Automatically choose format and settings for use with Xenia
+### Commands
+- `extract`
+Extract image contents to a directory.
+- `xiso`
+Convert to Xbox compatible ISO image.
+- `god`
+Convert to Games on Demand format.
+- `cci`
+Convert to CCI compressed ISO format.
+- `cso`
+Convert to CSO compressed ISO format.
+- `zar`
+Convert to ZAR compressed file format.
+- `autoxbox`
+Automatically choose options suited for original Xbox.
+- `autoxbox360`
+Automatically choose options suited for Xbox 360.
+- `autoxemu`
+Automatically choose options suited for Xemu original Xbox emulator.
+- `autoxenia`
+Automatically choose options suited for Xenia Xbox 360 emulator.
 
-Information:
-- ```--list```      List contents of input file
-- ```--version```   Print version information
-- ```--help```      Print usage information
+### Common Options
+- `--input`, `-i`
+  - Required.
+  - One or more input paths (file or directory depending on command).
+- `--output`, `-o`
+  - Optional.
+  - Output directory. Defaults to current directory.
 
-### Settings flags
-These arguments can be stacked, though not all output formats will use them, in that case the option is ignored. If any conflicting settings are provided (e.g. full/partial scrub), the last one will be used. 
-- ```--partial-scrub```  Scrubs and trims the output image, random padding data is removed.
-- ```--full-scrub```     Completely reauthor the resulting image, this will produce the smallest file possible.
-- ```--split```          Splits the resulting XISO file if it's too large for OG Xbox.
-- ```--rename```         Patches the title field of resulting XBE files to one found in the database.
-- ```--attach-xbe```     Generates an attach XBE file along with the output file.
-- ```--am-patch```       Patches the "Allowed Media" field in resulting XBE files.
-- ```--offline```        Disables online functionality.
-- ```--debug```          Enable debug logging.
-- ```--quiet```          Disable all logging except for warnings and errors.
+### Conversion Options
+- `--scrub`, `-s`
+  - Scrub output image of unused data.
+- `--reauthor`, `-r`
+  - Reauthor filesystem metadata and layout, produces the smallest image possible.
+- `--split`, `-S`
+  - Split output image into 4 GB parts, for use on FATX filesystem.
+- `--xbe`, `-x`
+  - Generate attach XBE output when supported.
+- `--rename`, `-n`
+  - Rename output XBE to disc label or provided name.
+- `--media`, `-m`
+  - Patch XBE allowed media flags.
+- `--icon`, `-c`
+  - Set XBE title icon or GOD icon from a file path.
+
+### Which Options Apply To Which Commands
+- `extract`
+    - `--rename`, `--icon`
+- `xiso`
+    - `--scrub`, `--split`, `--reauthor`, `--xbe`, `--rename`, `--media`, `--icon`
+- `god`
+    - `--scrub`, `--reauthor`, `--rename`, `--icon`
+- `cci`
+    - `--scrub`, `--reauthor`, `--split`, `--xbe`, `--rename`, `--icon`
+- `cso`
+    - `--scrub`, `--reauthor`, `--split`, `--xbe`, `--rename`, `--icon`
+- `zar`
+    - no extra conversion flags
+- auto commands
+    - --input, --output only
+
+### Examples
+Extract files:
+
+```text
+XGDTool.exe extract -i "D:\Games\Game.iso" -o "D:\Out"
+```
+
+Create reauthored XISO:
+
+```text
+XGDTool.exe xiso -i "D:\Games\Game.1.iso" -o "D:\Out" -r
+```
+
+Create split CCI:
+
+```text
+XGDTool.exe cci -i "D:\Games\Game.iso" -o "D:\Out" -S
+```
+
+Auto target for Xenia:
+
+```text
+XGDTool.exe autoxenia -i "D:\Games\Game.iso" -o "D:\Out"
+```
+
+## GUI Usage
+Run with no CLI arguments to launch the GUI.
+
+```text
+dotnet run --project XGDTool
+```
 
 ## Build
-By default this compiles as a GUI, configure Cmake with ```-DENABLE_GUI=OFF``` to compile for CLI. To compile for x86 there would need to be several changes made to the CmakeLists.txt and cmake/seutp_vcpkg.cmake files to accound for that.
+This solution targets .NET 8.
 
-### Windows
-If you have Cmake and MSVC installed, things should be fairly simple. The project has been setup for Windows so that it will automatically download and build all dependancies with vcpkg inside the project directory by configuring with Cmake. This can take a while depending on your internet speeds and PC specs but only has to happen once.
+Requirements:
+- .NET SDK 8.0+
 
-Clone this repo and make a build directory
+Build solution:
 
-```
-git clone --recursive https://github.com/wiredopposite/XGDTool.git
-cd XGDTool
-mkdir build
-cd build
+```text
+dotnet build XGDTool.sln
 ```
 
-Configure as GUI: 
-```
-cmake -S .. -B . -G "Visual Studio 17 2022" -A x64
-``` 
-or as CLI: 
-```
-cmake -S .. -B . -DENABLE_GUI=OFF -G "Visual Studio 17 2022" -A x64
+Run GUI:
+
+```text
+dotnet run --project XGDTool
 ```
 
-Build
-```
-cmake --build . --config Release
+Run CLI:
+
+```text
+dotnet run --project XGDTool -- xiso -i "<input>" -o "<output>"
 ```
 
-### Linux
-This app has not yet been tested extensively for Linux, Linux also has some quirks with wxWidgets so the GUI doesn't look exactly as it should. It's been tested with Clang, in addition to Clang, Make, and Cmake, you'll need to install some other dependancies:
-```
-sudo apt update
-sudo apt-get install pkg-config liblz4-dev libzstd-dev libssl-dev libcurl4-openssl-dev libwxgtk3.0-gtk3-dev
-```
-Clone this repo and make a build directory
-```
-git clone --recursive https://github.com/wiredopposite/XGDTool.git
-cd XGDTool
-mkdir build
-cd build
-```
-Configure as GUI: 
-```
-cmake ..
-``` 
-or as CLI: 
-```
-cmake -DENABLE_GUI=OFF ..
+Publish:
+
+```text
+dotnet publish XGDTool/XGDTool.csproj -c Release
 ```
 
-Build
-```
-make
-```
+## Project Layout
+- XGDTool: app entry point (routes to GUI when no args, CLI when args are present)
+- XGDTool.CLI: System.CommandLine command surface
+- XGDTool.GUI: Avalonia UI
+- XGDTool.Lib: core readers, writers, converters, and format logic
+
+## Status
+The C# rewrite is actively developed and stable for day-to-day use. If you run into an issue, please open an issue with:
+- Input format and command used
+- Full CLI command line
+- Log output or exception text
+- Whether scrub and reauthor were enabled
