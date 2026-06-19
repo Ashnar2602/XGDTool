@@ -18,7 +18,7 @@ public static class Resolver
         (uint TitleId, uint Version, XBE.Region Region), RepackEntry>> XboxOgByIdMain = new(() =>
         {
             if (!File.Exists(XboxOriginalJsonPath))
-                return new Dictionary<(uint, uint, XBE.Region), RepackEntry>();
+                return [];
             var entries = JsonSerializer.Deserialize<List<RepackEntry>>(
                 File.ReadAllText(XboxOriginalJsonPath)) ?? [];
             return entries
@@ -68,33 +68,28 @@ public static class Resolver
     private static readonly Lazy<Dictionary<uint, MetaDataEntry>> Xbox360ById = new(() =>
         {
             if (!File.Exists(Xbox360JsonPath))
-                return new Dictionary<uint, MetaDataEntry>();
+                return [];
             var root = JsonSerializer.Deserialize<MetaDataArray>(
                 File.ReadAllText(Xbox360JsonPath)) ?? new MetaDataArray();
             return root.Items.ToDictionary(e => Convert.ToUInt32(e.TitleId, 16));
         });
 
-    private static readonly HashSet<char> InvalidFatChars =
-        [
-            '<', '>', ':', '"', '/', '\\', '|', '?', '*'
-        ];
-
     public static Info Resolve(Image.IReader reader)
     {
-        var headerTool = new HeaderTool();
+        var headerTool = IHeaderTool.Create(reader.Platform);
         headerTool.Initialize(reader);
 
-        if (headerTool.Platform == Platform.Xbox360)
-            return InfoFromXbox360(reader, headerTool);
-        else if (headerTool.Platform == Platform.Xbox)
-            return InfoFromXboxOriginal(reader, headerTool);
+        if (headerTool is Exe.HeaderTools.Xex xexTool)
+            return InfoFromXbox360(reader, xexTool);
+        else if (headerTool is Exe.HeaderTools.Xbe xbeTool)
+            return InfoFromXboxOriginal(reader, xbeTool);
         else
             throw new NotSupportedException($"Unsupported platform: {headerTool.Platform}");
     }
 
-    private static Info InfoFromXbox360(Image.IReader reader, HeaderTool headerTool)
+    private static Info InfoFromXbox360(Image.IReader reader, Exe.HeaderTools.Xex headerTool)
     {
-        var exe = headerTool.XexInfo.ExecutionInfo;
+        var exe = headerTool.ExecutionInfo;
         string name;
 
         if (!Xbox360ById.Value.TryGetValue(exe.TitleId, out var e) || e == null)
@@ -103,7 +98,7 @@ public static class Resolver
             name = e.Name;
 
         var info = new Info(headerTool);
-        var baseFsName = SanitizeFatName(name);
+        var baseFsName = FATX.SanitizeFileName(name);
 
         info.TitleName = name;
         info.FolderName = baseFsName;
@@ -115,26 +110,26 @@ public static class Resolver
             ? ("(Disc " + exe.DiscNumber.ToString() + ")") 
             : string.Empty;
 
-        if (info.FolderName.Length + discStr.Length > XISO.MAX_FILENAME_CHARS_MAX)
-            info.FolderName = info.FolderName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - discStr.Length);
+        if (info.FolderName.Length + discStr.Length > FATX.FILENAME_CHARS_MAX)
+            info.FolderName = info.FolderName[0..^discStr.Length];
 
-        if (info.ImageName.Length + discStr.Length > XISO.MAX_FILENAME_CHARS_MAX - 4 - 2)
-            info.ImageName = info.ImageName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - 4 - 2 - discStr.Length);
+        if (info.ImageName.Length + discStr.Length > FATX.FILENAME_CHARS_MAX - 4 - 2)
+            info.ImageName = info.ImageName[0..^(4 + 2 + discStr.Length)];
 
-        if (info.GodFolderName.Length + titleIdStr.Length > XISO.MAX_FILENAME_CHARS_MAX)
-            info.GodFolderName = info.GodFolderName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - titleIdStr.Length);
+        if (info.GodFolderName.Length + titleIdStr.Length > FATX.FILENAME_CHARS_MAX)
+            info.GodFolderName = info.GodFolderName[0..^titleIdStr.Length];
 
         info.FolderName += discStr;
         info.ImageName += discStr;
         info.GodFolderName += titleIdStr;
-        info.GodUniqueName = CreateGodUniqueuName(exe);
+        info.GodUniqueName = CreateGodUniqueName(exe);
 
         return info;
     }
 
-    private static Info InfoFromXboxOriginal(Image.IReader reader, HeaderTool headerTool)
+    private static Info InfoFromXboxOriginal(Image.IReader reader, Exe.HeaderTools.Xbe headerTool)
     {
-        var cert = headerTool.XbeInfo.CertificateHeader;
+        var cert = headerTool.CertificateHeader;
         var key = (cert.TitleID, cert.Version, cert.GameRegion);
 
         if (!XboxOgByIdMain.Value.TryGetValue(key, out var e) || e == null)
@@ -142,17 +137,17 @@ public static class Resolver
 
         var info = new Info(headerTool);
         info.TitleName = e.XbeTitle;
-        info.FolderName = SanitizeFatName(e.FolderName);
-        info.ImageName = SanitizeFatName(e.IsoName);
+        info.FolderName = FATX.SanitizeFileName(e.FolderName);
+        info.ImageName = FATX.SanitizeFileName(e.IsoName);
 
-        var baseName = SanitizeFatName(info.TitleName.Split(" (")[0]);
+        var baseName = FATX.SanitizeFileName(info.TitleName.Split(" (")[0]);
         var titleIdStr = " [" + info.TitleId.ToString("X8") + "]";
 
         if (baseName.Length + titleIdStr.Length > 31)
-            baseName = baseName.Substring(0, 31);
+            baseName = baseName[0..31];
 
         info.GodFolderName = baseName + titleIdStr;
-        info.GodUniqueName = CreateGodUniqueuName(info.XexExecutionInfo);
+        info.GodUniqueName = CreateGodUniqueName(info.XexExecutionInfo);
 
         return info;
     }
@@ -176,17 +171,17 @@ public static class Resolver
         var rawName = GetNameFromFile(reader).Split(" (")[0];
 
         e.XbeTitle = rawName;
-        e.FolderName = SanitizeFatName(rawName);
+        e.FolderName = FATX.SanitizeFileName(rawName);
         e.IsoName = e.FolderName;
 
         if (e.XbeTitle.Length + rSuffix.Length > XBE.TITLE_NAME_CHARS_MAX)
-            e.XbeTitle = rawName.Substring(0, XBE.TITLE_NAME_CHARS_MAX - rSuffix.Length);
+            e.XbeTitle = rawName[0..^rSuffix.Length];
 
-        if (e.FolderName.Length + rSuffix.Length > XISO.MAX_FILENAME_CHARS_MAX)
-            e.FolderName = rawName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - rSuffix.Length);
+        if (e.FolderName.Length + rSuffix.Length > FATX.FILENAME_CHARS_MAX)
+            e.FolderName = rawName[0..^rSuffix.Length];
 
-        if (e.IsoName.Length + rSuffix.Length > XISO.MAX_FILENAME_CHARS_MAX - 4 - 2)
-            e.IsoName = rawName.Substring(0, XISO.MAX_FILENAME_CHARS_MAX - 4 - 2 - rSuffix.Length);
+        if (e.IsoName.Length + rSuffix.Length > FATX.FILENAME_CHARS_MAX - 4 - 2)
+            e.IsoName = rawName[0..^(4 + 2 + rSuffix.Length)];
 
         e.XbeTitle += rSuffix;
         e.FolderName += rSuffix;
@@ -195,7 +190,7 @@ public static class Resolver
         return e;
     }
 
-    private static string CreateGodUniqueuName(XEX.ExecutionInfo exeInfo)
+    private static string CreateGodUniqueName(XEX.ExecutionInfo exeInfo)
     {
         using var ms = new MemoryStream();
         using var bw = new BinaryWriter(ms);
@@ -207,7 +202,7 @@ public static class Resolver
 
         byte[] hash = SHA1.HashData(ms.ToArray());
 
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
 
         foreach (byte b in hash)
             sb.Append(b.ToString("X2"));
@@ -242,12 +237,5 @@ public static class Resolver
             XBE.Region.DBG => "DBG",
             _ => "UNK"
         };
-    }
-
-    private static string SanitizeFatName(string name)
-    {
-        return new string(name
-            .Where(c => c >= 32 && !InvalidFatChars.Contains(c))
-            .ToArray());
     }
 }

@@ -5,7 +5,7 @@ namespace XGDTool.Lib.Title;
 public class MetaDataArray
 {
     [JsonPropertyName("Items")]
-    public List<MetaDataEntry> Items { get; set; } = new List<MetaDataEntry>();
+    public List<MetaDataEntry> Items { get; set; } = [];
     
     [JsonPropertyName("Count")]
     public int Count;
