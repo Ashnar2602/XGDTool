@@ -17,8 +17,8 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 
     private string PlatformString => TitleInfo.Platform switch
         {
-            Platform.Xbox => GOD.Type.OriginalXbox.ToString("X8"),
-            Platform.Xbox360 => GOD.Type.GamesOnDemand.ToString("X8"),
+            Platform.Xbox => ((uint)GOD.Type.OriginalXbox).ToString("X8"),
+            Platform.Xbox360 => ((uint)GOD.Type.GamesOnDemand).ToString("X8"),
             _ => throw new InvalidOperationException(
                 $"Unsupported platform: {TitleInfo.Platform}")
         };
