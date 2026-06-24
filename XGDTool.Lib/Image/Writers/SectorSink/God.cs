@@ -41,28 +41,33 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
 
     public async Task WriteSectorsAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
     {
-        if (!XDVDFS.IsSectorAligned(buffer.Length))
-            throw new ArgumentException(
-                $"Buffer length must be a multiple of {XDVDFS.SECTOR_SIZE}", nameof(buffer));
-
         await WriteLock.WaitAsync(ct);
         try
         {
-            var (stream, offset) = RemapSector(startSector);
-
-            stream.Seek(offset, SeekOrigin.Begin);
-            await stream.WriteAsync(buffer.Slice(0, XDVDFS.SECTOR_SIZE), ct);
-
-            if (buffer.Length > XDVDFS.SECTOR_SIZE)
-                await WriteSectorsAsync(
-                    startSector + 1,
-                    buffer.Slice(XDVDFS.SECTOR_SIZE),
-                    ct);
+            await WriteSectorsLockedAsync(startSector, buffer, ct);
         }
         finally
         {
             WriteLock.Release();
         }
+    }
+
+    private async Task WriteSectorsLockedAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
+    {
+        if (!XDVDFS.IsSectorAligned(buffer.Length))
+            throw new ArgumentException(
+                $"Buffer length must be a multiple of {XDVDFS.SECTOR_SIZE}", nameof(buffer));
+
+        var (stream, offset) = RemapSector(startSector);
+
+        stream.Seek(offset, SeekOrigin.Begin);
+        await stream.WriteAsync(buffer.Slice(0, XDVDFS.SECTOR_SIZE), ct);
+
+        if (buffer.Length > XDVDFS.SECTOR_SIZE)
+            await WriteSectorsLockedAsync(
+                startSector + 1,
+                buffer.Slice(XDVDFS.SECTOR_SIZE),
+                ct);
     }
 
     public async Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
@@ -132,7 +137,7 @@ internal class God(IWriterOptions options, Title.Info titleInfo) : ISectorSink
                 throw new InvalidOperationException(
                     $"Stream length must be a multiple of {GOD.BLOCK_SIZE}: {stream.Name}");
 
-            var blocksRemaining = GOD.AlignUpToBlock(stream.Length);
+            var blocksRemaining = GOD.BlockCount(stream.Length);
             var subHashTableCount = GOD.SubHashTableCount(stream.Length);
 
             var masterHashTable = new byte[subHashTableCount * SHA1.HashSizeInBytes];

@@ -37,23 +37,28 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
         await WriteLock.WaitAsync(ct);
         try
         {
-            var (stream, offset) = GetStreamForSector(startSector);
-            var remaingFileBytes = Split ? (XDVDFS.SPLIT_MARGIN - offset) : long.MaxValue;
-            var writeCount = (int)Math.Min(buffer.Length, remaingFileBytes);
-
-            stream.Seek(offset, SeekOrigin.Begin);
-            await stream.WriteAsync(buffer.Slice(0, writeCount), ct);
-
-            if (writeCount < buffer.Length)
-                await WriteSectorsAsync(
-                    startSector + XDVDFS.SectorCount(writeCount),
-                    buffer.Slice(writeCount),
-                    ct);
+            await WriteSectorsLockedAsync(startSector, buffer, ct);
         }
         finally
         {
             WriteLock.Release();
         }
+    }
+
+    private async Task WriteSectorsLockedAsync(uint startSector, ReadOnlyMemory<byte> buffer, CancellationToken ct)
+    {
+        var (stream, offset) = GetStreamForSector(startSector);
+        var remaingFileBytes = Split ? (XDVDFS.SPLIT_MARGIN - offset) : long.MaxValue;
+        var writeCount = (int)Math.Min(buffer.Length, remaingFileBytes);
+
+        stream.Seek(offset, SeekOrigin.Begin);
+        await stream.WriteAsync(buffer.Slice(0, writeCount), ct);
+
+        if (writeCount < buffer.Length)
+            await WriteSectorsLockedAsync(
+                startSector + XDVDFS.SectorCount(writeCount),
+                buffer.Slice(writeCount),
+                ct);
     }
 
     public async Task<List<string>> FinalizeImage(IProgress<Converter.Progress>? progress = null, CancellationToken ct = default)
@@ -70,7 +75,7 @@ internal class Xiso(IWriterOptions options, Title.Info titleInfo) : ISectorSink
             {
                 var padding = new byte[256 * XDVDFS.SECTOR_SIZE];
                 var writeCount = (int)Math.Min(padding.Length, TotalOutSize - totalWritten);
-                await WriteSectorsAsync(XDVDFS.SectorIndex(totalWritten), padding.AsMemory(0, writeCount), ct);
+                await WriteSectorsLockedAsync(XDVDFS.SectorIndex(totalWritten), padding.AsMemory(0, writeCount), ct);
                 totalWritten += writeCount;
             }
 
