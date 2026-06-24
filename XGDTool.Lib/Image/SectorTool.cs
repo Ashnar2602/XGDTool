@@ -111,7 +111,7 @@ public class SectorTool(IReader reader)
 
             var rEntry = Reader.ReadEntry(cPos, readBuf);
 
-            if (rEntry.LeftOffset == XDVDFS.PAD_WORD)
+            if (rEntry.LeftOffset == XDVDFS.PAD_WORD && rEntry.RightOffset == XDVDFS.PAD_WORD)
                 continue;
 
             if (rEntry.LeftOffset != 0)
