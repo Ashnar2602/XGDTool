@@ -35,9 +35,9 @@ internal class Options
         Description = "Generate an attach XBE file for the output file(s)."
     };
 
-    public Option<bool?> SkipSystemUpdate = new("--systemupdate", "-u")
+    public Option<bool?> SkipSystemUpdate = new("--sysupdate", "-u")
     {
-        Description = "Skip the system update files for Xbox 360 images."
+        Description = "Skip the '$SystemUpdate' directory for Xbox 360 images."
     };
 
     public Option<string?> Rename = new("--rename", "-n")

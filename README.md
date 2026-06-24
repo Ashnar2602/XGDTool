@@ -5,17 +5,25 @@ Version 2.0 is a full rewrite of the original C++ codebase, with the goal of kee
 
 ## Highlights
 - Fast conversion pipeline between Xbox disc formats.
-- All conversion happens in memory, zero temp files are required.
+- All conversion happens in memory, zero temp files are required. Each input format is written directly to the chosen output format.
 - Low memory footprint, the CLI app usually runs at around 30MB total.
 - Comprehensive built-in title database for accurate renaming, v2.0 does away with online database lookup.
-- Unified app entry point that supports both GUI and CLI workflows.
+- Unified app entry point that supports both GUI and CLI launch.
 - Reauthor mode for compact output image layouts.
 - Scrub mode to clear and trim unused sectors.
 - Multithreaded CCI and CSO compression.
 - Batch input handling from one or more paths.
 - Automatic input format detection and validation.
-- Automatic detection of split file parts with numbered suffixes.
+- Automatic detection of split file parts with numbered suffixes (name.1.iso name.2.iso etc.).
 - Handles low-level format details like sector-level transforms, directory metadata authoring, and container conversion.
+
+## Current Format Support
+- **Extracted**: i.e. XEX, XBE, HDD Ready
+- **ISO**: Redump, XISO
+- **GOD**: Games On Demand
+- **CCI**: LZ4 Compressed XISO
+- **CSO**: LZ4 Compressed XISO
+- **ZAR**: ZSTD compressed filesystem container
 
 ## Performance
 XGDTool version 2.0 is significantly faster than the legacy 1.0 version, especially for compression-heavy outputs and unused sector detection (scrubbing).
@@ -28,24 +36,7 @@ Conducted with an AMD Ryzen 7 5800X (3.80 GHz, 8-Core), 3600 MT/s DDR4, NMVe PCI
 - **Halo: CE (Rev 2)** - Redump ISO to CCI, Scrub/Trim
 | XGDTool v2.0.0 | XGDTool v1.0.0 | Repackinator v2.0.4 | 
 | ---- | ---- | ---- |
-
-## Current Format Support
-- **Extracted**: i.e. XEX, XBE, HDD Ready
-- **ISO**: Redump, XISO
-- **GOD**: Games On Demand
-- **CCI**: LZ4 Compressed ISO
-- **CSO**: LZ4 Compressed ISO
-- **ZAR**: ZSTD compressed filesystem container
-
-Auto target commands:
-- **autoxbox**
-- **autoxbox360**
-- **autoxemu**
-- **autoxenia**
-
-Notes:
-- CSO and ZAR are currently output targets, not general input reader formats.
-- Attach XBE generation is available through options where supported.
+| 0 | 0 | 0 |
 
 ## CLI Usage
 Run from the built app:
@@ -96,31 +87,35 @@ Automatically choose options suited for Xenia Xbox 360 emulator.
 - `--reauthor`, `-r`
   - Reauthor filesystem metadata and layout, produces the smallest image possible.
 - `--split`, `-S`
-  - Split output image into 4 GB parts, for use on FATX filesystem.
+  - Split output image into 4 GB parts, for use on FATX filesystem. 
+  - **Note:** Auto-enabled for CCI and CSO formats.
 - `--xbe`, `-x`
-  - Generate attach XBE output when supported.
+  - Generate attach XBE output where supported.
 - `--rename`, `-n`
   - Rename output XBE to disc label or provided name.
+  - **Note:** Only works when using `extract` command or `--xbe` option
 - `--media`, `-m`
   - Patch XBE allowed media flags.
+- `--sysupdate`, `-u`
+  - Skip writing the `$SystemUpdate` directory to Xbox 360 output.
 - `--icon`, `-c`
   - Set XBE title icon or GOD icon from a file path.
 
 ### Which Options Apply To Which Commands
 - `extract`
-    - `--rename`, `--icon`
+    - `--rename`, `--icon`, `--media`, `--sysupdate`
 - `xiso`
-    - `--scrub`, `--split`, `--reauthor`, `--xbe`, `--rename`, `--media`, `--icon`
+    - `--scrub`, `--split`, `--reauthor`, `--xbe`, `--rename`, `--icon`, `--sysupdate`
 - `god`
-    - `--scrub`, `--reauthor`, `--rename`, `--icon`
+    - `--scrub`, `--reauthor`, `--rename`, `--icon`, `--sysupdate`
 - `cci`
-    - `--scrub`, `--reauthor`, `--split`, `--xbe`, `--rename`, `--icon`
+    - `--scrub`, `--reauthor`, `--xbe`, `--rename`, `--icon`
 - `cso`
-    - `--scrub`, `--reauthor`, `--split`, `--xbe`, `--rename`, `--icon`
+    - `--scrub`, `--reauthor`, `--xbe`, `--rename`, `--icon`
 - `zar`
-    - no extra conversion flags
+    - `--sysupdate`
 - auto commands
-    - --input, --output only
+    - `--input`, `--output` only
 
 ### Examples
 Extract files:
