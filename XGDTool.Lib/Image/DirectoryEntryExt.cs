@@ -9,8 +9,10 @@ public class DirectoryEntryExt
     public long StartSector;
     public long FileSize;
     public XDVDFS.DirAttributes Attributes;
+
     public string FileName = "";
     public string FilePath = "";
+
     public long RelativeOffset;
     public long LROffsetFromParent;
 

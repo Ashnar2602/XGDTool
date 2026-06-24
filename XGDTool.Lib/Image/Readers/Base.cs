@@ -65,8 +65,8 @@ internal abstract class Base(IReadOnlyList<string> files) : IReader
             var entryPos = ImageOffset + cEntry.RelativeOffset + (cEntry.LROffsetFromParent * 4);
             var rEntry = ReadEntry(entryPos, readBuf);
 
-            if (rEntry.LeftOffset == XDVDFS.PAD_BYTE)
-                continue;
+            if (rEntry.LeftOffset == 0xFFFF && rEntry.RightOffset == 0xFFFF)
+                continue; // padding entry at end of sector, not a real node
 
             if (rEntry.LeftOffset != 0)
             {
