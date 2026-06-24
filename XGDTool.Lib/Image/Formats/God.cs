@@ -11,6 +11,7 @@ public static class GOD
     }
 
     public const int BLOCK_SIZE = 0x1000;
+    public const int BLOCK_SHIFT = 12;
     public const int BLOCKS_PER_PART = 41616;
     public const int DATA_BLOCKS_PER_SHT = 204;
     public const int SHT_PER_MHT = 203;
@@ -19,21 +20,22 @@ public static class GOD
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int SubHashTableCount(long size)
     {
-        var blocksRemaining = AlignUpToBlock(size);
+        var blockCount = BlockCount(size);
         var count =
-            (blocksRemaining - 1) /
+            (blockCount - 1) /
             (DATA_BLOCKS_PER_SHT + 1) +
-            ((blocksRemaining - 1) % (DATA_BLOCKS_PER_SHT + 1) > 0 ? 1 : 0);
+            ((blockCount - 1) % (DATA_BLOCKS_PER_SHT + 1) > 0 ? 1 : 0);
         return (int)count; 
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint AlignUpToBlock(long value) => (uint)((value + BLOCK_SIZE - 1) & ~(BLOCK_SIZE - 1));
+    public static long AlignUpToBlock(long value) => (value + BLOCK_SIZE - 1) & ~(BLOCK_SIZE - 1);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint AlignDownToBlock(long value) => (uint)(value & ~(BLOCK_SIZE - 1));
+    public static long AlignDownToBlock(long value) => value & ~(BLOCK_SIZE - 1);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static uint BlockCount(long size) => (uint)(AlignUpToBlock(size) >> BLOCK_SHIFT);
+
+    public static uint BlockIndex(long offset) => (uint)(offset >> BLOCK_SHIFT);
+
     public static bool IsBlockAligned(long value) => (value & (BLOCK_SIZE - 1)) == 0;
 
     public static byte[] GetLiveHeaderTemplate()
