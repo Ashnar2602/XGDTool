@@ -46,8 +46,17 @@ public class ConvertTests : IDisposable
         Assert.NotEmpty(outputPaths);
         foreach (var path in outputPaths)
         {
-            Assert.True(File.Exists(path), $"Expected output file to exist: {path}");
-            Assert.True(new FileInfo(path).Length > 0, $"Expected output file to be non-empty: {path}");
+            if (Directory.Exists(path))
+            {
+                var files = Directory.GetFiles(path, "*", SearchOption.AllDirectories);
+                Assert.True(files.Length > 0, $"Expected output directory to be non-empty: {path}");
+                Assert.True(files.Any(f => new FileInfo(f).Length > 0), $"Expected at least one non-empty file in: {path}");
+            }
+            else
+            {
+                Assert.True(File.Exists(path), $"Expected output file to exist: {path}");
+                Assert.True(new FileInfo(path).Length > 0, $"Expected output file to be non-empty: {path}");
+            }
         }
     }
 
