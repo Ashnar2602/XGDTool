@@ -174,38 +174,66 @@ bool InputHelper::is_part_2_file(const std::filesystem::path& path)
     return false;
 }
 
-std::filesystem::path InputHelper::get_output_path(const std::filesystem::path& out_directory, TitleHelper& title_helper)
+std::filesystem::path InputHelper::get_output_path(const std::filesystem::path& out_directory, TitleHelper& title_helper, const std::filesystem::path& in_path)
 {
     std::filesystem::path out_path = out_directory;
+
+    std::string name;
+    if (output_settings_.keep_name && !in_path.empty())
+    {
+        name = in_path.stem().string();
+        if (in_path.has_extension())
+        {
+            std::string ext = in_path.extension().string();
+            if (ext == ".1" || ext == ".2" || ext == ".01" || ext == ".02")
+            {
+                name = in_path.stem().stem().string();
+            }
+        }
+    }
+    else
+    {
+        name = title_helper.iso_name();
+    }
+
+    std::string folder = (output_settings_.keep_name && !in_path.empty()) ? name : title_helper.folder_name();
 
     switch (output_settings_.file_type)
     {
         case FileType::DIR:
-            out_path /= title_helper.folder_name();
+            out_path /= folder;
             break;
         case FileType::ISO:
             if (!output_settings_.xemu_paths) 
             {
-                out_path /= title_helper.folder_name();
+                out_path /= folder;
             } 
-            out_path /= title_helper.iso_name() + ".iso";
+            out_path /= name + ".iso";
             break;
         case FileType::CCI:
-            out_path /= title_helper.folder_name();
-            out_path /= title_helper.iso_name() + ".cci";
+            out_path /= folder;
+            out_path /= name + ".cci";
             break;
         case FileType::CSO:
-            out_path /= title_helper.folder_name();
-            out_path /= title_helper.iso_name() + ".cso";
+            out_path /= folder;
+            out_path /= name + ".cso";
             break;
         case FileType::ZAR:
-            out_path /= title_helper.iso_name() + ".zar";
+            out_path /= name + ".zar";
             break;
         case FileType::XBE:
             out_path /= "default.xbe";
             break;
         case FileType::GoD:
-            out_path /= title_helper.god_folder_name();
+            if (output_settings_.keep_name && !in_path.empty())
+            {
+                uint32_t tid = title_helper.xex_cert().title_id ? title_helper.xex_cert().title_id : title_helper.xbe_cert().title_id;
+                out_path /= name + " [" + StringUtils::uint32_to_hex_string(tid) + "]";
+            }
+            else
+            {
+                out_path /= title_helper.god_folder_name();
+            }
             break;
         default:
             throw XGDException(ErrCode::MISC, HERE(), "Invalid output file type");

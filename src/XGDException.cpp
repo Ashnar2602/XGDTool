@@ -1,4 +1,5 @@
 #include "XGDException.h"
+#include "XGDLog.h"
 
 const XGDException::ErrorMap XGDException::error_map[] = {
     { Code::NONE,         "No error" },
@@ -36,5 +37,7 @@ void XGDException::log_error(Code code, const std::string& info, const std::stri
         }
     }
     error_message += " in " + info + (message.empty() ? "" : (": \n" + message));
+    full_message_ = error_message;
+    XGDLog(Error) << error_message << XGDLog::Endl;
     std::cerr << "\n" << error_message << std::endl;
 }

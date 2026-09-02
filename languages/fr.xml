@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">XGDTool</string>
+    <string name="notification_title">XGDTool - Traitement Terminé</string>
+    <string name="batch_completed_all">Conversion terminée : {0} sur {1} réussis</string>
+    <string name="batch_completed_with_errors">Conversion terminée : {0} sur {1} réussis, {2} échoués</string>
+    
+    <string name="dialog_title_success">Traitement Terminé</string>
+    <string name="dialog_title_warning">Traitement Terminé avec des Erreurs</string>
+    <string name="dialog_msg_all_ok">Tous les {0} fichiers ont été traités avec succès !</string>
+    <string name="dialog_msg_single_ok">Fichier traité avec succès !</string>
+    <string name="dialog_msg_errors">Traitement terminé avec des erreurs :\n\n• Réussis : {0}\n• Échoués : {1}\n\nConsultez le fichier journal pour plus de détails.</string>
+    <string name="dialog_msg_cancelled">Traitement annulé par l'utilisateur.\n\n• Terminés : {0}\n• Interrompus/Échoués : {1}</string>
+    
+    <string name="btn_open_log">Ouvrir le Journal</string>
+    <string name="btn_close">Fermer</string>
+    <string name="btn_ok">OK</string>
+
+    <string name="label_input_path">Chemin d'entrée :</string>
+    <string name="label_output_dir">Dossier de sortie :</string>
+    <string name="label_file_list">Liste des fichiers :</string>
+    <string name="btn_browse">Parcourir</string>
+    <string name="col_format">Format</string>
+    <string name="col_filename">Nom de fichier</string>
+    <string name="label_status">État :</string>
+    <string name="label_current_progress">Progression actuelle :</string>
+    <string name="label_total_progress">Progression totale :</string>
+
+    <string name="section_output_format">Format de sortie :</string>
+    <string name="section_scrub">Nettoyage (Scrub) :</string>
+    <string name="section_settings">Paramètres :</string>
+    <string name="section_language">Langue :</string>
+
+    <string name="scrub_none">Aucun</string>
+    <string name="scrub_partial">Partiel</string>
+    <string name="scrub_full">Complet</string>
+
+    <string name="setting_split">Diviser le XISO</string>
+    <string name="setting_attach_xbe">Générer Attach XBE</string>
+    <string name="setting_am_patch">Patcher Allowed Media XBE</string>
+    <string name="setting_rename_xbe">Renommer le titre XBE</string>
+    <string name="setting_offline_mode">Mode hors ligne</string>
+    <string name="setting_keep_name">Conserver le nom d'origine</string>
+
+    <string name="lang_system">Système</string>
+    <string name="lang_english">English</string>
+    <string name="lang_italian">Italiano</string>
+    <string name="lang_german">Deutsch</string>
+    <string name="lang_french">Français</string>
+    <string name="lang_spanish">Español</string>
+    <string name="lang_portuguese">Português</string>
+
+    <string name="btn_process_all">Tout traiter</string>
+    <string name="btn_pause">Pause</string>
+    <string name="btn_resume">Reprendre</string>
+    <string name="btn_cancel">Annuler</string>
+
+    <string name="status_idle">En attente</string>
+    <string name="status_paused">En pause</string>
+    <string name="status_processing">Traitement des fichiers en cours</string>
+    <string name="status_complete">Traitement terminé</string>
+    <string name="status_cancelled">Traitement annulé</string>
+
+    <string name="choose_selection_type_title">Choisissez le type de sélection :</string>
+    <string name="choose_selection_type_caption">Sélectionner</string>
+    <string name="choice_select_files">Sélectionner des fichiers</string>
+    <string name="choice_select_dir">Sélectionner un dossier</string>
+    <string name="dialog_select_files_title">Sélectionner un ou plusieurs fichiers</string>
+    <string name="dialog_select_dir_title">Sélectionner un dossier</string>
+    <string name="dialog_select_out_dir_title">Sélectionner le dossier de destination (GoD/Jeu/Batch)</string>
+    <string name="wildcard_xbox_images">Fichiers images Xbox (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Tous les fichiers (*.*)|*.*</string>
+    <string name="msg_no_input_files">Aucun fichier d'entrée sélectionné</string>
+    <string name="msg_no_output_dir">Aucun dossier de sortie sélectionné</string>
+    <string name="msg_no_valid_files">Aucun fichier valide trouvé dans l'emplacement sélectionné</string>
+
+    <string name="tooltip_browse_input">Sélectionnez le fichier ou dossier à traiter</string>
+    <string name="tooltip_browse_output">Sélectionnez le dossier de destination des fichiers traités</string>
+    <string name="tooltip_fmt_iso">Crée une image XISO</string>
+    <string name="tooltip_fmt_god">Crée une image Games on Demand (GoD)</string>
+    <string name="tooltip_fmt_cci">Crée une archive compressée CCI</string>
+    <string name="tooltip_fmt_cso">Crée une archive compressée CSO</string>
+    <string name="tooltip_fmt_zar">Crée une archive compressée ZAR</string>
+    <string name="tooltip_fmt_extract">Extrait tous les fichiers dans un dossier</string>
+    <string name="tooltip_auto_ogxbox">Choisit automatiquement le format et réglages pour Xbox originale</string>
+    <string name="tooltip_auto_xbox360">Choisit automatiquement le format et réglages pour Xbox 360</string>
+    <string name="tooltip_auto_xemu">Choisit automatiquement le format et réglages pour Xemu</string>
+    <string name="tooltip_auto_xenia">Choisit automatiquement le format et réglages pour Xenia</string>
+    <string name="tooltip_scrub_none">Aucun nettoyage, seule la partition vidéo est retirée si présente</string>
+    <string name="tooltip_scrub_partial">Nettoie et tronque l'image en supprimant les données de remplissage aléatoires</string>
+    <string name="tooltip_scrub_full">Reconstruit entièrement l'image pour obtenir la taille minimale</string>
+    <string name="tooltip_split">Divise le fichier XISO s'il dépasse la taille maximale pour OG Xbox</string>
+    <string name="tooltip_attach_xbe">Génère un fichier attach XBE avec le fichier de sortie</string>
+    <string name="tooltip_am_patch">Applique le patch au champ Allowed Media dans les fichiers XBE</string>
+    <string name="tooltip_rename_xbe">Remplace le champ titre du XBE avec celui trouvé dans la base de données</string>
+    <string name="tooltip_offline_mode">Désactive les fonctions en ligne, produisant des noms moins précis</string>
+    <string name="tooltip_keep_name">Conserve le nom du fichier d'entrée d'origine (évite les écrasements pour les jeux multi-disques)</string>
+    <string name="tooltip_lang_system">Utiliser la langue par défaut du système</string>
+    <string name="tooltip_lang_english">Définir la langue sur Anglais</string>
+    <string name="tooltip_lang_italian">Définir la langue sur Italien</string>
+    <string name="tooltip_lang_german">Définir la langue sur Allemand</string>
+    <string name="tooltip_lang_french">Définir la langue sur Français</string>
+    <string name="tooltip_lang_spanish">Définir la langue sur Espagnol</string>
+    <string name="tooltip_lang_portuguese">Définir la langue sur Portugais</string>
+    <string name="tooltip_process_all">Traiter tous les fichiers de la liste</string>
+    <string name="tooltip_pause">Mettre en pause le traitement</string>
+    <string name="tooltip_cancel">Le traitement s'arrêtera après la fin du fichier en cours</string>
+
+    <string name="cli_opt_input_path">Chemin d'entrée</string>
+    <string name="cli_opt_output_dir">Dossier de sortie</string>
+    <string name="cli_group_output_format">Format de Sortie</string>
+    <string name="cli_group_settings">Paramètres</string>
+    <string name="cli_flag_extract">Extrait tous les fichiers dans un dossier</string>
+    <string name="cli_flag_xiso">Crée une image XISO</string>
+    <string name="cli_flag_god">Crée une image Games on Demand (GoD)</string>
+    <string name="cli_flag_cci">Crée une archive compressée CCI</string>
+    <string name="cli_flag_cso">Crée une archive compressée CSO</string>
+    <string name="cli_flag_zar">Crée une archive compressée ZAR</string>
+    <string name="cli_flag_xbe">Génère un fichier attach XBE</string>
+    <string name="cli_flag_ogxbox">Choisit automatiquement le format et réglages pour OG Xbox</string>
+    <string name="cli_flag_xbox360">Choisit automatiquement le format et réglages pour Xbox 360</string>
+    <string name="cli_flag_xemu">Choisit automatiquement le format et réglages pour Xemu</string>
+    <string name="cli_flag_xenia">Choisit automatiquement le format et réglages pour Xenia</string>
+    <string name="cli_flag_list">Liste le contenu des fichiers dans l'image d'entrée</string>
+    <string name="cli_flag_help">Affiche ce message d'aide et quitte</string>
+    <string name="cli_flag_partial_scrub">Nettoie et tronque l'image en supprimant le padding aléatoire</string>
+    <string name="cli_flag_full_scrub">Reconstruit entièrement l'image pour la plus petite taille possible</string>
+    <string name="cli_flag_split">Divise le fichier XISO résultant si trop grand pour OG Xbox</string>
+    <string name="cli_flag_rename">Patche le titre du fichier XBE avec celui de la base de données</string>
+    <string name="cli_flag_attach_xbe">Génère un fichier attach XBE avec le fichier de sortie</string>
+    <string name="cli_flag_am_patch">Patche le champ Allowed Media dans les fichiers XBE</string>
+    <string name="cli_flag_offline">Désactive les fonctionnalités en ligne</string>
+    <string name="cli_flag_keep_name">Conserve le nom du fichier d'origine au lieu du titre de la base de données</string>
+    <string name="cli_flag_lang">Spécifie la langue de l'interface (ex. 'fr', 'en', 'it', 'de', 'es', 'pt', 'system')</string>
+    <string name="cli_flag_debug">Active la journalisation de débogage</string>
+    <string name="cli_flag_quiet">Désactive tous les journaux sauf avertissements et erreurs</string>
+
+    <string name="cli_msg_input_not_exist">Le chemin d'entrée n'existe pas : {0}</string>
+    <string name="cli_msg_failed_input">Échec du traitement de l'entrée : {0}</string>
+    <string name="cli_msg_finished">Traitement des fichiers d'entrée terminé.</string>
+    <string name="cli_msg_processing">Traitement en cours : {0}</string>
+    <string name="cli_msg_success_created">Créé avec succès : {0}</string>
+    <string name="cli_msg_files_in_image">Fichiers dans l'image :</string>
+
+    <string name="stage_writing_zar">Écriture de l'archive ZAR</string>
+    <string name="stage_writing_xiso">Écriture du XISO</string>
+    <string name="stage_writing_god">Écriture des données GoD</string>
+    <string name="stage_writing_cso">Écriture du fichier CSO</string>
+    <string name="stage_writing_cci">Écriture de l'archive CCI</string>
+    <string name="stage_extracting">Extraction des fichiers</string>
+</resources>

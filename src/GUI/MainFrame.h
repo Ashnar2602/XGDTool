@@ -32,6 +32,7 @@ public:
 
     static void update_progress_bar(uint64_t current, uint64_t total);
     static void update_status_field(const std::string status);
+    void update_ui_language();
 
 private:
     enum class Status { IDLE, PROCESSING, PAUSED, CANCELED };
@@ -74,6 +75,7 @@ private:
         wxCheckBox* allowed_media_xbe{nullptr};
         wxCheckBox* rename_xbe{nullptr};
         wxCheckBox* offline_mode{nullptr};
+        wxCheckBox* keep_name{nullptr};
     };
 
     struct ProcessButtons
@@ -81,6 +83,31 @@ private:
         wxButton* process{nullptr};
         wxButton* pause{nullptr};
         wxButton* cancel{nullptr};
+    };
+
+    struct LanguageRadioButtons
+    {
+        wxRadioButton* system{nullptr};
+        wxRadioButton* english{nullptr};
+        wxRadioButton* italian{nullptr};
+        wxRadioButton* german{nullptr};
+        wxRadioButton* french{nullptr};
+        wxRadioButton* spanish{nullptr};
+        wxRadioButton* portuguese{nullptr};
+    };
+
+    struct UILabels
+    {
+        wxStaticText* input_path{nullptr};
+        wxStaticText* output_dir{nullptr};
+        wxStaticText* file_list{nullptr};
+        wxStaticText* status{nullptr};
+        wxStaticText* current_progress{nullptr};
+        wxStaticText* total_progress{nullptr};
+        wxStaticText* out_format{nullptr};
+        wxStaticText* scrub{nullptr};
+        wxStaticText* settings{nullptr};
+        wxStaticText* language{nullptr};
     };
 
     std::atomic<Status> current_status_{Status::IDLE};
@@ -101,10 +128,16 @@ private:
     AutoFormatRadioButtons auto_format_rbs_;
     ScrubRadioButtons out_scrub_rbs_;
     SettingsCheckBoxes out_settings_cbs_;
+    LanguageRadioButtons language_rbs_;
     ProcessButtons process_buttons_;
+    UILabels ui_labels_;
 
     static wxGauge* current_progress_bar_;
     wxGauge* total_progress_bar_{nullptr};
+    wxPanel* main_panel_{nullptr};
+
+    std::atomic<uint64_t> current_file_index_{0};
+    std::atomic<uint64_t> total_files_count_{1};
 
     void on_pick_input_path(wxCommandEvent& event);
     void on_pick_output_path(wxCommandEvent& event);
@@ -120,6 +153,7 @@ private:
     void process_files();
     void update_controls_state();
     void update_button_states();
+    void on_language_selected(const std::string& lang_code);
     OutputSettings parse_ui_settings();
     void stop_all_processing();
 
@@ -127,6 +161,7 @@ private:
     wxBoxSizer* create_out_format_radio_box(wxPanel* panel);
     wxBoxSizer* create_out_scrub_radio_box(wxPanel* panel);
     wxBoxSizer* create_out_settings_check_box(wxPanel* panel);
+    wxBoxSizer* create_language_radio_box(wxPanel* panel);
     wxBoxSizer* create_input_picker_box(wxPanel* panel);
     wxBoxSizer* create_output_picker_box(wxPanel* panel);
     wxBoxSizer* create_info_box(wxPanel* panel);

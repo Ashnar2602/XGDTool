@@ -53,7 +53,11 @@ void XisoReader::read_bytes(const uint64_t offset, const size_t size, char* out_
     in_file_.read(out_buffer, size);
     if (in_file_.fail() || in_file_.gcount() != size) 
     {
-        throw XGDException(ErrCode::FILE_READ, HERE(), "Failed to read bytes from input file");
+        throw XGDException(ErrCode::FILE_READ, HERE(),
+            "Failed to read bytes from input file (offset=" + std::to_string(offset) +
+            ", requested=" + std::to_string(size) +
+            ", got=" + std::to_string(in_file_.gcount()) +
+            ", file_size=" + std::to_string(static_cast<uint64_t>(total_sectors_) * Xiso::SECTOR_SIZE) + ")");
     }
 }
 

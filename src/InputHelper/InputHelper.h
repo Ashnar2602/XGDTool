@@ -66,7 +66,7 @@ private:
     void remove_duplicate_infos(std::vector<InputInfo>& input_infos);
     OutputSettings get_auto_output_settings(const AutoFormat auto_format);
     std::vector<std::filesystem::path> find_split_filepaths(const std::filesystem::path& in_filepath);
-    std::filesystem::path get_output_path(const std::filesystem::path& out_directory, TitleHelper& title_helper);
+    std::filesystem::path get_output_path(const std::filesystem::path& out_directory, TitleHelper& title_helper, const std::filesystem::path& in_path = {});
     void reset_processor();
 };
 

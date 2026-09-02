@@ -4,3 +4,5 @@ build
 src/Executable/AttachXbe.h
 external/CLI
 external/nlohmann
+*.log
+xgdtool.log

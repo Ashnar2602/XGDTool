@@ -9,7 +9,7 @@ endif()
 
 project(XGDTool)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 option(ENABLE_GUI "Enable GUI" ON)  # Set to OFF for CLI only
@@ -89,6 +89,7 @@ set(SRC
 
     ${SRC_DIR}/Utils/EndianUtils.cpp
     ${SRC_DIR}/Utils/StringUtils.cpp
+    ${SRC_DIR}/Utils/LocalizationManager.cpp
 
     ${SRC_DIR}/Formats/Xiso.cpp
 )
@@ -99,6 +100,7 @@ if (ENABLE_GUI)
         ${SRC_DIR}/GUI/MainFrame.cpp
         ${SRC_DIR}/GUI/MainFrame_Create.cpp
         ${SRC_DIR}/GUI/MainFrame_Log.cpp
+        ${SRC_DIR}/GUI/CompletionDialog.cpp
     )
 
     add_definitions(-DENABLE_GUI)
@@ -130,6 +132,7 @@ if (WIN32)
 
         wx::core 
         wx::base
+        wx::xml
 
         lz4::lz4
         zstd::libzstd
@@ -138,6 +141,12 @@ if (WIN32)
         OpenSSL::SSL 
         OpenSSL::Crypto
         CURL::libcurl
+    )
+
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/languages
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/languages
     )
 
     if(MSVC)
@@ -170,7 +179,7 @@ elseif(UNIX)
     find_package(PkgConfig REQUIRED)
     set(ENV{PKG_CONFIG_PATH} "/usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 
-    pkg_check_modules(LZ4 REQUIRED lz4)
+    pkg_check_modules(LZ4 REQUIRED liblz4)
     pkg_check_modules(ZSTD REQUIRED libzstd)
     find_package(OpenSSL REQUIRED)
     find_package(CURL REQUIRED)

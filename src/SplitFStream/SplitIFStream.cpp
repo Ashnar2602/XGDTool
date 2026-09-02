@@ -112,6 +112,7 @@ void split::ifstream::seekg(uint64_t _Off, std::ios_base::seekdir _Way) {
 
     for (current_stream = 0; current_stream < infiles.size(); ++current_stream) {
         if (bytes_left <= infiles[current_stream].size) {
+            infiles[current_stream].stream.clear();
             infiles[current_stream].stream.seekg(bytes_left, std::ios::beg);
             end_of_file = false;
             return;
@@ -125,7 +126,25 @@ split::ifstream& split::ifstream::read(char* _Str, std::streamsize _Count) {
     last_gcount = 0;
 
     while (bytes_to_read > 0) {
-        uint64_t bytes_left_in_stream = infiles[current_stream].size - infiles[current_stream].stream.tellg();
+        std::streampos stream_pos = infiles[current_stream].stream.tellg();
+        if (stream_pos < 0) {
+            // A prior failbit (e.g. from a stale out-of-range seek) makes tellg() return -1;
+            // subtracting that from the unsigned stream size below would wrap around to a huge
+            // value and make this look like there's plenty of data left, when really the read
+            // is about to silently return 0 bytes. Recover by re-seeking to the known position.
+            uint64_t preceding_size = 0;
+            for (unsigned int i = 0; i < current_stream; ++i) {
+                preceding_size += infiles[i].size;
+            }
+            infiles[current_stream].stream.clear();
+            infiles[current_stream].stream.seekg(current_position - preceding_size, std::ios::beg);
+            stream_pos = infiles[current_stream].stream.tellg();
+            if (stream_pos < 0) {
+                end_of_file = true;
+                return *this;
+            }
+        }
+        uint64_t bytes_left_in_stream = infiles[current_stream].size - static_cast<uint64_t>(stream_pos);
         
         if (bytes_left_in_stream >= bytes_to_read) {
             // The current stream has enough bytes to fulfill the read request

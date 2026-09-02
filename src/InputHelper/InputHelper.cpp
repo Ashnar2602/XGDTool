@@ -1,6 +1,7 @@
 #include "ImageReader/ImageReader.h"
 #include "InputHelper/InputHelper.h"
 #include "Executable/AttachXbeTool.h"
+#include "Utils/LocalizationManager.h"
 
 InputHelper::InputHelper(std::filesystem::path in_path, std::filesystem::path out_directory, OutputSettings output_settings)
     :   output_directory_(out_directory), 
@@ -93,7 +94,8 @@ void InputHelper::process_single(InputInfo input_info)
 {
     try 
     {
-        XGDLog() << "Processing: " << input_info.paths.front().string() + ((input_info.paths.size() > 1) ? (" and " + input_info.paths.back().string()) : "") << "\n";
+        std::string proc_target = input_info.paths.front().string() + ((input_info.paths.size() > 1) ? (" and " + input_info.paths.back().string()) : "");
+        XGDLog() << I18n::format("cli_msg_processing", proc_target) << "\n";
         
         std::vector<std::filesystem::path> out_paths;
 
@@ -117,7 +119,8 @@ void InputHelper::process_single(InputInfo input_info)
 
         if (!out_paths.empty())
         {
-            XGDLog() << "Successfully created: " << out_paths.front().string() + ((out_paths.size() > 1) ? (" and " + out_paths.back().string()) : "") << "\n";
+            std::string out_target = out_paths.front().string() + ((out_paths.size() > 1) ? (" and " + out_paths.back().string()) : "");
+            XGDLog() << I18n::format("cli_msg_success_created", out_target) << "\n";
         }
     } 
     catch (const XGDException& e) 
@@ -163,7 +166,7 @@ std::vector<std::filesystem::path> InputHelper::create_image(InputInfo& input_in
             break;
     }
 
-    std::filesystem::path out_path = get_output_path(output_directory_, *title_helper);
+    std::filesystem::path out_path = get_output_path(output_directory_, *title_helper, input_info.paths.front());
 
     switch (input_info.file_type) 
     {
@@ -222,7 +225,7 @@ std::vector<std::filesystem::path> InputHelper::create_dir(const InputInfo& inpu
 
     TitleHelper title_helper(image_reader, output_settings_.offline_mode);
 
-    std::filesystem::path out_path = get_output_path(output_directory_, title_helper);
+    std::filesystem::path out_path = get_output_path(output_directory_, title_helper, input_info.paths.front());
 
     image_extractor_ = std::make_unique<ImageExtractor>(*image_reader, title_helper, output_settings_.allowed_media_patch, output_settings_.rename_xbe);
     image_extractor_->extract(out_path);
@@ -247,7 +250,7 @@ std::vector<std::filesystem::path> InputHelper::create_attach_xbe(const InputInf
 
     TitleHelper title_helper(image_reader, output_settings_.offline_mode);
 
-    std::filesystem::path out_path = get_output_path(input_info.paths.front().parent_path(), title_helper);
+    std::filesystem::path out_path = get_output_path(input_info.paths.front().parent_path(), title_helper, input_info.paths.front());
 
     AttachXbeTool attach_xbe_tool(title_helper); 
     attach_xbe_tool.generate_attach_xbe(out_path);
@@ -262,7 +265,7 @@ void InputHelper::list_files(const InputInfo& input_info)
         throw XGDException(ErrCode::ISO_INVALID, HERE(), "Cannot list files from directory");
     }
 
-    XGDLog() << "Files in image:\n";
+    XGDLog() << I18n::get("cli_msg_files_in_image") << "\n";
 
     if (input_info.file_type == FileType::ZAR) 
     {

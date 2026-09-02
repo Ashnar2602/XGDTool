@@ -19,6 +19,7 @@ struct OutputSettings
     bool attach_xbe{false};
     bool allowed_media_patch{false};
     bool offline_mode{false};
+    bool keep_name{false};
     bool rename_xbe{false};
     bool xemu_paths{false};
 };

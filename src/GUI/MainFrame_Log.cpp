@@ -43,14 +43,15 @@ const char* MainFrame::scrub_type_to_string(ScrubType type)
 
 void MainFrame::log_output_settings(const OutputSettings& settings) 
 {
-    wxLogMessage("OutputSettings:");
-    wxLogMessage("  AutoFormat: %s", auto_format_to_string(settings.auto_format));
-    wxLogMessage("  FileType: %s", file_type_to_string(settings.file_type));
-    wxLogMessage("  ScrubType: %s", scrub_type_to_string(settings.scrub_type));
-    wxLogMessage("  Split: %s", settings.split ? "true" : "false");
-    wxLogMessage("  Attach XBE: %s", settings.attach_xbe ? "true" : "false");
-    wxLogMessage("  Allowed Media Patch: %s", settings.allowed_media_patch ? "true" : "false");
-    wxLogMessage("  Offline Mode: %s", settings.offline_mode ? "true" : "false");
-    wxLogMessage("  Rename XBE: %s", settings.rename_xbe ? "true" : "false");
-    wxLogMessage("  XEMU Paths: %s", settings.xemu_paths ? "true" : "false");
+    XGDLog() << "Starting batch processing with OutputSettings:\n"
+             << "  AutoFormat: " << auto_format_to_string(settings.auto_format) << "\n"
+             << "  FileType: " << file_type_to_string(settings.file_type) << "\n"
+             << "  ScrubType: " << scrub_type_to_string(settings.scrub_type) << "\n"
+             << "  Split: " << (settings.split ? "true" : "false") << "\n"
+             << "  Attach XBE: " << (settings.attach_xbe ? "true" : "false") << "\n"
+             << "  Allowed Media Patch: " << (settings.allowed_media_patch ? "true" : "false") << "\n"
+             << "  Offline Mode: " << (settings.offline_mode ? "true" : "false") << "\n"
+             << "  Keep Original Name: " << (settings.keep_name ? "true" : "false") << "\n"
+             << "  Rename XBE: " << (settings.rename_xbe ? "true" : "false") << "\n"
+             << "  XEMU Paths: " << (settings.xemu_paths ? "true" : "false") << XGDLog::Endl;
 }

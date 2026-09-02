@@ -1,9 +1,42 @@
 #include <iomanip>
 #include <chrono>
+#include <fstream>
+#include <mutex>
+#include <ctime>
 
 #include "XGDLog.h"
 
 LogLevel XGDLog::current_level = Normal;
+
+static std::mutex g_log_mutex;
+
+static void write_to_log_file(LogLevel level, const std::string& msg)
+{
+    std::lock_guard<std::mutex> lock(g_log_mutex);
+    static std::ofstream log_file("xgdtool.log", std::ios::app);
+    if (!log_file.is_open()) return;
+
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    std::tm tm_buf;
+#ifdef _WIN32
+    localtime_s(&tm_buf, &now_time);
+#else
+    localtime_r(&now_time, &tm_buf);
+#endif
+
+    const char* level_str = "INFO";
+    if (level == LogLevel::Error) level_str = "ERROR";
+    else if (level == LogLevel::Debug) level_str = "DEBUG";
+
+    log_file << std::put_time(&tm_buf, "[%Y-%m-%d %H:%M:%S] ")
+             << "[" << level_str << "] "
+             << msg;
+    if (msg.empty() || msg.back() != '\n') {
+        log_file << "\n";
+    }
+    log_file.flush();
+}
 
 #ifndef ENABLE_GUI
 
@@ -11,9 +44,9 @@ XGDLog& XGDLog::operator<<(Manip manip)
 {
     if (manip == Manip::Endl && should_log()) 
     {
-        oss << std::endl;
-        
-        std::cerr << oss.str();
+        std::string s = oss.str();
+        write_to_log_file(log_level, s);
+        std::cerr << s << std::endl;
         oss.str("");  // Clear the stream after flushing
         oss.clear();
     }
@@ -87,8 +120,9 @@ XGDLog& XGDLog::operator<<(Manip manip)
 {
     if (manip == Manip::Endl && should_log()) 
     {
-        oss << std::endl;
-        MainFrame::update_status_field(oss.str());
+        std::string s = oss.str();
+        write_to_log_file(log_level, s);
+        MainFrame::update_status_field(s);
         oss.str(""); 
         oss.clear();
     }

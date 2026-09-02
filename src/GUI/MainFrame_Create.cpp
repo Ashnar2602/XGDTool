@@ -1,4 +1,5 @@
 #include "GUI/MainFrame.h"
+#include "Utils/LocalizationManager.h"
 
 void MainFrame::create_frame()
 {
@@ -9,6 +10,7 @@ void MainFrame::create_frame()
     #endif
 
     wxPanel* panel = new wxPanel(this, wxID_ANY);
+    main_panel_ = panel;
 
     wxBoxSizer* main_sizer = new wxBoxSizer(wxVERTICAL);
 
@@ -16,16 +18,16 @@ void MainFrame::create_frame()
     fg_sizer->AddGrowableCol(1, 1); 
     fg_sizer->AddGrowableRow(2, 1);
 
-    wxStaticText* input_label = new wxStaticText(panel, wxID_ANY, "Input Path:");
-    fg_sizer->Add(input_label, 0, wxALIGN_CENTER_VERTICAL | wxALIGN_RIGHT);
+    ui_labels_.input_path = new wxStaticText(panel, wxID_ANY, "Input Path:");
+    fg_sizer->Add(ui_labels_.input_path, 0, wxALIGN_CENTER_VERTICAL | wxALIGN_RIGHT);
     fg_sizer->Add(create_input_picker_box(panel), 1, wxEXPAND);
 
-    wxStaticText* output_label = new wxStaticText(panel, wxID_ANY, "Output Directory:");
-    fg_sizer->Add(output_label, 1, wxALIGN_CENTER_VERTICAL | wxALIGN_RIGHT);
+    ui_labels_.output_dir = new wxStaticText(panel, wxID_ANY, "Output Directory:");
+    fg_sizer->Add(ui_labels_.output_dir, 1, wxALIGN_CENTER_VERTICAL | wxALIGN_RIGHT);
     fg_sizer->Add(create_output_picker_box(panel), 1, wxEXPAND);
 
-    wxStaticText* file_list_label = new wxStaticText(panel, wxID_ANY, "File List:");
-    fg_sizer->Add(file_list_label, 2, wxALIGN_TOP | wxALIGN_RIGHT);
+    ui_labels_.file_list = new wxStaticText(panel, wxID_ANY, "File List:");
+    fg_sizer->Add(ui_labels_.file_list, 2, wxALIGN_TOP | wxALIGN_RIGHT);
 
     file_list_ = new wxListCtrl(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SINGLE_SEL);
     file_list_->InsertColumn(0, "Format", wxLIST_FORMAT_LEFT, 60);
@@ -34,15 +36,15 @@ void MainFrame::create_frame()
     fg_sizer->Add(file_list_, 1, wxEXPAND);
 
     wxBoxSizer* progress_lables_sizer = new wxBoxSizer(wxVERTICAL);
-    wxStaticText* current_progress_label = new wxStaticText(panel, wxID_ANY, "Current Progress:");
-    wxStaticText* total_progress_label = new wxStaticText(panel, wxID_ANY, "Total Progress:");
-    wxStaticText* status_label = new wxStaticText(panel, wxID_ANY, "Status:");
+    ui_labels_.status = new wxStaticText(panel, wxID_ANY, "Status:");
+    ui_labels_.current_progress = new wxStaticText(panel, wxID_ANY, "Current Progress:");
+    ui_labels_.total_progress = new wxStaticText(panel, wxID_ANY, "Total Progress:");
 
-    progress_lables_sizer->Add(status_label, 0, wxALIGN_RIGHT);
+    progress_lables_sizer->Add(ui_labels_.status, 0, wxALIGN_RIGHT);
     progress_lables_sizer->AddSpacer(18);
-    progress_lables_sizer->Add(current_progress_label, 0, wxALIGN_RIGHT);
+    progress_lables_sizer->Add(ui_labels_.current_progress, 0, wxALIGN_RIGHT);
     progress_lables_sizer->AddSpacer(18);
-    progress_lables_sizer->Add(total_progress_label, 0, wxALIGN_RIGHT);
+    progress_lables_sizer->Add(ui_labels_.total_progress, 0, wxALIGN_RIGHT);
     progress_lables_sizer->AddSpacer(4);
 
     fg_sizer->Add(progress_lables_sizer, 0, wxALIGN_BOTTOM);
@@ -52,10 +54,12 @@ void MainFrame::create_frame()
     wxBoxSizer* settings_sizer = new wxBoxSizer(wxHORIZONTAL);
 
     settings_sizer->Add(create_out_format_radio_box(panel), 0, wxEXPAND);
-    settings_sizer->AddSpacer(80);
+    settings_sizer->AddSpacer(25);
     settings_sizer->Add(create_out_scrub_radio_box(panel), 0, wxEXPAND);
-    settings_sizer->AddSpacer(80);
+    settings_sizer->AddSpacer(25);
     settings_sizer->Add(create_out_settings_check_box(panel), 0, wxEXPAND);
+    settings_sizer->AddSpacer(25);
+    settings_sizer->Add(create_language_radio_box(panel), 0, wxEXPAND);
 
     settings_progress_bar_sizer->Add(settings_sizer, 0, wxEXPAND);
     settings_progress_bar_sizer->AddSpacer(10);
@@ -65,7 +69,7 @@ void MainFrame::create_frame()
 
     status_field_ = new wxTextCtrl(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
     status_field_->SetBackgroundStyle(wxBG_STYLE_ERASE);
-    status_field_->SetLabel("Idle");
+    status_field_->ChangeValue("Idle");
 
     settings_progress_bar_sizer->Add(status_field_, 0, wxEXPAND);
     settings_progress_bar_sizer->AddSpacer(10);
@@ -86,6 +90,7 @@ void MainFrame::create_frame()
 
     panel->SetSizer(main_sizer);
 
+    update_ui_language();
     update_controls_state();
 }
 
@@ -152,8 +157,8 @@ wxBoxSizer* MainFrame::create_process_buttons_box(wxPanel* panel)
 wxBoxSizer* MainFrame::create_out_scrub_radio_box(wxPanel* panel)
 {
     wxBoxSizer* scrub_rbs_sizer = new wxBoxSizer(wxVERTICAL);
-    wxStaticText* scrub_label = new wxStaticText(panel, wxID_ANY, "Scrub:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
-    scrub_rbs_sizer->Add(scrub_label, 0, wxALIGN_LEFT);
+    ui_labels_.scrub = new wxStaticText(panel, wxID_ANY, "Scrub:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+    scrub_rbs_sizer->Add(ui_labels_.scrub, 0, wxALIGN_LEFT);
     scrub_rbs_sizer->AddSpacer(5);
 
     out_scrub_rbs_.none = new wxRadioButton(panel, wxID_ANY, "None", wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
@@ -174,9 +179,9 @@ wxBoxSizer* MainFrame::create_out_scrub_radio_box(wxPanel* panel)
 wxBoxSizer* MainFrame::create_out_settings_check_box(wxPanel* panel)
 {
     wxBoxSizer* out_settings_sizer = new wxBoxSizer(wxVERTICAL);
-    wxStaticText* out_settings_label = new wxStaticText(panel, wxID_ANY, "Settings:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+    ui_labels_.settings = new wxStaticText(panel, wxID_ANY, "Settings:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 
-    out_settings_sizer->Add(out_settings_label, 0, wxALIGN_LEFT);
+    out_settings_sizer->Add(ui_labels_.settings, 0, wxALIGN_LEFT);
     out_settings_sizer->AddSpacer(5);
 
     out_settings_cbs_.split = new wxCheckBox(panel, wxID_ANY, "Split XISO");
@@ -184,28 +189,67 @@ wxBoxSizer* MainFrame::create_out_settings_check_box(wxPanel* panel)
     out_settings_cbs_.allowed_media_xbe = new wxCheckBox(panel, wxID_ANY, "Allowed Media XBE Patch");
     out_settings_cbs_.rename_xbe = new wxCheckBox(panel, wxID_ANY, "Rename XBE Title");
     out_settings_cbs_.offline_mode = new wxCheckBox(panel, wxID_ANY, "Offline Mode");
+    out_settings_cbs_.keep_name = new wxCheckBox(panel, wxID_ANY, "Keep Original Name");
     
     out_settings_cbs_.split->SetToolTip("Splits the resulting XISO file if it's too large for OG Xbox");
     out_settings_cbs_.attach_xbe->SetToolTip("Generates an attach XBE file along with the output file");
     out_settings_cbs_.allowed_media_xbe->SetToolTip("Patches the Allowed Media field in resulting XBE files");
     out_settings_cbs_.rename_xbe->SetToolTip("Replaces the title field of resulting XBE files with one found in the database");
     out_settings_cbs_.offline_mode->SetToolTip("Disables online functionality, will result in less accurate file naming");
+    out_settings_cbs_.keep_name->SetToolTip("Keeps the original input filename for output files, preventing overwrites for multi-disc games");
     
     out_settings_sizer->Add(out_settings_cbs_.split, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.attach_xbe, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.allowed_media_xbe, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.rename_xbe, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.offline_mode, 0, wxEXPAND);
+    out_settings_sizer->Add(out_settings_cbs_.keep_name, 0, wxEXPAND);
 
     return out_settings_sizer;
+}
+
+wxBoxSizer* MainFrame::create_language_radio_box(wxPanel* panel)
+{
+    wxBoxSizer* lang_sizer = new wxBoxSizer(wxVERTICAL);
+    ui_labels_.language = new wxStaticText(panel, wxID_ANY, "Language:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+    lang_sizer->Add(ui_labels_.language, 0, wxALIGN_LEFT);
+    lang_sizer->AddSpacer(5);
+
+    language_rbs_.system     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_system")), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+    language_rbs_.english    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_english")));
+    language_rbs_.italian    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_italian")));
+    language_rbs_.german     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_german")));
+    language_rbs_.french     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_french")));
+    language_rbs_.spanish    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_spanish")));
+    language_rbs_.portuguese = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_portuguese")));
+
+    language_rbs_.system->SetValue(true);
+
+    lang_sizer->Add(language_rbs_.system, 0, wxEXPAND);
+    lang_sizer->Add(language_rbs_.english, 0, wxEXPAND);
+    lang_sizer->Add(language_rbs_.italian, 0, wxEXPAND);
+    lang_sizer->Add(language_rbs_.german, 0, wxEXPAND);
+    lang_sizer->Add(language_rbs_.french, 0, wxEXPAND);
+    lang_sizer->Add(language_rbs_.spanish, 0, wxEXPAND);
+    lang_sizer->Add(language_rbs_.portuguese, 0, wxEXPAND);
+
+    language_rbs_.system->Bind(wxEVT_RADIOBUTTON, [this](wxCommandEvent&) { on_language_selected(""); });
+    language_rbs_.english->Bind(wxEVT_RADIOBUTTON, [this](wxCommandEvent&) { on_language_selected("en"); });
+    language_rbs_.italian->Bind(wxEVT_RADIOBUTTON, [this](wxCommandEvent&) { on_language_selected("it"); });
+    language_rbs_.german->Bind(wxEVT_RADIOBUTTON, [this](wxCommandEvent&) { on_language_selected("de"); });
+    language_rbs_.french->Bind(wxEVT_RADIOBUTTON, [this](wxCommandEvent&) { on_language_selected("fr"); });
+    language_rbs_.spanish->Bind(wxEVT_RADIOBUTTON, [this](wxCommandEvent&) { on_language_selected("es"); });
+    language_rbs_.portuguese->Bind(wxEVT_RADIOBUTTON, [this](wxCommandEvent&) { on_language_selected("pt"); });
+
+    return lang_sizer;
 }
 
 wxBoxSizer* MainFrame::create_out_format_radio_box(wxPanel* panel)
 {
     wxBoxSizer* out_format_sizer = new wxBoxSizer(wxVERTICAL);
-    wxStaticText* out_format_label_1 = new wxStaticText(panel, wxID_ANY, "Output Format:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+    ui_labels_.out_format = new wxStaticText(panel, wxID_ANY, "Output Format:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 
-    out_format_sizer->Add(out_format_label_1, 0, wxALIGN_LEFT);
+    out_format_sizer->Add(ui_labels_.out_format, 0, wxALIGN_LEFT);
     out_format_sizer->AddSpacer(5);
 
     wxBoxSizer* out_format_rbox = new wxBoxSizer(wxHORIZONTAL);
@@ -272,16 +316,18 @@ wxBoxSizer* MainFrame::create_info_box(wxPanel* panel)
 {
     wxBoxSizer* wo_sizer = new wxBoxSizer(wxHORIZONTAL);
     wxStaticText* version_label = new wxStaticText(panel, wxID_ANY, wxString("v") + XGD::VERSION);
-    wxStaticText* wo_label = new wxStaticText(panel, wxID_ANY, " | By WiredOpposite: ");
-    wxHyperlinkCtrl* wo_link = new wxHyperlinkCtrl(panel, wxID_ANY, "wiredopposite.com", "https://wiredopposite.com");
-    wxStaticText* wo_text = new wxStaticText(panel, wxID_ANY, " | Github: ");
-    wxHyperlinkCtrl* wo_github_link = new wxHyperlinkCtrl(panel, wxID_ANY, "wiredopposite/xgdtool", "https://github.com/wiredopposite/xgdtool");
+    wxStaticText* fork_label = new wxStaticText(panel, wxID_ANY, " | By Ashnar2602 | Github: ");
+    wxHyperlinkCtrl* fork_github_link = new wxHyperlinkCtrl(panel, wxID_ANY, "Ashnar2602/XGDTool", "https://github.com/Ashnar2602/XGDTool");
+    wxStaticText* orig_label = new wxStaticText(panel, wxID_ANY, " | (Original: ");
+    wxHyperlinkCtrl* wo_link = new wxHyperlinkCtrl(panel, wxID_ANY, "WiredOpposite", "https://github.com/wiredopposite/xgdtool");
+    wxStaticText* close_label = new wxStaticText(panel, wxID_ANY, ")");
     
     wo_sizer->Add(version_label, 0, wxALIGN_CENTER_VERTICAL);
-    wo_sizer->Add(wo_label, 0, wxALIGN_CENTER_VERTICAL);
+    wo_sizer->Add(fork_label, 0, wxALIGN_CENTER_VERTICAL);
+    wo_sizer->Add(fork_github_link, 0, wxALIGN_CENTER_VERTICAL);
+    wo_sizer->Add(orig_label, 0, wxALIGN_CENTER_VERTICAL);
     wo_sizer->Add(wo_link, 0, wxALIGN_CENTER_VERTICAL);
-    wo_sizer->Add(wo_text, 0, wxALIGN_CENTER_VERTICAL);
-    wo_sizer->Add(wo_github_link, 0, wxALIGN_CENTER_VERTICAL);
+    wo_sizer->Add(close_label, 0, wxALIGN_CENTER_VERTICAL);
 
     return wo_sizer;
 }

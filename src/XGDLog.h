@@ -1,6 +1,7 @@
 #ifndef _XGDLOG_H_
 #define _XGDLOG_H_
 
+#include <cstdint>
 #include <iostream>
 #include <sstream>
 
@@ -21,9 +22,9 @@ public:
 
     ~XGDLog() 
     {
-        if (should_log()) 
+        if (should_log() && !oss.str().empty()) 
         {
-            std::cerr << oss.str();
+            *this << Endl;
         }
     }
 

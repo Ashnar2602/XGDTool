@@ -1,5 +1,6 @@
 #include <functional>
 #include <cstring>
+#include <algorithm>
 
 #include <lz4hc.h>
 

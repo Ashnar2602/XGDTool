@@ -1,13 +1,14 @@
 #ifndef _ENDIAN_UTILS_H_
 #define _ENDIAN_UTILS_H_
 
+#include <bit>
 #include <cstdint>
 
 namespace EndianUtils {
 
     constexpr bool is_big_endian() 
     {
-        return ((1 << 24) & 0x01000000) != 0;
+        return std::endian::native == std::endian::big;
     }
 
     void big_16(uint16_t &value);    // Only swaps if sys is little endian
