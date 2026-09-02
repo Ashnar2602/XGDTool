@@ -9,6 +9,7 @@ wxDEFINE_EVENT(wxEVT_UPDATE_CURRENT_PROGRESS, wxThreadEvent);
 wxDEFINE_EVENT(wxEVT_UPDATE_TOTAL_PROGRESS, wxThreadEvent);
 wxDEFINE_EVENT(wxEVT_THREAD_COMPLETED, wxThreadEvent);
 wxDEFINE_EVENT(wxEVT_UPDATE_CURRENT_STAGE, wxThreadEvent);
+wxDEFINE_EVENT(wxEVT_UPDATE_ITEM_STATUS, wxThreadEvent);
 
 wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
     EVT_BUTTON(wxID_ANY, MainFrame::on_process_all)
@@ -17,6 +18,7 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
     EVT_THREAD(wxEVT_UPDATE_TOTAL_PROGRESS, MainFrame::on_update_total_progress)
     EVT_THREAD(wxEVT_THREAD_COMPLETED, MainFrame::on_thread_completed)
     EVT_THREAD(wxEVT_UPDATE_CURRENT_STAGE, MainFrame::on_update_current_stage)
+    EVT_THREAD(wxEVT_UPDATE_ITEM_STATUS, MainFrame::on_update_item_status)
 wxEND_EVENT_TABLE()
 
 wxGauge* MainFrame::current_progress_bar_ = nullptr;
@@ -32,6 +34,174 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
     Bind(wxEVT_UPDATE_TOTAL_PROGRESS, &MainFrame::on_update_total_progress, this);
     Bind(wxEVT_THREAD_COMPLETED, &MainFrame::on_thread_completed, this);
     Bind(wxEVT_UPDATE_CURRENT_STAGE, &MainFrame::on_update_current_stage, this);
+    Bind(wxEVT_UPDATE_ITEM_STATUS, &MainFrame::on_update_item_status, this);
+}
+
+static void apply_theme_recursive(wxWindow* win, bool dark)
+{
+    if (!win) return;
+
+    wxColour bg = dark ? wxColour(32, 33, 36) : wxNullColour;
+    wxColour control_bg = dark ? wxColour(48, 49, 52) : wxNullColour;
+    wxColour fg = dark ? wxColour(235, 235, 235) : wxNullColour;
+
+    if (dynamic_cast<wxPanel*>(win))
+    {
+        win->SetBackgroundColour(bg);
+        win->SetForegroundColour(fg);
+    }
+    else if (dynamic_cast<wxStaticText*>(win) || dynamic_cast<wxCheckBox*>(win) || dynamic_cast<wxRadioButton*>(win))
+    {
+        win->SetBackgroundColour(bg);
+        win->SetForegroundColour(fg);
+    }
+    else if (dynamic_cast<wxTextCtrl*>(win) || dynamic_cast<wxListCtrl*>(win) || dynamic_cast<wxChoice*>(win))
+    {
+        win->SetBackgroundColour(control_bg);
+        win->SetForegroundColour(fg);
+    }
+    else if (dynamic_cast<wxButton*>(win))
+    {
+        win->SetBackgroundColour(control_bg);
+        win->SetForegroundColour(fg);
+    }
+
+    win->Refresh();
+
+    for (wxWindowList::compatibility_iterator node = win->GetChildren().GetFirst(); node; node = node->GetNext())
+    {
+        apply_theme_recursive(node->GetData(), dark);
+    }
+}
+
+void MainFrame::apply_theme(bool dark)
+{
+    is_dark_mode_ = dark;
+    SetBackgroundColour(dark ? wxColour(32, 33, 36) : wxNullColour);
+    apply_theme_recursive(this, dark);
+    Refresh();
+}
+
+void MainFrame::on_dark_mode_toggle(wxCommandEvent& event)
+{
+    if (out_settings_cbs_.dark_mode)
+    {
+        apply_theme(out_settings_cbs_.dark_mode->GetValue());
+    }
+}
+
+void MainFrame::handle_dropped_files(const wxArrayString& files)
+{
+    if (files.empty()) return;
+
+    std::vector<std::filesystem::path> new_paths;
+    for (const auto& file : files)
+    {
+        std::filesystem::path p(file.ToStdWstring());
+        if (std::filesystem::exists(p))
+        {
+            new_paths.push_back(p);
+        }
+    }
+
+    if (new_paths.empty()) return;
+
+    InputHelper temp_helper(new_paths, "", OutputSettings());
+    if (temp_helper.input_infos().empty())
+    {
+        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_valid_files")));
+        return;
+    }
+
+    for (const auto& info : temp_helper.input_infos())
+    {
+        for (const auto& p : info.paths)
+        {
+            input_paths_.push_back(p);
+        }
+
+        long item_index = file_list_->InsertItem(file_list_->GetItemCount(), get_file_type_string(info.file_type));
+        file_list_->SetItem(item_index, 1, info.paths.front().filename().string());
+        file_list_->SetItem(item_index, 2, wxString::FromUTF8(I18n::get("status_queued")));
+    }
+
+    input_picker_.field->Clear();
+    for (const auto& p : input_paths_)
+    {
+        input_picker_.field->AppendText(wxString::FromUTF8(p.string()) + "\n");
+    }
+}
+
+void MainFrame::on_list_item_right_click(wxListEvent& event)
+{
+    wxMenu menu;
+    menu.Append(1001, wxString::FromUTF8(I18n::get("menu_remove_selected")));
+    menu.Append(1002, wxString::FromUTF8(I18n::get("menu_clear_list")));
+
+    menu.Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::on_remove_selected_items, this, 1001);
+    menu.Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::on_clear_file_list, this, 1002);
+
+    PopupMenu(&menu);
+}
+
+void MainFrame::on_list_key_down(wxListEvent& event)
+{
+    if (event.GetKeyCode() == WXK_DELETE)
+    {
+        wxCommandEvent dummy;
+        on_remove_selected_items(dummy);
+    }
+    else
+    {
+        event.Skip();
+    }
+}
+
+void MainFrame::on_remove_selected_items(wxCommandEvent& event)
+{
+    std::vector<long> selected_indices;
+    long item = -1;
+    while ((item = file_list_->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) != -1)
+    {
+        selected_indices.push_back(item);
+    }
+
+    if (selected_indices.empty()) return;
+
+    for (auto it = selected_indices.rbegin(); it != selected_indices.rend(); ++it)
+    {
+        long idx = *it;
+        file_list_->DeleteItem(idx);
+        if (idx >= 0 && idx < static_cast<long>(input_paths_.size()))
+        {
+            input_paths_.erase(input_paths_.begin() + idx);
+        }
+    }
+
+    input_picker_.field->Clear();
+    for (const auto& p : input_paths_)
+    {
+        input_picker_.field->AppendText(wxString::FromUTF8(p.string()) + "\n");
+    }
+}
+
+void MainFrame::on_clear_file_list(wxCommandEvent& event)
+{
+    file_list_->DeleteAllItems();
+    input_paths_.clear();
+    input_picker_.field->Clear();
+    input_helper_.reset();
+}
+
+void MainFrame::on_update_item_status(wxThreadEvent& event)
+{
+    auto payload = event.GetPayload<std::pair<long, std::string>>();
+    long row = payload.first;
+    std::string status = payload.second;
+    if (file_list_ && row >= 0 && row < file_list_->GetItemCount())
+    {
+        file_list_->SetItem(row, 2, wxString::FromUTF8(status));
+    }
 }
 
 void MainFrame::stop_all_processing()
@@ -70,7 +240,7 @@ void MainFrame::on_pause_process(wxCommandEvent& event)
     }
     else
     {
-        if (status_field_->GetValue().ToStdString() == "Paused") // status field was not updated by the processing thread
+        if (status_field_->GetValue().ToStdString() == "Paused")
         {
             status_field_->ChangeValue(stored_status_);
         }
@@ -142,10 +312,24 @@ void MainFrame::on_process_all(wxCommandEvent& event)
 
 void MainFrame::process_files()
 {
+    long index = 0;
     for (const auto& input_info : input_helper_->input_infos())
     {
+        wxThreadEvent* item_event_start = new wxThreadEvent(wxEVT_UPDATE_ITEM_STATUS);
+        item_event_start->SetPayload(std::make_pair(index, I18n::get("status_in_progress")));
+        wxQueueEvent(this, item_event_start);
+
+        size_t prev_failed_count = input_helper_->failed_inputs().size();
         input_helper_->process_single(input_info);
+        size_t new_failed_count = input_helper_->failed_inputs().size();
+
+        wxThreadEvent* item_event_end = new wxThreadEvent(wxEVT_UPDATE_ITEM_STATUS);
+        std::string final_status = (new_failed_count > prev_failed_count) ? I18n::get("status_error") : I18n::get("status_done");
+        item_event_end->SetPayload(std::make_pair(index, final_status));
+        wxQueueEvent(this, item_event_end);
+
         current_file_index_++;
+        index++;
 
         double overall_ratio = (total_files_count_ > 0) ? (static_cast<double>(current_file_index_.load()) / static_cast<double>(total_files_count_.load())) : 1.0;
         wxThreadEvent* total_progress_event = new wxThreadEvent(wxEVT_UPDATE_TOTAL_PROGRESS);
@@ -254,11 +438,6 @@ void MainFrame::on_pick_input_path(wxCommandEvent& event)
         2, choices, this
     );
 
-    file_list_->DeleteAllItems();
-    input_picker_.field->Clear();
-    input_paths_.clear();
-    input_helper_.reset();
-
     if (choice == 0)
     {
         wxString wildcard = wxString::FromUTF8(I18n::get("wildcard_xbox_images"));
@@ -268,12 +447,7 @@ void MainFrame::on_pick_input_path(wxCommandEvent& event)
         {
             wxArrayString file_paths;
             open_file_dialog.GetPaths(file_paths);
-
-            for (const auto& file_path : file_paths)
-            {
-                input_picker_.field->AppendText(file_path + "\n"); 
-                input_paths_.push_back(std::filesystem::path(file_path.ToStdString()));
-            }
+            handle_dropped_files(file_paths);
         }
     }
     else if (choice == 1)
@@ -282,29 +456,10 @@ void MainFrame::on_pick_input_path(wxCommandEvent& event)
 
         if (open_dir_dialog.ShowModal() == wxID_OK)
         {
-            wxString dir_path = open_dir_dialog.GetPath();
-            input_picker_.field->SetValue(dir_path);
-            input_paths_.push_back(dir_path.ToStdString());
+            wxArrayString dir_paths;
+            dir_paths.Add(open_dir_dialog.GetPath());
+            handle_dropped_files(dir_paths);
         }
-    }
-
-    if (input_paths_.empty())
-    {
-        return;
-    }
-
-    input_helper_ = std::make_unique<InputHelper>(input_paths_, "", OutputSettings());
-
-    if (input_helper_->input_infos().empty())
-    {
-        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_valid_files")));
-        return;
-    }
-
-    for (const auto& input_info : input_helper_->input_infos())
-    {
-        long item_index = file_list_->InsertItem(file_list_->GetItemCount(), get_file_type_string(input_info.file_type));
-        file_list_->SetItem(item_index, 1, input_info.paths.front().filename().string());
     }
 }
 
@@ -473,17 +628,10 @@ void MainFrame::update_controls_state()
 
 void MainFrame::update_button_states()
 {
-    bool processing = current_status_ == Status::PROCESSING;
-    bool paused = current_status_ == Status::PAUSED;
-
-    process_buttons_.pause->SetLabel(!paused ? wxString::FromUTF8(I18n::get("btn_pause")) : wxString::FromUTF8(I18n::get("btn_resume")));
-
+    bool processing = current_status_ == Status::PROCESSING || current_status_ == Status::PAUSED;
     process_buttons_.process->Enable(!processing);
-    process_buttons_.pause->Enable(processing);    
+    process_buttons_.pause->Enable(processing);
     process_buttons_.cancel->Enable(processing);
-    
-    input_picker_.button->Enable(!processing);
-    output_picker_.button->Enable(!processing);
 
     out_format_rbs_.iso->Enable(!processing);
     out_format_rbs_.god->Enable(!processing);
@@ -507,10 +655,18 @@ void MainFrame::update_button_states()
     out_settings_cbs_.rename_xbe->Enable(!processing);
     out_settings_cbs_.offline_mode->Enable(!processing);
     out_settings_cbs_.keep_name->Enable(!processing);
+    if (out_settings_cbs_.generate_dvd) out_settings_cbs_.generate_dvd->Enable(!processing);
+    if (out_settings_cbs_.calculate_checksum) out_settings_cbs_.calculate_checksum->Enable(!processing);
+    if (compression_choice_) compression_choice_->Enable(!processing);
+    if (threads_choice_) threads_choice_->Enable(!processing);
 
     language_rbs_.system->Enable(!processing);
     language_rbs_.english->Enable(!processing);
     language_rbs_.italian->Enable(!processing);
+    language_rbs_.german->Enable(!processing);
+    language_rbs_.french->Enable(!processing);
+    language_rbs_.spanish->Enable(!processing);
+    language_rbs_.portuguese->Enable(!processing);
 }
 
 OutputSettings MainFrame::parse_ui_settings()
@@ -577,6 +733,23 @@ OutputSettings MainFrame::parse_ui_settings()
     output_settings.rename_xbe = out_settings_cbs_.rename_xbe->GetValue();
     output_settings.offline_mode = out_settings_cbs_.offline_mode->GetValue();
     output_settings.keep_name = out_settings_cbs_.keep_name->GetValue();
+    if (out_settings_cbs_.generate_dvd) output_settings.generate_dvd = out_settings_cbs_.generate_dvd->GetValue();
+    if (out_settings_cbs_.calculate_checksum) output_settings.calculate_checksum = out_settings_cbs_.calculate_checksum->GetValue();
+
+    if (compression_choice_)
+    {
+        int sel = compression_choice_->GetSelection();
+        output_settings.compression_level = (sel == wxNOT_FOUND) ? 0 : sel;
+    }
+    if (threads_choice_)
+    {
+        int sel = threads_choice_->GetSelection();
+        if (sel == 0) output_settings.threads = 1;
+        else if (sel == 1) output_settings.threads = 2;
+        else if (sel == 2) output_settings.threads = 4;
+        else if (sel == 3) output_settings.threads = 8;
+        else output_settings.threads = 1;
+    }
 
     return output_settings;
 }
@@ -599,6 +772,8 @@ void MainFrame::update_ui_language()
     if (ui_labels_.scrub) ui_labels_.scrub->SetLabel(wxString::FromUTF8(I18n::get("section_scrub")));
     if (ui_labels_.settings) ui_labels_.settings->SetLabel(wxString::FromUTF8(I18n::get("section_settings")));
     if (ui_labels_.language) ui_labels_.language->SetLabel(wxString::FromUTF8(I18n::get("section_language")));
+    if (ui_labels_.compression) ui_labels_.compression->SetLabel(wxString::FromUTF8(I18n::get("label_compression_level")));
+    if (ui_labels_.threads) ui_labels_.threads->SetLabel(wxString::FromUTF8(I18n::get("label_threads")));
 
     if (input_picker_.button) {
         input_picker_.button->SetLabel(wxString::FromUTF8(I18n::get("btn_browse")));
@@ -611,13 +786,16 @@ void MainFrame::update_ui_language()
 
     if (file_list_)
     {
-        wxListItem col0, col1;
+        wxListItem col0, col1, col2;
         col0.SetId(0);
         col0.SetText(wxString::FromUTF8(I18n::get("col_format")));
         file_list_->SetColumn(0, col0);
         col1.SetId(1);
         col1.SetText(wxString::FromUTF8(I18n::get("col_filename")));
         file_list_->SetColumn(1, col1);
+        col2.SetId(2);
+        col2.SetText(wxString::FromUTF8(I18n::get("col_status")));
+        file_list_->SetColumn(2, col2);
     }
 
     if (out_format_rbs_.iso) out_format_rbs_.iso->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_iso")));
@@ -668,6 +846,32 @@ void MainFrame::update_ui_language()
     if (out_settings_cbs_.keep_name) {
         out_settings_cbs_.keep_name->SetLabel(wxString::FromUTF8(I18n::get("setting_keep_name")));
         out_settings_cbs_.keep_name->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_keep_name")));
+    }
+    if (out_settings_cbs_.generate_dvd) {
+        out_settings_cbs_.generate_dvd->SetLabel(wxString::FromUTF8(I18n::get("setting_generate_dvd")));
+        out_settings_cbs_.generate_dvd->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_generate_dvd")));
+    }
+    if (out_settings_cbs_.calculate_checksum) {
+        out_settings_cbs_.calculate_checksum->SetLabel(wxString::FromUTF8(I18n::get("setting_checksum")));
+        out_settings_cbs_.calculate_checksum->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_checksum")));
+    }
+    if (out_settings_cbs_.dark_mode) {
+        out_settings_cbs_.dark_mode->SetLabel(wxString::FromUTF8(I18n::get("setting_dark_mode")));
+        out_settings_cbs_.dark_mode->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_dark_mode")));
+    }
+
+    if (compression_choice_) {
+        compression_choice_->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_compression")));
+        int current_sel = compression_choice_->GetSelection();
+        compression_choice_->SetString(0, wxString::FromUTF8(I18n::get("compress_default")));
+        compression_choice_->SetString(1, wxString::FromUTF8(I18n::get("compress_fast")));
+        compression_choice_->SetString(2, wxString::FromUTF8(I18n::get("compress_balanced")));
+        compression_choice_->SetString(3, wxString::FromUTF8(I18n::get("compress_max")));
+        compression_choice_->SetSelection(current_sel == wxNOT_FOUND ? 0 : current_sel);
+    }
+
+    if (threads_choice_) {
+        threads_choice_->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_threads")));
     }
 
     if (language_rbs_.system) {
@@ -727,10 +931,10 @@ void MainFrame::update_ui_language()
         wxSize frame_needed = ClientToWindowSize(min_size);
 
         wxSize cur_size = GetSize();
-        int new_w = std::max(cur_size.GetWidth(), std::max(900, frame_needed.GetWidth()));
-        int new_h = std::max(cur_size.GetHeight(), std::max(620, frame_needed.GetHeight()));
+        int new_w = std::max(cur_size.GetWidth(), std::max(920, frame_needed.GetWidth()));
+        int new_h = std::max(cur_size.GetHeight(), std::max(640, frame_needed.GetHeight()));
 
-        SetMinSize(wxSize(std::max(880, frame_needed.GetWidth()), std::max(600, frame_needed.GetHeight())));
+        SetMinSize(wxSize(std::max(900, frame_needed.GetWidth()), std::max(620, frame_needed.GetHeight())));
 
         if (new_w > cur_size.GetWidth() || new_h > cur_size.GetHeight())
         {

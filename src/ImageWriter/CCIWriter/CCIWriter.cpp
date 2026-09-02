@@ -7,16 +7,26 @@
 #include "ImageWriter/CCIWriter/CCIWriter.h"
 #include "AvlTree/AvlIterator.h"
 
-CCIWriter::CCIWriter(std::shared_ptr<ImageReader> image_reader, const ScrubType scrub_type)
+CCIWriter::CCIWriter(std::shared_ptr<ImageReader> image_reader, const ScrubType scrub_type, int compression_level)
     :   image_reader_(image_reader), 
         scrub_type_(scrub_type)
 {
+    if (compression_level == 1) compression_level_ = 3;
+    else if (compression_level == 2) compression_level_ = 9;
+    else if (compression_level == 3) compression_level_ = 12;
+    else if (compression_level > 3) compression_level_ = std::min(compression_level, 12);
+    else compression_level_ = 12;
     init_cci_writer();
 }
 
-CCIWriter::CCIWriter(const std::filesystem::path& in_dir_path)
+CCIWriter::CCIWriter(const std::filesystem::path& in_dir_path, int compression_level)
     : in_dir_path_(in_dir_path)
 {
+    if (compression_level == 1) compression_level_ = 3;
+    else if (compression_level == 2) compression_level_ = 9;
+    else if (compression_level == 3) compression_level_ = 12;
+    else if (compression_level > 3) compression_level_ = std::min(compression_level, 12);
+    else compression_level_ = 12;
     init_cci_writer();
 }
 
@@ -328,7 +338,7 @@ void CCIWriter::thread_worker()
             task_queue_.pop();
         }
 
-        int compressed_size = LZ4_compress_HC(task.in_buffer, task.out_buffer, task.in_size, task.in_size, 12);
+        int compressed_size = LZ4_compress_HC(task.in_buffer, task.out_buffer, task.in_size, task.in_size, compression_level_);
 
         CompressedTaskResult result; 
         result.sector_idx       = task.sector_idx; 

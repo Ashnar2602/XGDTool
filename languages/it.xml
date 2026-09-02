@@ -22,6 +22,7 @@
     <string name="btn_browse">Sfoglia</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nome file</string>
+    <string name="col_status">Stato</string>
     <string name="label_status">Stato:</string>
     <string name="label_current_progress">Avanzamento Attuale:</string>
     <string name="label_total_progress">Avanzamento Totale:</string>
@@ -41,6 +42,23 @@
     <string name="setting_rename_xbe">Rinomina Titolo XBE</string>
     <string name="setting_offline_mode">Modalità Offline</string>
     <string name="setting_keep_name">Mantieni nome originale</string>
+    <string name="setting_generate_dvd">Genera file .dvd</string>
+    <string name="setting_checksum">Calcola Checksum</string>
+    <string name="setting_dark_mode">Tema Scuro</string>
+
+    <string name="label_compression_level">Compressione:</string>
+    <string name="label_threads">Lavori Paralleli:</string>
+    <string name="compress_default">Predefinito</string>
+    <string name="compress_fast">Veloce</string>
+    <string name="compress_balanced">Bilanciato</string>
+    <string name="compress_max">Massimo</string>
+
+    <string name="menu_remove_selected">Rimuovi selezionati</string>
+    <string name="menu_clear_list">Svuota lista</string>
+    <string name="status_queued">In coda</string>
+    <string name="status_in_progress">In corso...</string>
+    <string name="status_done">Completato</string>
+    <string name="status_error">Errore</string>
 
     <string name="lang_system">Sistema</string>
     <string name="lang_english">English</string>
@@ -94,6 +112,11 @@
     <string name="tooltip_rename_xbe">Sostituisce il campo titolo dei file XBE con quello trovato nel database</string>
     <string name="tooltip_offline_mode">Disabilita le funzioni online, risulterà in nomi file meno accurati</string>
     <string name="tooltip_keep_name">Mantiene il nome del file di input originale per i file di output, evitando sovrascritture per giochi multidisco</string>
+    <string name="tooltip_generate_dvd">Genera un file .dvd con il LayerBreak corretto per la masterizzazione</string>
+    <string name="tooltip_checksum">Calcola CRC32, MD5 e SHA-1 durante l'elaborazione</string>
+    <string name="tooltip_dark_mode">Attiva/disattiva il tema scuro</string>
+    <string name="tooltip_compression">Regola il livello di compressione per formati CCI, CSO e ZAR</string>
+    <string name="tooltip_threads">Numero di conversioni simultanee da eseguire in parallelo</string>
     <string name="tooltip_lang_system">Usa la lingua predefinita del sistema</string>
     <string name="tooltip_lang_english">Imposta la lingua su Inglese</string>
     <string name="tooltip_lang_italian">Imposta la lingua su Italiano</string>
@@ -130,6 +153,10 @@
     <string name="cli_flag_am_patch">Applica la patch al campo Allowed Media nei file XBE risultanti</string>
     <string name="cli_flag_offline">Disabilita le funzionalità online, producendo nomi meno accurati</string>
     <string name="cli_flag_keep_name">Mantiene il nome del file di input originale per l'output invece di usare il titolo del database</string>
+    <string name="cli_flag_dvd">Genera un file .dvd con LayerBreak per immagini XISO</string>
+    <string name="cli_flag_checksum">Calcola i checksum CRC32, MD5 e SHA-1</string>
+    <string name="cli_flag_compression">Imposta il livello di compressione (0=default, 1=veloce, 2=bilanciato, 3=massimo, o 1-19)</string>
+    <string name="cli_flag_threads">Numero di thread/lavori paralleli per le operazioni batch (predefinito: 1)</string>
     <string name="cli_flag_lang">Specifica la lingua dell'interfaccia (es. 'it', 'en', 'system')</string>
     <string name="cli_flag_debug">Abilita il log di debug</string>
     <string name="cli_flag_quiet">Disabilita tutti i log eccetto avvisi ed errori</string>

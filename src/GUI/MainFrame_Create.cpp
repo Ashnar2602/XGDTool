@@ -1,5 +1,23 @@
+#include <wx/dnd.h>
 #include "GUI/MainFrame.h"
 #include "Utils/LocalizationManager.h"
+
+class XGDFileDropTarget : public wxFileDropTarget
+{
+public:
+    XGDFileDropTarget(MainFrame* frame) : frame_(frame) {}
+    bool OnDropFiles(wxCoord, wxCoord, const wxArrayString& filenames) override
+    {
+        if (frame_)
+        {
+            frame_->handle_dropped_files(filenames);
+            return true;
+        }
+        return false;
+    }
+private:
+    MainFrame* frame_;
+};
 
 void MainFrame::create_frame()
 {
@@ -29,9 +47,16 @@ void MainFrame::create_frame()
     ui_labels_.file_list = new wxStaticText(panel, wxID_ANY, "File List:");
     fg_sizer->Add(ui_labels_.file_list, 2, wxALIGN_TOP | wxALIGN_RIGHT);
 
-    file_list_ = new wxListCtrl(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SINGLE_SEL);
-    file_list_->InsertColumn(0, "Format", wxLIST_FORMAT_LEFT, 60);
-    file_list_->InsertColumn(1, "Filename", wxLIST_FORMAT_LEFT, 600);
+    file_list_ = new wxListCtrl(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT);
+    file_list_->InsertColumn(0, "Format", wxLIST_FORMAT_LEFT, 65);
+    file_list_->InsertColumn(1, "Filename", wxLIST_FORMAT_LEFT, 480);
+    file_list_->InsertColumn(2, "Status", wxLIST_FORMAT_LEFT, 130);
+
+    file_list_->Bind(wxEVT_LIST_ITEM_RIGHT_CLICK, &MainFrame::on_list_item_right_click, this);
+    file_list_->Bind(wxEVT_LIST_KEY_DOWN, &MainFrame::on_list_key_down, this);
+
+    SetDropTarget(new XGDFileDropTarget(this));
+    file_list_->SetDropTarget(new XGDFileDropTarget(this));
 
     fg_sizer->Add(file_list_, 1, wxEXPAND);
 
@@ -54,11 +79,11 @@ void MainFrame::create_frame()
     wxBoxSizer* settings_sizer = new wxBoxSizer(wxHORIZONTAL);
 
     settings_sizer->Add(create_out_format_radio_box(panel), 0, wxEXPAND);
-    settings_sizer->AddSpacer(25);
+    settings_sizer->AddSpacer(20);
     settings_sizer->Add(create_out_scrub_radio_box(panel), 0, wxEXPAND);
-    settings_sizer->AddSpacer(25);
+    settings_sizer->AddSpacer(20);
     settings_sizer->Add(create_out_settings_check_box(panel), 0, wxEXPAND);
-    settings_sizer->AddSpacer(25);
+    settings_sizer->AddSpacer(20);
     settings_sizer->Add(create_language_radio_box(panel), 0, wxEXPAND);
 
     settings_progress_bar_sizer->Add(settings_sizer, 0, wxEXPAND);
@@ -190,6 +215,9 @@ wxBoxSizer* MainFrame::create_out_settings_check_box(wxPanel* panel)
     out_settings_cbs_.rename_xbe = new wxCheckBox(panel, wxID_ANY, "Rename XBE Title");
     out_settings_cbs_.offline_mode = new wxCheckBox(panel, wxID_ANY, "Offline Mode");
     out_settings_cbs_.keep_name = new wxCheckBox(panel, wxID_ANY, "Keep Original Name");
+    out_settings_cbs_.generate_dvd = new wxCheckBox(panel, wxID_ANY, "Generate .dvd file");
+    out_settings_cbs_.calculate_checksum = new wxCheckBox(panel, wxID_ANY, "Calculate Checksum");
+    out_settings_cbs_.dark_mode = new wxCheckBox(panel, wxID_ANY, "Dark Theme");
     
     out_settings_cbs_.split->SetToolTip("Splits the resulting XISO file if it's too large for OG Xbox");
     out_settings_cbs_.attach_xbe->SetToolTip("Generates an attach XBE file along with the output file");
@@ -197,6 +225,11 @@ wxBoxSizer* MainFrame::create_out_settings_check_box(wxPanel* panel)
     out_settings_cbs_.rename_xbe->SetToolTip("Replaces the title field of resulting XBE files with one found in the database");
     out_settings_cbs_.offline_mode->SetToolTip("Disables online functionality, will result in less accurate file naming");
     out_settings_cbs_.keep_name->SetToolTip("Keeps the original input filename for output files, preventing overwrites for multi-disc games");
+    out_settings_cbs_.generate_dvd->SetToolTip("Generates a companion .dvd file with the correct LayerBreak for disc burning");
+    out_settings_cbs_.calculate_checksum->SetToolTip("Calculates CRC32, MD5, and SHA-1 checksums during processing");
+    out_settings_cbs_.dark_mode->SetToolTip("Toggle dark mode theme");
+
+    out_settings_cbs_.dark_mode->Bind(wxEVT_CHECKBOX, &MainFrame::on_dark_mode_toggle, this);
     
     out_settings_sizer->Add(out_settings_cbs_.split, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.attach_xbe, 0, wxEXPAND);
@@ -204,6 +237,37 @@ wxBoxSizer* MainFrame::create_out_settings_check_box(wxPanel* panel)
     out_settings_sizer->Add(out_settings_cbs_.rename_xbe, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.offline_mode, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.keep_name, 0, wxEXPAND);
+    out_settings_sizer->Add(out_settings_cbs_.generate_dvd, 0, wxEXPAND);
+    out_settings_sizer->Add(out_settings_cbs_.calculate_checksum, 0, wxEXPAND);
+    out_settings_sizer->Add(out_settings_cbs_.dark_mode, 0, wxEXPAND);
+
+    out_settings_sizer->AddSpacer(6);
+
+    wxBoxSizer* comp_sizer = new wxBoxSizer(wxHORIZONTAL);
+    ui_labels_.compression = new wxStaticText(panel, wxID_ANY, "Compression:");
+    compression_choice_ = new wxChoice(panel, wxID_ANY);
+    compression_choice_->Append("Default");
+    compression_choice_->Append("Fast");
+    compression_choice_->Append("Balanced");
+    compression_choice_->Append("Maximum");
+    compression_choice_->SetSelection(0);
+    comp_sizer->Add(ui_labels_.compression, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    comp_sizer->Add(compression_choice_, 1, wxEXPAND);
+    out_settings_sizer->Add(comp_sizer, 0, wxEXPAND);
+
+    out_settings_sizer->AddSpacer(4);
+
+    wxBoxSizer* thread_sizer = new wxBoxSizer(wxHORIZONTAL);
+    ui_labels_.threads = new wxStaticText(panel, wxID_ANY, "Parallel Jobs:");
+    threads_choice_ = new wxChoice(panel, wxID_ANY);
+    threads_choice_->Append("1");
+    threads_choice_->Append("2");
+    threads_choice_->Append("4");
+    threads_choice_->Append("8");
+    threads_choice_->SetSelection(0);
+    thread_sizer->Add(ui_labels_.threads, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    thread_sizer->Add(threads_choice_, 1, wxEXPAND);
+    out_settings_sizer->Add(thread_sizer, 0, wxEXPAND);
 
     return out_settings_sizer;
 }

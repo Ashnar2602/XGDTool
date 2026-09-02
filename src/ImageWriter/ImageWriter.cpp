@@ -20,9 +20,9 @@ std::unique_ptr<ImageWriter> ImageWriter::create_instance(std::shared_ptr<ImageR
         case FileType::GoD:
             return std::make_unique<GoDWriter>(image_reader, title_helper, out_settings.scrub_type);
         case FileType::CSO:
-            return std::make_unique<CSOWriter>(image_reader, out_settings.scrub_type);
+            return std::make_unique<CSOWriter>(image_reader, out_settings.scrub_type, out_settings.compression_level);
         case FileType::CCI:
-            return std::make_unique<CCIWriter>(image_reader, out_settings.scrub_type);
+            return std::make_unique<CCIWriter>(image_reader, out_settings.scrub_type, out_settings.compression_level);
         default:
             throw XGDException(ErrCode::ISO_INVALID, HERE(), "Unknown file type");
     }
@@ -39,9 +39,9 @@ std::unique_ptr<ImageWriter> ImageWriter::create_instance(const std::filesystem:
         case FileType::GoD:
             return std::make_unique<GoDWriter>(in_dir_path, title_helper);
         case FileType::CSO:
-            return std::make_unique<CSOWriter>(in_dir_path);
+            return std::make_unique<CSOWriter>(in_dir_path, out_settings.compression_level);
         case FileType::CCI:
-            return std::make_unique<CCIWriter>(in_dir_path);
+            return std::make_unique<CCIWriter>(in_dir_path, out_settings.compression_level);
         default:
             throw XGDException(ErrCode::ISO_INVALID, HERE(), "Unknown file type");
     }

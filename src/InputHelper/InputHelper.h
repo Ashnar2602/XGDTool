@@ -42,6 +42,7 @@ private:
     OutputSettings output_settings_;
     std::filesystem::path output_directory_;
     std::vector<std::filesystem::path> failed_inputs_;
+    std::mutex mutex_;
 
     // Instances stored here so cancel flag can be set asynchrnously
     std::unique_ptr<ImageWriter> image_writer_{nullptr};

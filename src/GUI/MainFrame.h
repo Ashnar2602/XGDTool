@@ -23,6 +23,7 @@ wxDECLARE_EVENT(wxEVT_UPDATE_CURRENT_PROGRESS, wxThreadEvent);
 wxDECLARE_EVENT(wxEVT_UPDATE_TOTAL_PROGRESS, wxThreadEvent);
 wxDECLARE_EVENT(wxEVT_THREAD_COMPLETED, wxThreadEvent);
 wxDECLARE_EVENT(wxEVT_UPDATE_CURRENT_STAGE, wxThreadEvent);
+wxDECLARE_EVENT(wxEVT_UPDATE_ITEM_STATUS, wxThreadEvent);
 
 class MainFrame : public wxFrame
 {
@@ -33,6 +34,7 @@ public:
     static void update_progress_bar(uint64_t current, uint64_t total);
     static void update_status_field(const std::string status);
     void update_ui_language();
+    void handle_dropped_files(const wxArrayString& files);
 
 private:
     enum class Status { IDLE, PROCESSING, PAUSED, CANCELED };
@@ -76,6 +78,9 @@ private:
         wxCheckBox* rename_xbe{nullptr};
         wxCheckBox* offline_mode{nullptr};
         wxCheckBox* keep_name{nullptr};
+        wxCheckBox* generate_dvd{nullptr};
+        wxCheckBox* calculate_checksum{nullptr};
+        wxCheckBox* dark_mode{nullptr};
     };
 
     struct ProcessButtons
@@ -108,6 +113,8 @@ private:
         wxStaticText* scrub{nullptr};
         wxStaticText* settings{nullptr};
         wxStaticText* language{nullptr};
+        wxStaticText* compression{nullptr};
+        wxStaticText* threads{nullptr};
     };
 
     std::atomic<Status> current_status_{Status::IDLE};
@@ -132,6 +139,10 @@ private:
     ProcessButtons process_buttons_;
     UILabels ui_labels_;
 
+    wxChoice* compression_choice_{nullptr};
+    wxChoice* threads_choice_{nullptr};
+    bool is_dark_mode_{false};
+
     static wxGauge* current_progress_bar_;
     wxGauge* total_progress_bar_{nullptr};
     wxPanel* main_panel_{nullptr};
@@ -148,6 +159,14 @@ private:
     void on_update_total_progress(wxThreadEvent& event);
     void on_thread_completed(wxThreadEvent& event);
     void on_update_current_stage(wxThreadEvent& event);
+    void on_update_item_status(wxThreadEvent& event);
+
+    void on_list_item_right_click(wxListEvent& event);
+    void on_list_key_down(wxListEvent& event);
+    void on_remove_selected_items(wxCommandEvent& event);
+    void on_clear_file_list(wxCommandEvent& event);
+    void on_dark_mode_toggle(wxCommandEvent& event);
+    void apply_theme(bool dark);
 
     void update_current_progress_bar(uint64_t progress, uint64_t total);
     void process_files();

@@ -1,7 +1,92 @@
+#include <iomanip>
+#include <sstream>
+#include <openssl/evp.h>
+#include <zlib.h>
+#include <thread>
+#include <atomic>
+
 #include "ImageReader/ImageReader.h"
 #include "InputHelper/InputHelper.h"
 #include "Executable/AttachXbeTool.h"
 #include "Utils/LocalizationManager.h"
+
+struct ChecksumResult
+{
+    uint32_t crc32{0};
+    std::string md5;
+    std::string sha1;
+};
+
+static ChecksumResult calculate_file_checksums(const std::filesystem::path& file_path)
+{
+    std::ifstream is(file_path, std::ios::binary);
+    if (!is.is_open()) return {};
+
+    EVP_MD_CTX* md5_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX* sha1_ctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(md5_ctx, EVP_md5(), nullptr);
+    EVP_DigestInit_ex(sha1_ctx, EVP_sha1(), nullptr);
+
+    uLong crc = crc32(0L, Z_NULL, 0);
+
+    std::vector<char> buffer(128 * 1024);
+    while (is.read(buffer.data(), buffer.size()) || is.gcount() > 0)
+    {
+        size_t bytes_read = static_cast<size_t>(is.gcount());
+        crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), static_cast<uInt>(bytes_read));
+        EVP_DigestUpdate(md5_ctx, buffer.data(), bytes_read);
+        EVP_DigestUpdate(sha1_ctx, buffer.data(), bytes_read);
+    }
+
+    unsigned char md5_digest[EVP_MAX_MD_SIZE];
+    unsigned int md5_len = 0;
+    EVP_DigestFinal_ex(md5_ctx, md5_digest, &md5_len);
+    EVP_MD_CTX_free(md5_ctx);
+
+    unsigned char sha1_digest[EVP_MAX_MD_SIZE];
+    unsigned int sha1_len = 0;
+    EVP_DigestFinal_ex(sha1_ctx, sha1_digest, &sha1_len);
+    EVP_MD_CTX_free(sha1_ctx);
+
+    auto to_hex = [](const unsigned char* data, unsigned int len) {
+        std::ostringstream oss;
+        oss << std::hex << std::setfill('0');
+        for (unsigned int i = 0; i < len; ++i) {
+            oss << std::setw(2) << static_cast<int>(data[i]);
+        }
+        return oss.str();
+    };
+
+    ChecksumResult res;
+    res.crc32 = static_cast<uint32_t>(crc);
+    res.md5 = to_hex(md5_digest, md5_len);
+    res.sha1 = to_hex(sha1_digest, sha1_len);
+    return res;
+}
+
+static void generate_dvd_file(const std::filesystem::path& iso_path)
+{
+    if (!std::filesystem::exists(iso_path)) return;
+    std::error_code ec;
+    uint64_t size_bytes = std::filesystem::file_size(iso_path, ec);
+    if (ec) return;
+
+    // XGD3 is ~8.13 GB (8,738,846,720 bytes) or > 7.5 GB. LayerBreak is 2133520
+    // XGD2 is ~7.3 GB (7,835,492,352 bytes) or OG Xbox DL. LayerBreak is 1913760
+    uint32_t layer_break = (size_bytes > 8000000000ULL) ? 2133520 : 1913760;
+
+    std::filesystem::path dvd_path = iso_path;
+    dvd_path.replace_extension(".dvd");
+
+    std::ofstream dvd_file(dvd_path);
+    if (dvd_file.is_open())
+    {
+        dvd_file << "LayerBreak=" << layer_break << "\r\n";
+        dvd_file << iso_path.filename().string() << "\r\n";
+        dvd_file.close();
+        XGDLog(Normal) << "Generated .dvd file: " << dvd_path.filename().string() << " (LayerBreak=" << layer_break << ")" << XGDLog::Endl;
+    }
+}
 
 InputHelper::InputHelper(std::filesystem::path in_path, std::filesystem::path out_directory, OutputSettings output_settings)
     :   output_directory_(out_directory), 
@@ -84,9 +169,35 @@ void InputHelper::process_all()
 {
     failed_inputs_.clear();
 
-    for (auto& input_info : input_infos_) 
+    if (output_settings_.threads > 1 && input_infos_.size() > 1)
     {
-        process_single(input_info);
+        size_t max_threads = std::min(static_cast<size_t>(output_settings_.threads), input_infos_.size());
+        std::atomic<size_t> next_index{0};
+        std::vector<std::thread> workers;
+
+        for (size_t t = 0; t < max_threads; ++t)
+        {
+            workers.emplace_back([this, &next_index]() {
+                while (true)
+                {
+                    size_t idx = next_index.fetch_add(1);
+                    if (idx >= input_infos_.size()) break;
+                    process_single(input_infos_[idx]);
+                }
+            });
+        }
+
+        for (auto& w : workers)
+        {
+            if (w.joinable()) w.join();
+        }
+    }
+    else
+    {
+        for (auto& input_info : input_infos_) 
+        {
+            process_single(input_info);
+        }
     }
 }
 
@@ -121,18 +232,42 @@ void InputHelper::process_single(InputInfo input_info)
         {
             std::string out_target = out_paths.front().string() + ((out_paths.size() > 1) ? (" and " + out_paths.back().string()) : "");
             XGDLog() << I18n::format("cli_msg_success_created", out_target) << "\n";
+
+            for (const auto& out_file : out_paths)
+            {
+                if (output_settings_.generate_dvd && out_file.extension() == ".iso")
+                {
+                    generate_dvd_file(out_file);
+                }
+                if (output_settings_.calculate_checksum && std::filesystem::is_regular_file(out_file))
+                {
+                    XGDLog(Normal) << "Calculating checksums for " << out_file.filename().string() << "..." << XGDLog::Endl;
+                    auto chk = calculate_file_checksums(out_file);
+                    std::ostringstream crc_hex;
+                    crc_hex << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << chk.crc32;
+                    XGDLog(Normal) << "  CRC32:  " << crc_hex.str() << XGDLog::Endl;
+                    XGDLog(Normal) << "  MD5:    " << chk.md5 << XGDLog::Endl;
+                    XGDLog(Normal) << "  SHA-1:  " << chk.sha1 << XGDLog::Endl;
+                }
+            }
         }
     } 
     catch (const XGDException& e) 
     {
         reset_processor();
-        failed_inputs_.insert(failed_inputs_.end(), input_info.paths.begin(), input_info.paths.end());
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            failed_inputs_.insert(failed_inputs_.end(), input_info.paths.begin(), input_info.paths.end());
+        }
         XGDLog(Error) << e.what() << "\n";
     }
     catch (const std::exception& e) 
     {
         reset_processor();
-        failed_inputs_.insert(failed_inputs_.end(), input_info.paths.begin(), input_info.paths.end());
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            failed_inputs_.insert(failed_inputs_.end(), input_info.paths.begin(), input_info.paths.end());
+        }
         XGDLog(Error) << e.what() << "\n";
     }
 }

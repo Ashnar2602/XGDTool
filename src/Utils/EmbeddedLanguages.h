@@ -1,9 +1,10 @@
-#pragma once
+#ifndef _EMBEDDED_LANGUAGES_H_
+#define _EMBEDDED_LANGUAGES_H_
 
 #include <string_view>
 
-namespace EmbeddedLanguages {
-
+namespace EmbeddedLanguages
+{
 inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">XGDTool</string>
@@ -28,6 +29,7 @@ inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="u
     <string name="btn_browse">Browse</string>
     <string name="col_format">Format</string>
     <string name="col_filename">Filename</string>
+    <string name="col_status">Status</string>
     <string name="label_status">Status:</string>
     <string name="label_current_progress">Current Progress:</string>
     <string name="label_total_progress">Total Progress:</string>
@@ -47,6 +49,23 @@ inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="u
     <string name="setting_rename_xbe">Rename XBE Title</string>
     <string name="setting_offline_mode">Offline Mode</string>
     <string name="setting_keep_name">Keep Original Name</string>
+    <string name="setting_generate_dvd">Generate .dvd file</string>
+    <string name="setting_checksum">Calculate Checksums</string>
+    <string name="setting_dark_mode">Dark Theme</string>
+
+    <string name="label_compression_level">Compression:</string>
+    <string name="label_threads">Parallel Jobs:</string>
+    <string name="compress_default">Default</string>
+    <string name="compress_fast">Fast</string>
+    <string name="compress_balanced">Balanced</string>
+    <string name="compress_max">Maximum</string>
+
+    <string name="menu_remove_selected">Remove selected</string>
+    <string name="menu_clear_list">Clear list</string>
+    <string name="status_queued">Queued</string>
+    <string name="status_in_progress">Processing...</string>
+    <string name="status_done">Complete</string>
+    <string name="status_error">Error</string>
 
     <string name="lang_system">System</string>
     <string name="lang_english">English</string>
@@ -100,6 +119,11 @@ inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="u
     <string name="tooltip_rename_xbe">Replaces the title field of resulting XBE files with one found in the database</string>
     <string name="tooltip_offline_mode">Disables online functionality, will result in less accurate file naming</string>
     <string name="tooltip_keep_name">Keeps the original input filename for output files, preventing overwrites for multi-disc games</string>
+    <string name="tooltip_generate_dvd">Generates a companion .dvd file with the correct LayerBreak for disc burning</string>
+    <string name="tooltip_checksum">Calculates CRC32, MD5, and SHA-1 checksums during processing</string>
+    <string name="tooltip_dark_mode">Toggle dark mode theme</string>
+    <string name="tooltip_compression">Adjust compression level for CCI, CSO, and ZAR formats</string>
+    <string name="tooltip_threads">Number of simultaneous conversions to run in parallel</string>
     <string name="tooltip_lang_system">Use system default language</string>
     <string name="tooltip_lang_english">Set UI language to English</string>
     <string name="tooltip_lang_italian">Set UI language to Italian</string>
@@ -136,6 +160,10 @@ inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="u
     <string name="cli_flag_am_patch">Patches the Allowed Media field in resulting XBE files</string>
     <string name="cli_flag_offline">Disables online functionality, will result in less accurate file naming</string>
     <string name="cli_flag_keep_name">Keep original input filename for output instead of database title lookup</string>
+    <string name="cli_flag_dvd">Generate a companion .dvd file with LayerBreak for XISO images</string>
+    <string name="cli_flag_checksum">Calculate CRC32, MD5, and SHA-1 checksums</string>
+    <string name="cli_flag_compression">Set compression level (0=default, 1=fast, 2=balanced, 3=max, or 1-19)</string>
+    <string name="cli_flag_threads">Number of parallel threads/jobs for batch processing (default: 1)</string>
     <string name="cli_flag_lang">Set interface language (e.g. 'it', 'en', 'system')</string>
     <string name="cli_flag_debug">Enable debug logging</string>
     <string name="cli_flag_quiet">Disable all logging except for warnings and errors</string>
@@ -153,8 +181,7 @@ inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">Writing CSO file</string>
     <string name="stage_writing_cci">Writing CCI archive</string>
     <string name="stage_extracting">Extracting files</string>
-</resources>
-)xml";
+</resources>)xml";
 
 inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -180,6 +207,7 @@ inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="u
     <string name="btn_browse">Sfoglia</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nome file</string>
+    <string name="col_status">Stato</string>
     <string name="label_status">Stato:</string>
     <string name="label_current_progress">Avanzamento Attuale:</string>
     <string name="label_total_progress">Avanzamento Totale:</string>
@@ -199,6 +227,23 @@ inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="u
     <string name="setting_rename_xbe">Rinomina Titolo XBE</string>
     <string name="setting_offline_mode">Modalità Offline</string>
     <string name="setting_keep_name">Mantieni nome originale</string>
+    <string name="setting_generate_dvd">Genera file .dvd</string>
+    <string name="setting_checksum">Calcola Checksum</string>
+    <string name="setting_dark_mode">Tema Scuro</string>
+
+    <string name="label_compression_level">Compressione:</string>
+    <string name="label_threads">Lavori Paralleli:</string>
+    <string name="compress_default">Predefinito</string>
+    <string name="compress_fast">Veloce</string>
+    <string name="compress_balanced">Bilanciato</string>
+    <string name="compress_max">Massimo</string>
+
+    <string name="menu_remove_selected">Rimuovi selezionati</string>
+    <string name="menu_clear_list">Svuota lista</string>
+    <string name="status_queued">In coda</string>
+    <string name="status_in_progress">In corso...</string>
+    <string name="status_done">Completato</string>
+    <string name="status_error">Errore</string>
 
     <string name="lang_system">Sistema</string>
     <string name="lang_english">English</string>
@@ -252,6 +297,11 @@ inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="u
     <string name="tooltip_rename_xbe">Sostituisce il campo titolo dei file XBE con quello trovato nel database</string>
     <string name="tooltip_offline_mode">Disabilita le funzioni online, risulterà in nomi file meno accurati</string>
     <string name="tooltip_keep_name">Mantiene il nome del file di input originale per i file di output, evitando sovrascritture per giochi multidisco</string>
+    <string name="tooltip_generate_dvd">Genera un file .dvd con il LayerBreak corretto per la masterizzazione</string>
+    <string name="tooltip_checksum">Calcola CRC32, MD5 e SHA-1 durante l'elaborazione</string>
+    <string name="tooltip_dark_mode">Attiva/disattiva il tema scuro</string>
+    <string name="tooltip_compression">Regola il livello di compressione per formati CCI, CSO e ZAR</string>
+    <string name="tooltip_threads">Numero di conversioni simultanee da eseguire in parallelo</string>
     <string name="tooltip_lang_system">Usa la lingua predefinita del sistema</string>
     <string name="tooltip_lang_english">Imposta la lingua su Inglese</string>
     <string name="tooltip_lang_italian">Imposta la lingua su Italiano</string>
@@ -288,6 +338,10 @@ inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="u
     <string name="cli_flag_am_patch">Applica la patch al campo Allowed Media nei file XBE risultanti</string>
     <string name="cli_flag_offline">Disabilita le funzionalità online, producendo nomi meno accurati</string>
     <string name="cli_flag_keep_name">Mantiene il nome del file di input originale per l'output invece di usare il titolo del database</string>
+    <string name="cli_flag_dvd">Genera un file .dvd con LayerBreak per immagini XISO</string>
+    <string name="cli_flag_checksum">Calcola i checksum CRC32, MD5 e SHA-1</string>
+    <string name="cli_flag_compression">Imposta il livello di compressione (0=default, 1=veloce, 2=bilanciato, 3=massimo, o 1-19)</string>
+    <string name="cli_flag_threads">Numero di thread/lavori paralleli per le operazioni batch (predefinito: 1)</string>
     <string name="cli_flag_lang">Specifica la lingua dell'interfaccia (es. 'it', 'en', 'system')</string>
     <string name="cli_flag_debug">Abilita il log di debug</string>
     <string name="cli_flag_quiet">Disabilita tutti i log eccetto avvisi ed errori</string>
@@ -305,8 +359,7 @@ inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">Scrittura file CSO</string>
     <string name="stage_writing_cci">Scrittura archivio CCI</string>
     <string name="stage_extracting">Estrazione file</string>
-</resources>
-)xml";
+</resources>)xml";
 
 inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -332,6 +385,7 @@ inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="u
     <string name="btn_browse">Durchsuchen</string>
     <string name="col_format">Format</string>
     <string name="col_filename">Dateiname</string>
+    <string name="col_status">Status</string>
     <string name="label_status">Status:</string>
     <string name="label_current_progress">Aktueller Fortschritt:</string>
     <string name="label_total_progress">Gesamtfortschritt:</string>
@@ -351,6 +405,23 @@ inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="u
     <string name="setting_rename_xbe">XBE-Titel umbenennen</string>
     <string name="setting_offline_mode">Offline-Modus</string>
     <string name="setting_keep_name">Originalnamen beibehalten</string>
+    <string name="setting_generate_dvd">.dvd-Datei erstellen</string>
+    <string name="setting_checksum">Prüfsummen berechnen</string>
+    <string name="setting_dark_mode">Dunkles Design</string>
+
+    <string name="label_compression_level">Komprimierung:</string>
+    <string name="label_threads">Parallele Aufgaben:</string>
+    <string name="compress_default">Standard</string>
+    <string name="compress_fast">Schnell</string>
+    <string name="compress_balanced">Ausgewogen</string>
+    <string name="compress_max">Maximum</string>
+
+    <string name="menu_remove_selected">Ausgewählte entfernen</string>
+    <string name="menu_clear_list">Liste leeren</string>
+    <string name="status_queued">In Warteschlange</string>
+    <string name="status_in_progress">In Bearbeitung...</string>
+    <string name="status_done">Fertig</string>
+    <string name="status_error">Fehler</string>
 
     <string name="lang_system">System</string>
     <string name="lang_english">English</string>
@@ -375,45 +446,50 @@ inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="u
     <string name="choose_selection_type_caption">Auswählen</string>
     <string name="choice_select_files">Dateien auswählen</string>
     <string name="choice_select_dir">Verzeichnis auswählen</string>
-    <string name="dialog_select_files_title">Datei(en) auswählen</string>
-    <string name="dialog_select_dir_title">Verzeichnis auswählen</string>
+    <string name="dialog_select_files_title">Eine oder mehrere Dateien auswählen</string>
+    <string name="dialog_select_dir_title">Ein Verzeichnis auswählen</string>
     <string name="dialog_select_out_dir_title">Ausgabeverzeichnis auswählen (GoD/Spiel/Batch)</string>
     <string name="wildcard_xbox_images">Xbox-Image-Dateien (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Alle Dateien (*.*)|*.*</string>
     <string name="msg_no_input_files">Keine Eingabedateien ausgewählt</string>
     <string name="msg_no_output_dir">Kein Ausgabeverzeichnis ausgewählt</string>
-    <string name="msg_no_valid_files">Keine gültigen Dateien im gewählten Pfad gefunden</string>
+    <string name="msg_no_valid_files">Keine gültigen Dateien im ausgewählten Pfad gefunden</string>
 
-    <string name="tooltip_browse_input">Eingabedatei oder -verzeichnis zur Verarbeitung auswählen</string>
-    <string name="tooltip_browse_output">Ausgabeverzeichnis zum Speichern der Dateien auswählen</string>
+    <string name="tooltip_browse_input">Zu verarbeitende Datei oder Verzeichnis auswählen</string>
+    <string name="tooltip_browse_output">Zielverzeichnis für verarbeitete Dateien auswählen</string>
     <string name="tooltip_fmt_iso">Erstellt ein XISO-Image</string>
     <string name="tooltip_fmt_god">Erstellt ein Games on Demand (GoD) Image</string>
-    <string name="tooltip_fmt_cci">Erstellt ein komprimiertes CCI-Archiv</string>
-    <string name="tooltip_fmt_cso">Erstellt ein komprimiertes CSO-Archiv</string>
-    <string name="tooltip_fmt_zar">Erstellt ein komprimiertes ZAR-Archiv</string>
+    <string name="tooltip_fmt_cci">Erstellt ein CCI-Archiv</string>
+    <string name="tooltip_fmt_cso">Erstellt ein CSO-Archiv</string>
+    <string name="tooltip_fmt_zar">Erstellt ein ZAR-Archiv</string>
     <string name="tooltip_fmt_extract">Extrahiert alle Dateien in ein Verzeichnis</string>
-    <string name="tooltip_auto_ogxbox">Wählt automatisch Format und Einstellungen für die Original Xbox</string>
-    <string name="tooltip_auto_xbox360">Wählt automatisch Format und Einstellungen für die Xbox 360</string>
+    <string name="tooltip_auto_ogxbox">Wählt automatisch Format und Einstellungen für OG Xbox</string>
+    <string name="tooltip_auto_xbox360">Wählt automatisch Format und Einstellungen für Xbox 360</string>
     <string name="tooltip_auto_xemu">Wählt automatisch Format und Einstellungen für Xemu</string>
     <string name="tooltip_auto_xenia">Wählt automatisch Format und Einstellungen für Xenia</string>
-    <string name="tooltip_scrub_none">Keine Bereinigung, nur Videopartition wird entfernt falls vorhanden</string>
-    <string name="tooltip_scrub_partial">Bereinigt und kürzt das Image, zufällige Fülldaten werden entfernt</string>
-    <string name="tooltip_scrub_full">Baut das Image komplett neu auf, um die kleinstmögliche Dateigröße zu erzielen</string>
-    <string name="tooltip_split">Teilt die XISO-Datei, falls sie zu groß für die Original Xbox ist</string>
-    <string name="tooltip_attach_xbe">Erzeugt eine Attach-XBE-Datei zusammen mit der Ausgabedatei</string>
-    <string name="tooltip_am_patch">Patcht das Feld Allowed Media in den resultierenden XBE-Dateien</string>
-    <string name="tooltip_rename_xbe">Ersetzt den Titelfeld-Eintrag der XBE-Dateien mit dem Namen aus der Datenbank</string>
-    <string name="tooltip_offline_mode">Deaktiviert Online-Funktionen, führt zu weniger genauen Dateinamen</string>
-    <string name="tooltip_keep_name">Behält den ursprünglichen Eingabedateinamen bei (verhindert Überschreiben bei Multi-Disc-Spielen)</string>
-    <string name="tooltip_lang_system">Standardsprache des Systems verwenden</string>
+    <string name="tooltip_scrub_none">Keine Bereinigung, nur Videopartition wird entfernt</string>
+    <string name="tooltip_scrub_partial">Bereinigt und kürzt das Image, Padding-Daten werden entfernt</string>
+    <string name="tooltip_scrub_full">Baut das Image komplett neu auf für minimale Größe</string>
+    <string name="tooltip_split">Teilt die XISO-Datei, falls zu groß für OG Xbox</string>
+    <string name="tooltip_attach_xbe">Erzeugt eine Attach-XBE-Datei neben der Ausgabedatei</string>
+    <string name="tooltip_am_patch">Patcht das Allowed-Media-Feld in XBE-Dateien</string>
+    <string name="tooltip_rename_xbe">Patcht das Titelfeld der XBE mit dem Datenbanknamen</string>
+    <string name="tooltip_offline_mode">Deaktiviert Online-Funktionen</string>
+    <string name="tooltip_keep_name">Behält den ursprünglichen Eingabedateinamen bei</string>
+    <string name="tooltip_generate_dvd">Erstellt eine .dvd-Datei mit dem passenden LayerBreak</string>
+    <string name="tooltip_checksum">Berechnet CRC32-, MD5- und SHA-1-Prüfsummen</string>
+    <string name="tooltip_dark_mode">Dunkles Design umschalten</string>
+    <string name="tooltip_compression">Komprimierungsstufe für CCI, CSO und ZAR anpassen</string>
+    <string name="tooltip_threads">Anzahl gleichzeitiger paralleler Konvertierungen</string>
+    <string name="tooltip_lang_system">Systemsprache verwenden</string>
     <string name="tooltip_lang_english">Sprache auf Englisch setzen</string>
     <string name="tooltip_lang_italian">Sprache auf Italienisch setzen</string>
     <string name="tooltip_lang_german">Sprache auf Deutsch setzen</string>
     <string name="tooltip_lang_french">Sprache auf Französisch setzen</string>
     <string name="tooltip_lang_spanish">Sprache auf Spanisch setzen</string>
     <string name="tooltip_lang_portuguese">Sprache auf Portugiesisch setzen</string>
-    <string name="tooltip_process_all">Alle Dateien in der Liste verarbeiten</string>
+    <string name="tooltip_process_all">Alle Dateien in der Dateiliste verarbeiten</string>
     <string name="tooltip_pause">Verarbeitung der Dateien pausieren</string>
-    <string name="tooltip_cancel">Verarbeitung stoppt nach Fertigstellung der aktuellen Datei</string>
+    <string name="tooltip_cancel">Verarbeitung stoppt nach der aktuellen Datei</string>
 
     <string name="cli_opt_input_path">Eingabepfad</string>
     <string name="cli_opt_output_dir">Ausgabeverzeichnis</string>
@@ -440,7 +516,11 @@ inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="u
     <string name="cli_flag_am_patch">Patcht das Allowed-Media-Feld in XBE-Dateien</string>
     <string name="cli_flag_offline">Deaktiviert Online-Funktionen</string>
     <string name="cli_flag_keep_name">Behält den ursprünglichen Eingabedateinamen bei</string>
-    <string name="cli_flag_lang">Sprache der Benutzeroberfläche festlegen (z.B. 'de', 'en', 'it', 'fr', 'es', 'pt', 'system')</string>
+    <string name="cli_flag_dvd">Erstellt eine .dvd-Datei mit LayerBreak für XISO-Images</string>
+    <string name="cli_flag_checksum">Berechnet CRC32-, MD5- und SHA-1-Prüfsummen</string>
+    <string name="cli_flag_compression">Komprimierungsstufe einstellen (0=Standard, 1=schnell, 2=ausgewogen, 3=max, oder 1-19)</string>
+    <string name="cli_flag_threads">Anzahl paralleler Aufgaben/Threads für Batch-Verarbeitung (Standard: 1)</string>
+    <string name="cli_flag_lang">Sprache der Benutzeroberfläche festlegen (z.B. 'de', 'en', 'it', 'system')</string>
     <string name="cli_flag_debug">Debug-Protokollierung aktivieren</string>
     <string name="cli_flag_quiet">Alle Protokolle außer Warnungen und Fehlern deaktivieren</string>
 
@@ -457,8 +537,7 @@ inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">CSO-Datei wird geschrieben</string>
     <string name="stage_writing_cci">CCI-Archiv wird geschrieben</string>
     <string name="stage_extracting">Dateien werden extrahiert</string>
-</resources>
-)xml";
+</resources>)xml";
 
 inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -481,9 +560,9 @@ inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="u
     <string name="label_input_path">Chemin d'entrée :</string>
     <string name="label_output_dir">Dossier de sortie :</string>
     <string name="label_file_list">Liste des fichiers :</string>
-    <string name="btn_browse">Parcourir</string>
     <string name="col_format">Format</string>
     <string name="col_filename">Nom de fichier</string>
+    <string name="col_status">État</string>
     <string name="label_status">État :</string>
     <string name="label_current_progress">Progression actuelle :</string>
     <string name="label_total_progress">Progression totale :</string>
@@ -503,6 +582,23 @@ inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="u
     <string name="setting_rename_xbe">Renommer le titre XBE</string>
     <string name="setting_offline_mode">Mode hors ligne</string>
     <string name="setting_keep_name">Conserver le nom d'origine</string>
+    <string name="setting_generate_dvd">Générer fichier .dvd</string>
+    <string name="setting_checksum">Calculer les sommes de contrôle</string>
+    <string name="setting_dark_mode">Thème Sombre</string>
+
+    <string name="label_compression_level">Compression :</string>
+    <string name="label_threads">Tâches Parallèles :</string>
+    <string name="compress_default">Par défaut</string>
+    <string name="compress_fast">Rapide</string>
+    <string name="compress_balanced">Équilibré</string>
+    <string name="compress_max">Maximum</string>
+
+    <string name="menu_remove_selected">Supprimer la sélection</string>
+    <string name="menu_clear_list">Vider la liste</string>
+    <string name="status_queued">En attente</string>
+    <string name="status_in_progress">En cours...</string>
+    <string name="status_done">Terminé</string>
+    <string name="status_error">Erreur</string>
 
     <string name="lang_system">Système</string>
     <string name="lang_english">English</string>
@@ -523,40 +619,45 @@ inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="u
     <string name="status_complete">Traitement terminé</string>
     <string name="status_cancelled">Traitement annulé</string>
 
-    <string name="choose_selection_type_title">Choisissez le type de sélection :</string>
+    <string name="choose_selection_type_title">Choisir le type de sélection :</string>
     <string name="choose_selection_type_caption">Sélectionner</string>
     <string name="choice_select_files">Sélectionner des fichiers</string>
     <string name="choice_select_dir">Sélectionner un dossier</string>
     <string name="dialog_select_files_title">Sélectionner un ou plusieurs fichiers</string>
     <string name="dialog_select_dir_title">Sélectionner un dossier</string>
-    <string name="dialog_select_out_dir_title">Sélectionner le dossier de destination (GoD/Jeu/Batch)</string>
-    <string name="wildcard_xbox_images">Fichiers images Xbox (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Tous les fichiers (*.*)|*.*</string>
+    <string name="dialog_select_out_dir_title">Sélectionner le dossier de sortie (GoD/Jeu/Batch)</string>
+    <string name="wildcard_xbox_images">Images Xbox (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Tous les fichiers (*.*)|*.*</string>
     <string name="msg_no_input_files">Aucun fichier d'entrée sélectionné</string>
     <string name="msg_no_output_dir">Aucun dossier de sortie sélectionné</string>
     <string name="msg_no_valid_files">Aucun fichier valide trouvé dans l'emplacement sélectionné</string>
 
-    <string name="tooltip_browse_input">Sélectionnez le fichier ou dossier à traiter</string>
-    <string name="tooltip_browse_output">Sélectionnez le dossier de destination des fichiers traités</string>
+    <string name="tooltip_browse_input">Sélectionner le fichier ou dossier à traiter</string>
+    <string name="tooltip_browse_output">Sélectionner le dossier où enregistrer les fichiers traités</string>
     <string name="tooltip_fmt_iso">Crée une image XISO</string>
     <string name="tooltip_fmt_god">Crée une image Games on Demand (GoD)</string>
     <string name="tooltip_fmt_cci">Crée une archive compressée CCI</string>
     <string name="tooltip_fmt_cso">Crée une archive compressée CSO</string>
     <string name="tooltip_fmt_zar">Crée une archive compressée ZAR</string>
     <string name="tooltip_fmt_extract">Extrait tous les fichiers dans un dossier</string>
-    <string name="tooltip_auto_ogxbox">Choisit automatiquement le format et réglages pour Xbox originale</string>
+    <string name="tooltip_auto_ogxbox">Choisit automatiquement le format et réglages pour OG Xbox</string>
     <string name="tooltip_auto_xbox360">Choisit automatiquement le format et réglages pour Xbox 360</string>
     <string name="tooltip_auto_xemu">Choisit automatiquement le format et réglages pour Xemu</string>
     <string name="tooltip_auto_xenia">Choisit automatiquement le format et réglages pour Xenia</string>
     <string name="tooltip_scrub_none">Aucun nettoyage, seule la partition vidéo est retirée si présente</string>
-    <string name="tooltip_scrub_partial">Nettoie et tronque l'image en supprimant les données de remplissage aléatoires</string>
-    <string name="tooltip_scrub_full">Reconstruit entièrement l'image pour obtenir la taille minimale</string>
-    <string name="tooltip_split">Divise le fichier XISO s'il dépasse la taille maximale pour OG Xbox</string>
+    <string name="tooltip_scrub_partial">Nettoie et tronque l'image en supprimant le padding aléatoire</string>
+    <string name="tooltip_scrub_full">Reconstruit entièrement l'image pour la plus petite taille possible</string>
+    <string name="tooltip_split">Divise le fichier XISO si trop grand pour OG Xbox</string>
     <string name="tooltip_attach_xbe">Génère un fichier attach XBE avec le fichier de sortie</string>
-    <string name="tooltip_am_patch">Applique le patch au champ Allowed Media dans les fichiers XBE</string>
-    <string name="tooltip_rename_xbe">Remplace le champ titre du XBE avec celui trouvé dans la base de données</string>
-    <string name="tooltip_offline_mode">Désactive les fonctions en ligne, produisant des noms moins précis</string>
-    <string name="tooltip_keep_name">Conserve le nom du fichier d'entrée d'origine (évite les écrasements pour les jeux multi-disques)</string>
-    <string name="tooltip_lang_system">Utiliser la langue par défaut du système</string>
+    <string name="tooltip_am_patch">Patche le champ Allowed Media dans les fichiers XBE</string>
+    <string name="tooltip_rename_xbe">Patche le titre du fichier XBE avec celui de la base de données</string>
+    <string name="tooltip_offline_mode">Désactive les fonctionnalités en ligne</string>
+    <string name="tooltip_keep_name">Conserve le nom du fichier d'origine au lieu du titre de la base de données</string>
+    <string name="tooltip_generate_dvd">Génère un fichier .dvd avec le LayerBreak pour la gravure</string>
+    <string name="tooltip_checksum">Calcule les sommes de contrôle CRC32, MD5 et SHA-1</string>
+    <string name="tooltip_dark_mode">Basculer le thème sombre</string>
+    <string name="tooltip_compression">Ajuste le niveau de compression pour CCI, CSO et ZAR</string>
+    <string name="tooltip_threads">Nombre de conversions simultanées à exécuter en parallèle</string>
+    <string name="tooltip_lang_system">Utiliser la langue du système</string>
     <string name="tooltip_lang_english">Définir la langue sur Anglais</string>
     <string name="tooltip_lang_italian">Définir la langue sur Italien</string>
     <string name="tooltip_lang_german">Définir la langue sur Allemand</string>
@@ -565,7 +666,7 @@ inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="u
     <string name="tooltip_lang_portuguese">Définir la langue sur Portugais</string>
     <string name="tooltip_process_all">Traiter tous les fichiers de la liste</string>
     <string name="tooltip_pause">Mettre en pause le traitement</string>
-    <string name="tooltip_cancel">Le traitement s'arrêtera après la fin du fichier en cours</string>
+    <string name="tooltip_cancel">Le traitement s'arrêtera après le fichier en cours</string>
 
     <string name="cli_opt_input_path">Chemin d'entrée</string>
     <string name="cli_opt_output_dir">Dossier de sortie</string>
@@ -592,7 +693,11 @@ inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="u
     <string name="cli_flag_am_patch">Patche le champ Allowed Media dans les fichiers XBE</string>
     <string name="cli_flag_offline">Désactive les fonctionnalités en ligne</string>
     <string name="cli_flag_keep_name">Conserve le nom du fichier d'origine au lieu du titre de la base de données</string>
-    <string name="cli_flag_lang">Spécifie la langue de l'interface (ex. 'fr', 'en', 'it', 'de', 'es', 'pt', 'system')</string>
+    <string name="cli_flag_dvd">Génère un fichier .dvd avec LayerBreak pour images XISO</string>
+    <string name="cli_flag_checksum">Calcule les sommes de contrôle CRC32, MD5 et SHA-1</string>
+    <string name="cli_flag_compression">Définit le niveau de compression (0=défaut, 1=rapide, 2=équilibré, 3=max, ou 1-19)</string>
+    <string name="cli_flag_threads">Nombre de tâches/threads parallèles pour le traitement par lots (défaut : 1)</string>
+    <string name="cli_flag_lang">Spécifie la langue de l'interface (ex. 'fr', 'en', 'it', 'system')</string>
     <string name="cli_flag_debug">Active la journalisation de débogage</string>
     <string name="cli_flag_quiet">Désactive tous les journaux sauf avertissements et erreurs</string>
 
@@ -609,8 +714,7 @@ inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">Écriture du fichier CSO</string>
     <string name="stage_writing_cci">Écriture de l'archive CCI</string>
     <string name="stage_extracting">Extraction des fichiers</string>
-</resources>
-)xml";
+</resources>)xml";
 
 inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -636,6 +740,7 @@ inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="u
     <string name="btn_browse">Examinar</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nombre de archivo</string>
+    <string name="col_status">Estado</string>
     <string name="label_status">Estado:</string>
     <string name="label_current_progress">Progreso actual:</string>
     <string name="label_total_progress">Progreso total:</string>
@@ -655,6 +760,23 @@ inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="u
     <string name="setting_rename_xbe">Renombrar título XBE</string>
     <string name="setting_offline_mode">Modo sin conexión</string>
     <string name="setting_keep_name">Mantener nombre original</string>
+    <string name="setting_generate_dvd">Generar archivo .dvd</string>
+    <string name="setting_checksum">Calcular sumas de control</string>
+    <string name="setting_dark_mode">Tema Oscuro</string>
+
+    <string name="label_compression_level">Compresión:</string>
+    <string name="label_threads">Tareas Paralelas:</string>
+    <string name="compress_default">Predeterminado</string>
+    <string name="compress_fast">Rápido</string>
+    <string name="compress_balanced">Equilibrado</string>
+    <string name="compress_max">Máximo</string>
+
+    <string name="menu_remove_selected">Eliminar seleccionados</string>
+    <string name="menu_clear_list">Vaciar lista</string>
+    <string name="status_queued">En cola</string>
+    <string name="status_in_progress">En curso...</string>
+    <string name="status_done">Completado</string>
+    <string name="status_error">Error</string>
 
     <string name="lang_system">Sistema</string>
     <string name="lang_english">English</string>
@@ -675,49 +797,54 @@ inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="u
     <string name="status_complete">Procesamiento completado</string>
     <string name="status_cancelled">Procesamiento cancelado</string>
 
-    <string name="choose_selection_type_title">Elige el tipo de selección:</string>
+    <string name="choose_selection_type_title">Elegir tipo de selección:</string>
     <string name="choose_selection_type_caption">Seleccionar</string>
-    <string name="choice_select_files">Seleccionar Archivo(s)</string>
+    <string name="choice_select_files">Seleccionar Archivos</string>
     <string name="choice_select_dir">Seleccionar Carpeta</string>
     <string name="dialog_select_files_title">Seleccionar uno o más archivos</string>
     <string name="dialog_select_dir_title">Seleccionar una carpeta</string>
-    <string name="dialog_select_out_dir_title">Seleccionar carpeta de destino (GoD/Juego/Batch)</string>
-    <string name="wildcard_xbox_images">Archivos de imagen Xbox (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Todos los archivos (*.*)|*.*</string>
-    <string name="msg_no_input_files">No se seleccionó ningún archivo de entrada</string>
-    <string name="msg_no_output_dir">No se seleccionó ninguna carpeta de salida</string>
+    <string name="dialog_select_out_dir_title">Seleccionar carpeta de salida (GoD/Juego/Batch)</string>
+    <string name="wildcard_xbox_images">Imágenes Xbox (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Todos los archivos (*.*)|*.*</string>
+    <string name="msg_no_input_files">Ningún archivo de entrada seleccionado</string>
+    <string name="msg_no_output_dir">Ninguna carpeta de salida seleccionada</string>
     <string name="msg_no_valid_files">No se encontraron archivos válidos en la ruta seleccionada</string>
 
-    <string name="tooltip_browse_input">Selecciona el archivo o carpeta de entrada a procesar</string>
-    <string name="tooltip_browse_output">Selecciona la carpeta donde guardar los archivos procesados</string>
+    <string name="tooltip_browse_input">Seleccionar el archivo o carpeta a procesar</string>
+    <string name="tooltip_browse_output">Seleccionar la carpeta donde guardar los archivos procesados</string>
     <string name="tooltip_fmt_iso">Crea una imagen XISO</string>
     <string name="tooltip_fmt_god">Crea una imagen Games on Demand (GoD)</string>
     <string name="tooltip_fmt_cci">Crea un archivo comprimido CCI</string>
     <string name="tooltip_fmt_cso">Crea un archivo comprimido CSO</string>
     <string name="tooltip_fmt_zar">Crea un archivo comprimido ZAR</string>
     <string name="tooltip_fmt_extract">Extrae todos los archivos a una carpeta</string>
-    <string name="tooltip_auto_ogxbox">Elige automáticamente formato y ajustes para Xbox original</string>
+    <string name="tooltip_auto_ogxbox">Elige automáticamente formato y ajustes para OG Xbox</string>
     <string name="tooltip_auto_xbox360">Elige automáticamente formato y ajustes para Xbox 360</string>
     <string name="tooltip_auto_xemu">Elige automáticamente formato y ajustes para Xemu</string>
     <string name="tooltip_auto_xenia">Elige automáticamente formato y ajustes para Xenia</string>
     <string name="tooltip_scrub_none">Sin limpieza, solo se elimina la partición de video si existe</string>
     <string name="tooltip_scrub_partial">Limpia y recorta la imagen, eliminando datos de relleno aleatorios</string>
-    <string name="tooltip_scrub_full">Reconstruye totalmente la imagen para producir el tamaño más reducido posible</string>
-    <string name="tooltip_split">Divide el archivo XISO si supera el tamaño máximo para OG Xbox</string>
-    <string name="tooltip_attach_xbe">Genera un archivo attach XBE junto con el archivo de salida</string>
-    <string name="tooltip_am_patch">Parchea el campo Allowed Media en los archivos XBE resultantes</string>
-    <string name="tooltip_rename_xbe">Reemplaza el campo de título de los XBE con el de la base de datos</string>
-    <string name="tooltip_offline_mode">Desactiva las funciones en línea, generando nombres menos precisos</string>
-    <string name="tooltip_keep_name">Mantiene el nombre del archivo de entrada original (evita sobrescrituras en juegos multidisco)</string>
-    <string name="tooltip_lang_system">Usar el idioma predeterminado del sistema</string>
-    <string name="tooltip_lang_english">Establecer el idioma en Inglés</string>
-    <string name="tooltip_lang_italian">Establecer el idioma en Italiano</string>
-    <string name="tooltip_lang_german">Establecer el idioma en Alemán</string>
-    <string name="tooltip_lang_french">Establecer el idioma en Francés</string>
-    <string name="tooltip_lang_spanish">Establecer el idioma en Español</string>
-    <string name="tooltip_lang_portuguese">Establecer el idioma en Portugués</string>
+    <string name="tooltip_scrub_full">Reconstruye totalmente la imagen para obtener el menor tamaño posible</string>
+    <string name="tooltip_split">Divide el archivo XISO si supera el tamaño para OG Xbox</string>
+    <string name="tooltip_attach_xbe">Genera un archivo attach XBE junto al archivo de salida</string>
+    <string name="tooltip_am_patch">Parchea el campo Allowed Media en los archivos XBE</string>
+    <string name="tooltip_rename_xbe">Parchea el título del archivo XBE con el nombre de la base de datos</string>
+    <string name="tooltip_offline_mode">Desactiva las funciones en línea</string>
+    <string name="tooltip_keep_name">Mantiene el nombre del archivo original en lugar del título de la base de datos</string>
+    <string name="tooltip_generate_dvd">Genera un archivo .dvd con el LayerBreak para grabación</string>
+    <string name="tooltip_checksum">Calcula sumas de control CRC32, MD5 y SHA-1</string>
+    <string name="tooltip_dark_mode">Alternar tema oscuro</string>
+    <string name="tooltip_compression">Ajusta el nivel de compresión para CCI, CSO y ZAR</string>
+    <string name="tooltip_threads">Número de conversiones simultáneas en paralelo</string>
+    <string name="tooltip_lang_system">Usar el idioma del sistema</string>
+    <string name="tooltip_lang_english">Establecer idioma en Inglés</string>
+    <string name="tooltip_lang_italian">Establecer idioma en Italiano</string>
+    <string name="tooltip_lang_german">Establecer idioma en Alemán</string>
+    <string name="tooltip_lang_french">Establecer idioma en Francés</string>
+    <string name="tooltip_lang_spanish">Establecer idioma en Español</string>
+    <string name="tooltip_lang_portuguese">Establecer idioma en Portugués</string>
     <string name="tooltip_process_all">Procesar todos los archivos de la lista</string>
-    <string name="tooltip_pause">Pausa el procesamiento de archivos</string>
-    <string name="tooltip_cancel">El procesamiento se detendrá tras finalizar el archivo actual</string>
+    <string name="tooltip_pause">Pausar el procesamiento</string>
+    <string name="tooltip_cancel">El procesamiento se detendrá tras el archivo actual</string>
 
     <string name="cli_opt_input_path">Ruta de entrada</string>
     <string name="cli_opt_output_dir">Carpeta de salida</string>
@@ -734,17 +861,21 @@ inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="u
     <string name="cli_flag_xbox360">Elige automáticamente formato y ajustes para Xbox 360</string>
     <string name="cli_flag_xemu">Elige automáticamente formato y ajustes para Xemu</string>
     <string name="cli_flag_xenia">Elige automáticamente formato y ajustes para Xenia</string>
-    <string name="cli_flag_list">Enumera el contenido de archivos en la imagen de entrada</string>
+    <string name="cli_flag_list">Lista el contenido de archivos en la imagen de entrada</string>
     <string name="cli_flag_help">Muestra este mensaje de ayuda y sale</string>
-    <string name="cli_flag_partial_scrub">Limpia y recorta la imagen, eliminando relleno aleatorio</string>
-    <string name="cli_flag_full_scrub">Reconstruye totalmente la imagen para el tamaño mínimo</string>
-    <string name="cli_flag_split">Divide el archivo XISO si es demasiado grande para OG Xbox</string>
-    <string name="cli_flag_rename">Parchea el título del XBE con el nombre de la base de datos</string>
+    <string name="cli_flag_partial_scrub">Limpia y recorta la imagen, eliminando datos de relleno aleatorios</string>
+    <string name="cli_flag_full_scrub">Reconstruye totalmente la imagen para el menor tamaño posible</string>
+    <string name="cli_flag_split">Divide el archivo XISO si supera el tamaño para OG Xbox</string>
+    <string name="cli_flag_rename">Parchea el título del archivo XBE con el de la base de datos</string>
     <string name="cli_flag_attach_xbe">Genera un archivo attach XBE junto al archivo de salida</string>
-    <string name="cli_flag_am_patch">Parchea el campo Allowed Media en los archivos XBE</string>
+    <string name="cli_flag_am_patch">Parchea el campo Allowed Media en archivos XBE</string>
     <string name="cli_flag_offline">Desactiva las funciones en línea</string>
-    <string name="cli_flag_keep_name">Mantiene el nombre del archivo de entrada original para la salida</string>
-    <string name="cli_flag_lang">Especifica el idioma de la interfaz (ej. 'es', 'en', 'it', 'de', 'fr', 'pt', 'system')</string>
+    <string name="cli_flag_keep_name">Mantiene el nombre del archivo de entrada en lugar del título de la base de datos</string>
+    <string name="cli_flag_dvd">Genera un archivo .dvd con LayerBreak para imágenes XISO</string>
+    <string name="cli_flag_checksum">Calcula sumas de control CRC32, MD5 y SHA-1</string>
+    <string name="cli_flag_compression">Nivel de compresión (0=predeterminado, 1=rápido, 2=equilibrado, 3=máx, o 1-19)</string>
+    <string name="cli_flag_threads">Número de tareas/threads paralelos para procesamiento por lotes (predeterminado: 1)</string>
+    <string name="cli_flag_lang">Especifica el idioma de la interfaz (ej. 'es', 'en', 'it', 'system')</string>
     <string name="cli_flag_debug">Habilita el registro de depuración</string>
     <string name="cli_flag_quiet">Desactiva todos los registros excepto advertencias y errores</string>
 
@@ -761,8 +892,7 @@ inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">Escribiendo archivo CSO</string>
     <string name="stage_writing_cci">Escribiendo archivo CCI</string>
     <string name="stage_extracting">Extrayendo archivos</string>
-</resources>
-)xml";
+</resources>)xml";
 
 inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -788,6 +918,7 @@ inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="u
     <string name="btn_browse">Procurar</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nome do ficheiro</string>
+    <string name="col_status">Estado</string>
     <string name="label_status">Estado:</string>
     <string name="label_current_progress">Progresso atual:</string>
     <string name="label_total_progress">Progresso total:</string>
@@ -807,6 +938,23 @@ inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="u
     <string name="setting_rename_xbe">Renomear título XBE</string>
     <string name="setting_offline_mode">Modo offline</string>
     <string name="setting_keep_name">Manter nome original</string>
+    <string name="setting_generate_dvd">Gerar ficheiro .dvd</string>
+    <string name="setting_checksum">Calcular somas de verificação</string>
+    <string name="setting_dark_mode">Tema Escuro</string>
+
+    <string name="label_compression_level">Compressão:</string>
+    <string name="label_threads">Tarefas Paralelas:</string>
+    <string name="compress_default">Predefinido</string>
+    <string name="compress_fast">Rápido</string>
+    <string name="compress_balanced">Equilibrado</string>
+    <string name="compress_max">Máximo</string>
+
+    <string name="menu_remove_selected">Remover selecionados</string>
+    <string name="menu_clear_list">Limpar lista</string>
+    <string name="status_queued">Em fila</string>
+    <string name="status_in_progress">Em curso...</string>
+    <string name="status_done">Concluído</string>
+    <string name="status_error">Erro</string>
 
     <string name="lang_system">Sistema</string>
     <string name="lang_english">English</string>
@@ -829,46 +977,51 @@ inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="u
 
     <string name="choose_selection_type_title">Escolha o tipo de seleção:</string>
     <string name="choose_selection_type_caption">Selecionar</string>
-    <string name="choice_select_files">Selecionar Ficheiro(s)</string>
+    <string name="choice_select_files">Selecionar Ficheiros</string>
     <string name="choice_select_dir">Selecionar Pasta</string>
     <string name="dialog_select_files_title">Selecionar um ou mais ficheiros</string>
     <string name="dialog_select_dir_title">Selecionar uma pasta</string>
-    <string name="dialog_select_out_dir_title">Selecionar pasta de destino (GoD/Jogo/Batch)</string>
+    <string name="dialog_select_out_dir_title">Selecionar pasta de saída (GoD/Jogo/Batch)</string>
     <string name="wildcard_xbox_images">Ficheiros de imagem Xbox (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Todos os ficheiros (*.*)|*.*</string>
     <string name="msg_no_input_files">Nenhum ficheiro de entrada selecionado</string>
     <string name="msg_no_output_dir">Nenhuma pasta de saída selecionada</string>
     <string name="msg_no_valid_files">Nenhum ficheiro válido encontrado no caminho selecionado</string>
 
-    <string name="tooltip_browse_input">Selecione o ficheiro ou pasta de entrada a processar</string>
-    <string name="tooltip_browse_output">Selecione a pasta onde guardar os ficheiros processados</string>
+    <string name="tooltip_browse_input">Selecionar o ficheiro ou pasta a processar</string>
+    <string name="tooltip_browse_output">Selecionar a pasta onde guardar os ficheiros processados</string>
     <string name="tooltip_fmt_iso">Cria uma imagem XISO</string>
     <string name="tooltip_fmt_god">Cria uma imagem Games on Demand (GoD)</string>
     <string name="tooltip_fmt_cci">Cria um arquivo comprimido CCI</string>
     <string name="tooltip_fmt_cso">Cria um arquivo comprimido CSO</string>
     <string name="tooltip_fmt_zar">Cria um arquivo comprimido ZAR</string>
     <string name="tooltip_fmt_extract">Extrai todos os ficheiros para uma pasta</string>
-    <string name="tooltip_auto_ogxbox">Escolhe automaticamente formato e opções para Xbox original</string>
-    <string name="tooltip_auto_xbox360">Escolhe automaticamente formato e opções para Xbox 360</string>
-    <string name="tooltip_auto_xemu">Escolhe automaticamente formato e opções para Xemu</string>
-    <string name="tooltip_auto_xenia">Escolhe automaticamente formato e opções para Xenia</string>
+    <string name="tooltip_auto_ogxbox">Escolhe automaticamente formato e definições para OG Xbox</string>
+    <string name="tooltip_auto_xbox360">Escolhe automaticamente formato e definições para Xbox 360</string>
+    <string name="tooltip_auto_xemu">Escolhe automaticamente formato e definições para Xemu</string>
+    <string name="tooltip_auto_xenia">Escolhe automaticamente formato e definições para Xenia</string>
     <string name="tooltip_scrub_none">Sem limpeza, apenas a partição de vídeo é removida se presente</string>
     <string name="tooltip_scrub_partial">Limpa e apara a imagem, removendo dados de preenchimento aleatórios</string>
-    <string name="tooltip_scrub_full">Reconstrói totalmente a imagem para obter o menor tamanho possível</string>
-    <string name="tooltip_split">Divide o ficheiro XISO se exceder o tamanho máximo para OG Xbox</string>
-    <string name="tooltip_attach_xbe">Gera um ficheiro attach XBE juntamente com o ficheiro de saída</string>
-    <string name="tooltip_am_patch">Aplica o patch ao campo Allowed Media nos ficheiros XBE</string>
-    <string name="tooltip_rename_xbe">Substitui o campo de título dos XBE pelo nome da base de dados</string>
-    <string name="tooltip_offline_mode">Desativa funcionalidades online, gerando nomes menos precisos</string>
-    <string name="tooltip_keep_name">Mantém o nome do ficheiro de entrada original (evita substituições em jogos multi-disco)</string>
-    <string name="tooltip_lang_system">Utilizar o idioma predefinido do sistema</string>
-    <string name="tooltip_lang_english">Definir o idioma para Inglês</string>
-    <string name="tooltip_lang_italian">Definir o idioma para Italiano</string>
-    <string name="tooltip_lang_german">Definir o idioma para Alemão</string>
-    <string name="tooltip_lang_french">Definir o idioma para Francês</string>
-    <string name="tooltip_lang_spanish">Definir o idioma para Espanhol</string>
-    <string name="tooltip_lang_portuguese">Definir o idioma para Português</string>
+    <string name="tooltip_scrub_full">Reconstrói totalmente a imagem para o menor tamanho possível</string>
+    <string name="tooltip_split">Divide o ficheiro XISO se exceder o tamanho para OG Xbox</string>
+    <string name="tooltip_attach_xbe">Gera um ficheiro attach XBE com o ficheiro de saída</string>
+    <string name="tooltip_am_patch">Corrige o campo Allowed Media nos ficheiros XBE</string>
+    <string name="tooltip_rename_xbe">Substitui o título do ficheiro XBE pelo da base de dados</string>
+    <string name="tooltip_offline_mode">Desativa as funcionalidades online</string>
+    <string name="tooltip_keep_name">Mantém o nome do ficheiro original em vez do título da base de dados</string>
+    <string name="tooltip_generate_dvd">Gera um ficheiro .dvd com o LayerBreak para gravação</string>
+    <string name="tooltip_checksum">Calcula as somas de verificação CRC32, MD5 e SHA-1</string>
+    <string name="tooltip_dark_mode">Alternar tema escuro</string>
+    <string name="tooltip_compression">Ajusta o nível de compressão para CCI, CSO e ZAR</string>
+    <string name="tooltip_threads">Número de conversões simultâneas em paralelo</string>
+    <string name="tooltip_lang_system">Usar o idioma do sistema</string>
+    <string name="tooltip_lang_english">Definir idioma para Inglês</string>
+    <string name="tooltip_lang_italian">Definir idioma para Italiano</string>
+    <string name="tooltip_lang_german">Definir idioma para Alemão</string>
+    <string name="tooltip_lang_french">Definir idioma para Francês</string>
+    <string name="tooltip_lang_spanish">Definir idioma para Espanhol</string>
+    <string name="tooltip_lang_portuguese">Definir idioma para Português</string>
     <string name="tooltip_process_all">Processar todos os ficheiros da lista</string>
-    <string name="tooltip_pause">Pausa o processamento de ficheiros</string>
+    <string name="tooltip_pause">Pausar o processamento</string>
     <string name="tooltip_cancel">O processamento irá parar após o ficheiro atual</string>
 
     <string name="cli_opt_input_path">Caminho de entrada</string>
@@ -882,21 +1035,25 @@ inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="u
     <string name="cli_flag_cso">Cria um arquivo comprimido CSO</string>
     <string name="cli_flag_zar">Cria um arquivo comprimido ZAR</string>
     <string name="cli_flag_xbe">Gera um ficheiro attach XBE</string>
-    <string name="cli_flag_ogxbox">Escolhe automaticamente formato e opções para OG Xbox</string>
-    <string name="cli_flag_xbox360">Escolhe automaticamente formato e opções para Xbox 360</string>
-    <string name="cli_flag_xemu">Escolhe automaticamente formato e opções para Xemu</string>
-    <string name="cli_flag_xenia">Escolhe automaticamente formato e opções para Xenia</string>
+    <string name="cli_flag_ogxbox">Escolhe automaticamente formato e definições para OG Xbox</string>
+    <string name="cli_flag_xbox360">Escolhe automaticamente formato e definições para Xbox 360</string>
+    <string name="cli_flag_xemu">Escolhe automaticamente formato e definições para Xemu</string>
+    <string name="cli_flag_xenia">Escolhe automaticamente formato e definições para Xenia</string>
     <string name="cli_flag_list">Lista o conteúdo dos ficheiros na imagem de entrada</string>
-    <string name="cli_flag_help">Apresenta esta mensagem de ajuda e sai</string>
-    <string name="cli_flag_partial_scrub">Limpa e apara a imagem, removendo preenchimento aleatório</string>
-    <string name="cli_flag_full_scrub">Reconstrói totalmente a imagem para o tamanho mínimo</string>
-    <string name="cli_flag_split">Divide o ficheiro XISO se for demasiado grande para OG Xbox</string>
-    <string name="cli_flag_rename">Aplica patch ao título do XBE com o nome da base de dados</string>
-    <string name="cli_flag_attach_xbe">Gera um ficheiro attach XBE juntamente com o ficheiro de saída</string>
-    <string name="cli_flag_am_patch">Aplica patch ao campo Allowed Media nos ficheiros XBE</string>
-    <string name="cli_flag_offline">Desativa funcionalidades online</string>
-    <string name="cli_flag_keep_name">Mantém o nome do ficheiro de entrada original</string>
-    <string name="cli_flag_lang">Especifica o idioma da interface (ex. 'pt', 'en', 'it', 'de', 'fr', 'es', 'system')</string>
+    <string name="cli_flag_help">Imprime esta mensagem de ajuda e sai</string>
+    <string name="cli_flag_partial_scrub">Limpa e apara a imagem, removendo dados de preenchimento aleatórios</string>
+    <string name="cli_flag_full_scrub">Reconstrói totalmente a imagem para o menor tamanho possível</string>
+    <string name="cli_flag_split">Divide o ficheiro XISO se for muito grande para OG Xbox</string>
+    <string name="cli_flag_rename">Corrige o título do ficheiro XBE com o da base de dados</string>
+    <string name="cli_flag_attach_xbe">Gera um ficheiro attach XBE junto ao ficheiro de saída</string>
+    <string name="cli_flag_am_patch">Corrige o campo Allowed Media nos ficheiros XBE</string>
+    <string name="cli_flag_offline">Desativa as funcionalidades online</string>
+    <string name="cli_flag_keep_name">Mantém o nome do ficheiro original em vez do título da base de dados</string>
+    <string name="cli_flag_dvd">Gera um ficheiro .dvd com LayerBreak para imagens XISO</string>
+    <string name="cli_flag_checksum">Calcula as somas de verificação CRC32, MD5 e SHA-1</string>
+    <string name="cli_flag_compression">Define o nível de compressão (0=padrão, 1=rápido, 2=equilibrado, 3=máx, ou 1-19)</string>
+    <string name="cli_flag_threads">Número de tarefas/threads paralelas para processamento por lotes (padrão: 1)</string>
+    <string name="cli_flag_lang">Especifica o idioma da interface (ex. 'pt', 'en', 'it', 'system')</string>
     <string name="cli_flag_debug">Ativa o registo de depuração</string>
     <string name="cli_flag_quiet">Desativa todos os registos exceto avisos e erros</string>
 
@@ -913,18 +1070,19 @@ inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">A escrever ficheiro CSO</string>
     <string name="stage_writing_cci">A escrever arquivo CCI</string>
     <string name="stage_extracting">A extrair ficheiros</string>
-</resources>
-)xml";
+</resources>)xml";
 
-inline std::string_view get(std::string_view lang)
+inline std::string_view get(std::string_view lang_code)
 {
-    if (lang == "it") return XML_IT;
-    if (lang == "de") return XML_DE;
-    if (lang == "fr") return XML_FR;
-    if (lang == "es") return XML_ES;
-    if (lang == "pt") return XML_PT;
-    if (lang == "en") return XML_EN;
+    if (lang_code == "en" || lang_code == "EN") return XML_EN;
+    if (lang_code == "it" || lang_code == "IT") return XML_IT;
+    if (lang_code == "de" || lang_code == "DE") return XML_DE;
+    if (lang_code == "fr" || lang_code == "FR") return XML_FR;
+    if (lang_code == "es" || lang_code == "ES") return XML_ES;
+    if (lang_code == "pt" || lang_code == "PT") return XML_PT;
     return {};
 }
 
 } // namespace EmbeddedLanguages
+
+#endif // _EMBEDDED_LANGUAGES_H_

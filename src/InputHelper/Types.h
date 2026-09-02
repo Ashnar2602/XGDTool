@@ -22,6 +22,10 @@ struct OutputSettings
     bool keep_name{false};
     bool rename_xbe{false};
     bool xemu_paths{false};
+    int compression_level{0};      // 0 = default, 1 = fast, 2 = balanced, 3 = max, or explicit 1-19
+    bool generate_dvd{false};      // Auto-generate .dvd with LayerBreak
+    bool calculate_checksum{false};// Compute CRC32 / MD5 / SHA-1
+    int threads{1};                // Parallel batch jobs
 };
 
 #endif // _IHTYPES_H_

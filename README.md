@@ -1,25 +1,39 @@
-# XGDTool (v1.1.0 Fork)
+# XGDTool (v1.2.0 Fork)
 
 > **Fork maintainer**: [Ashnar2602](https://github.com/Ashnar2602) | **Original Author**: [WiredOpposite](https://github.com/wiredopposite/XGDTool)  
-> See [CHANGELOG.md](CHANGELOG.md) for full details on merged upstream PRs, v1.1.0 improvements, multi-disc naming, multilingual localization, and logging features.
+> See [CHANGELOG.md](CHANGELOG.md) for full details on version updates, features, multi-disc protection, multithreading, and localization.
 
-XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to and from any mainstream format. It's available as a GUI or CLI app.
+XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to and from any mainstream format. It is available as a portable GUI or CLI application with zero external runtime dependencies.
 
-## Features
-- **Seamless format conversion**:
+## Key Features
+- **Seamless Format Conversion**:
     - ISO / XISO
     - Extracted files (Xex / Xbe / HDD Ready)
     - GoD / Games on Demand
     - CCI
     - CSO
     - ZAR
+- **Drag & Drop (GUI)**:
+    - Drag files or directories directly onto the window to queue them instantly.
+- **Advanced File Queue & Status**:
+    - 3-column table (`Format`, `Filename`, `Status`). Right-click menu and `Delete` key support to manage queue items.
+- **Dark Theme (GUI)**:
+    - Built-in Dark Mode theme toggle with modern dark palette.
+- **Auto `.dvd` File & LayerBreak Generation (`--dvd`)**:
+    - Automatically calculates LayerBreak (`2133520` for XGD3, `1913760` for XGD2 / OG Xbox) and writes companion `.dvd` files for burning with ImgBurn.
+- **CRC32 / MD5 / SHA-1 Checksum Calculation (`--checksum`)**:
+    - Stream-calculated integrity verification logged directly in diagnostics.
+- **Adjustable Compression Levels (`-l` / `--level`)**:
+    - Configurable compression presets (`Default`, `Fast`, `Balanced`, `Maximum`) for CCI, CSO, and ZAR.
+- **Multi-threaded Batch Processing (`-j` / `-t` / `--threads`)**:
+    - Parallel worker thread pool to convert multiple disc images simultaneously.
 - **Multilingual Support (GUI & CLI)**:
     - Native support for **6 languages**: English (`en`), Italian (`it`), German (`de`), French (`fr`), Spanish (`es`), and Portuguese (`pt`).
     - Automatic OS system language detection on startup.
     - Real-time language switching from the GUI with automatic window auto-fitting.
     - CLI `--lang` / `--language` option to localize all console output, group headers, and help menus.
 - **Multi-disc Protection ("Keep Original Name" / `--keep-name`)**:
-    - Prevents multi-disc games (e.g., *MagnaCarta 2 (Disk 1)* and *MagnaCarta 2 (Disk 2)*) from colliding or overwriting each other by retaining source filenames.
+    - Prevents multi-disc games from colliding or overwriting each other by retaining source filenames.
 - **Enhanced Batch Processing & Real-time Progress**:
     - Real-time combined progress tracking for batch operations across all files in progress.
 - **Windows System Toast & Balloon Notifications**:
@@ -32,7 +46,6 @@ XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to 
     - Image scrubbing ("Partial Scrub"), removes random padding and trims the output file.
     - Image reauthoring ("Full Scrub"), completely rewrites disc structure for the smallest file size.
     - Image authoring, packs extracted game files into a new image.
-- **Multithreaded compression** for CCI and CSO formats.
 - **Automated split file detection** (`name.1.extension`, `name.2.extension`).
 - **Target presets** for Xemu, Xenia, OG Xbox, and Xbox 360.
 - **Attach XBE generation & Allowed Media patching** for OG Xbox.
@@ -40,13 +53,13 @@ XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to 
 
 ## CLI Usage
 ```bash
-XGDTool.exe <output_format> <settings_flags> <input_path> <output_directory>
+XGDTool.exe <output_format> <settings_flags> <input_path> [output_directory]
 ```
 
 or on Linux
 
 ```bash
-./XGDTool <output_format> <settings_flags> <input_path> <output_directory>
+./XGDTool <output_format> <settings_flags> <input_path> [output_directory]
 ```
 
 *Settings flags and output directory are optional.*
@@ -72,16 +85,20 @@ or on Linux
 
 ### Settings flags
 These arguments can be stacked:
-- `--keep-name`          Keep original input filename (recommended for multi-disc games).
-- `--partial-scrub`      Scrubs and trims the output image, random padding data is removed.
-- `--full-scrub`         Completely reauthor the resulting image for the smallest file possible.
-- `--split`              Splits the resulting XISO file if it's too large for OG Xbox.
-- `--rename`             Patches the title field of resulting XBE files to one found in the database.
-- `--attach-xbe`         Generates an attach XBE file along with the output file.
-- `--am-patch`           Patches the "Allowed Media" field in resulting XBE files.
-- `--offline`            Disables online functionality.
-- `--debug`              Enable debug logging.
-- `--quiet`              Disable all logging except for warnings and errors.
+- `--keep-name`                      Keep original input filename (recommended for multi-disc games).
+- `--dvd`                            Generate companion .dvd file with correct LayerBreak for burning.
+- `--checksum`                       Calculate CRC32, MD5, and SHA-1 checksums during processing.
+- `-l, --level, --compression-level` Set compression level (`0`=Default, `1`=Fast, `2`=Balanced, `3`=Maximum, or 1-19).
+- `-j, -t, --threads, --jobs`        Number of parallel jobs/threads for batch conversions (default: 1).
+- `--partial-scrub`                  Scrubs and trims the output image, random padding data is removed.
+- `--full-scrub`                     Completely reauthor the resulting image for the smallest file possible.
+- `--split`                          Splits the resulting XISO file if it's too large for OG Xbox.
+- `--rename`                         Patches the title field of resulting XBE files to one found in the database.
+- `--attach-xbe`                     Generates an attach XBE file along with the output file.
+- `--am-patch`                       Patches the "Allowed Media" field in resulting XBE files.
+- `--offline`                        Disables online functionality.
+- `--debug`                          Enable debug logging.
+- `--quiet`                          Disable all logging except for warnings and errors.
 
 ## Build
 

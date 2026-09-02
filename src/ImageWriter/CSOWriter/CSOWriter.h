@@ -21,8 +21,8 @@
 
 class CSOWriter : public ImageWriter {
 public:
-    CSOWriter(std::shared_ptr<ImageReader> image_reader, const ScrubType scrub_type);
-    CSOWriter(const std::filesystem::path& in_dir_path);
+    CSOWriter(std::shared_ptr<ImageReader> image_reader, const ScrubType scrub_type, int compression_level = 0);
+    CSOWriter(const std::filesystem::path& in_dir_path, int compression_level = 0);
     
     ~CSOWriter();
 

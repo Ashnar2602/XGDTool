@@ -72,6 +72,10 @@ int main(int argc, char** argv)
     settings_group->add_flag_function("--am-patch",      [&](int64_t) { output_settings.allowed_media_patch = true;      }, I18n::get("cli_flag_am_patch"));
     settings_group->add_flag_function("--offline",       [&](int64_t) { output_settings.offline_mode = true;             }, I18n::get("cli_flag_offline"));
     settings_group->add_flag_function("--keep-name",     [&](int64_t) { output_settings.keep_name = true;                }, I18n::get("cli_flag_keep_name"));
+    settings_group->add_flag_function("--dvd",           [&](int64_t) { output_settings.generate_dvd = true;             }, I18n::get("cli_flag_dvd"));
+    settings_group->add_flag_function("--checksum",      [&](int64_t) { output_settings.calculate_checksum = true;       }, I18n::get("cli_flag_checksum"));
+    settings_group->add_option       ("-l,--level,--compression-level", output_settings.compression_level,                  I18n::get("cli_flag_compression"));
+    settings_group->add_option       ("-j,-t,--threads,--jobs", output_settings.threads,                                    I18n::get("cli_flag_threads"));
     settings_group->add_option       ("--lang,--language", lang_code,                                                        I18n::get("cli_flag_lang"));
     settings_group->add_flag_function("--debug",         [&](int64_t) { XGDLog().set_log_level(LogLevel::Debug);         }, I18n::get("cli_flag_debug"));
     settings_group->add_flag_function("--quiet",         [&](int64_t) { XGDLog().set_log_level(LogLevel::Error);         }, I18n::get("cli_flag_quiet"));

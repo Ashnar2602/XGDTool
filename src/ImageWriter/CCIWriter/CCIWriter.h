@@ -20,8 +20,8 @@
 class CCIWriter : public ImageWriter 
 {
 public:
-    CCIWriter(std::shared_ptr<ImageReader> image_reader, const ScrubType scrub_type);
-    CCIWriter(const std::filesystem::path& in_dir_path);
+    CCIWriter(std::shared_ptr<ImageReader> image_reader, const ScrubType scrub_type, int compression_level = 0);
+    CCIWriter(const std::filesystem::path& in_dir_path, int compression_level = 0);
     
     ~CCIWriter() override;
 
@@ -54,6 +54,7 @@ private:
     std::atomic<bool> stop_flag_{false};
 
     ScrubType scrub_type_;
+    int compression_level_{12};
 
     std::shared_ptr<ImageReader> image_reader_{nullptr};
     std::filesystem::path in_dir_path_;

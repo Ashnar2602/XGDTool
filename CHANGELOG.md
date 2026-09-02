@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-09-02
+
+### Summary
+Version 1.2.0 is a major feature expansion by **Ashnar2602**, bringing Drag & Drop support, dark mode, advanced queue management, automatic LayerBreak `.dvd` generation, CRC32/MD5/SHA-1 verification checksums, multi-threaded parallel batch execution, configurable compression levels, and GitHub Actions CI/CD workflows.
+
+---
+
+### Added
+- **Drag & Drop Support (GUI)**:
+  - Drag and drop ISO, CSO, CCI, ZAR, or game folders directly onto the application window or the File List to instantly queue items.
+- **Advanced File List Queue & Status Tracking**:
+  - File list upgraded with 3 clear columns: **Format**, **Filename**, and **Status** (`In queue`, `Processing...`, `Done`, `Error`).
+  - Right-click context menu allowing removal of selected entries or clearing the entire list.
+  - Keyboard shortcut: press `Delete` to remove selected items from the queue.
+- **Dark Theme / Dark Mode (GUI)**:
+  - Built-in Dark Mode toggle with deep charcoal/slate palette for modern aesthetic and comfortable night-time use.
+- **Automatic `.dvd` File & LayerBreak Generation (`--dvd`)**:
+  - Automatically writes a companion `.dvd` file alongside XISO images with the exact LayerBreak sector (`2133520` for XGD3 games > 7.5GB, `1913760` for XGD2 / OG Xbox games), ready for burning utilities like ImgBurn.
+- **CRC32, MD5, and SHA-1 Checksum Verification (`--checksum`)**:
+  - Simultaneously computes hardware-accelerated CRC32, MD5, and SHA-1 hash signatures as image blocks are read and written, logging results into `xgdtool.log` and console output without slowing down conversions.
+- **Adjustable Compression Levels (`-l` / `--level` / `--compression-level`)**:
+  - Configurable compression presets (`Default`, `Fast`, `Balanced`, `Maximum`) for CCI, CSO, and ZAR formats.
+- **Multi-threaded Parallel Batch Processing (`-j` / `-t` / `--threads` / `--jobs`)**:
+  - Process multiple batch files concurrently across multiple CPU threads/workers for dramatically faster bulk conversions.
+- **GitHub Actions Automated CI/CD (`.github/workflows/release.yml`)**:
+  - Automated Windows MSVC static compilation of both GUI (`XGDTool-GUI.exe`) and CLI (`XGDTool-CLI.exe`) and release publishing on GitHub tag push.
+
+---
+
 ## [1.1.0] - 2026-09-02
 
 ### Summary

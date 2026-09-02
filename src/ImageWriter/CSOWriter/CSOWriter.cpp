@@ -4,16 +4,28 @@
 #include "AvlTree/AvlIterator.h"
 #include "ImageWriter/CSOWriter/CSOWriter.h"
 
-CSOWriter::CSOWriter(std::shared_ptr<ImageReader> image_reader, const ScrubType scrub_type) 
+CSOWriter::CSOWriter(std::shared_ptr<ImageReader> image_reader, const ScrubType scrub_type, int compression_level) 
     :   image_reader_(image_reader),
         scrub_type_(scrub_type)
 {
+    if (compression_level == 1) lz4f_prefs_.compressionLevel = 1;
+    else if (compression_level == 2) lz4f_prefs_.compressionLevel = 6;
+    else if (compression_level == 3) lz4f_prefs_.compressionLevel = 12;
+    else if (compression_level > 3) lz4f_prefs_.compressionLevel = std::min(compression_level, 12);
+    else lz4f_prefs_.compressionLevel = 0;
+
     init_cso_writer();
 }
 
-CSOWriter::CSOWriter(const std::filesystem::path& in_dir_path)
+CSOWriter::CSOWriter(const std::filesystem::path& in_dir_path, int compression_level)
     :   in_dir_path_(in_dir_path)
 {
+    if (compression_level == 1) lz4f_prefs_.compressionLevel = 1;
+    else if (compression_level == 2) lz4f_prefs_.compressionLevel = 6;
+    else if (compression_level == 3) lz4f_prefs_.compressionLevel = 12;
+    else if (compression_level > 3) lz4f_prefs_.compressionLevel = std::min(compression_level, 12);
+    else lz4f_prefs_.compressionLevel = 0;
+
     init_cso_writer();
 }
 

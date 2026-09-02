@@ -22,6 +22,7 @@
     <string name="btn_browse">Browse</string>
     <string name="col_format">Format</string>
     <string name="col_filename">Filename</string>
+    <string name="col_status">Status</string>
     <string name="label_status">Status:</string>
     <string name="label_current_progress">Current Progress:</string>
     <string name="label_total_progress">Total Progress:</string>
@@ -41,6 +42,23 @@
     <string name="setting_rename_xbe">Rename XBE Title</string>
     <string name="setting_offline_mode">Offline Mode</string>
     <string name="setting_keep_name">Keep Original Name</string>
+    <string name="setting_generate_dvd">Generate .dvd file</string>
+    <string name="setting_checksum">Calculate Checksums</string>
+    <string name="setting_dark_mode">Dark Theme</string>
+
+    <string name="label_compression_level">Compression:</string>
+    <string name="label_threads">Parallel Jobs:</string>
+    <string name="compress_default">Default</string>
+    <string name="compress_fast">Fast</string>
+    <string name="compress_balanced">Balanced</string>
+    <string name="compress_max">Maximum</string>
+
+    <string name="menu_remove_selected">Remove selected</string>
+    <string name="menu_clear_list">Clear list</string>
+    <string name="status_queued">Queued</string>
+    <string name="status_in_progress">Processing...</string>
+    <string name="status_done">Complete</string>
+    <string name="status_error">Error</string>
 
     <string name="lang_system">System</string>
     <string name="lang_english">English</string>
@@ -94,6 +112,11 @@
     <string name="tooltip_rename_xbe">Replaces the title field of resulting XBE files with one found in the database</string>
     <string name="tooltip_offline_mode">Disables online functionality, will result in less accurate file naming</string>
     <string name="tooltip_keep_name">Keeps the original input filename for output files, preventing overwrites for multi-disc games</string>
+    <string name="tooltip_generate_dvd">Generates a companion .dvd file with the correct LayerBreak for disc burning</string>
+    <string name="tooltip_checksum">Calculates CRC32, MD5, and SHA-1 checksums during processing</string>
+    <string name="tooltip_dark_mode">Toggle dark mode theme</string>
+    <string name="tooltip_compression">Adjust compression level for CCI, CSO, and ZAR formats</string>
+    <string name="tooltip_threads">Number of simultaneous conversions to run in parallel</string>
     <string name="tooltip_lang_system">Use system default language</string>
     <string name="tooltip_lang_english">Set UI language to English</string>
     <string name="tooltip_lang_italian">Set UI language to Italian</string>
@@ -130,6 +153,10 @@
     <string name="cli_flag_am_patch">Patches the Allowed Media field in resulting XBE files</string>
     <string name="cli_flag_offline">Disables online functionality, will result in less accurate file naming</string>
     <string name="cli_flag_keep_name">Keep original input filename for output instead of database title lookup</string>
+    <string name="cli_flag_dvd">Generate a companion .dvd file with LayerBreak for XISO images</string>
+    <string name="cli_flag_checksum">Calculate CRC32, MD5, and SHA-1 checksums</string>
+    <string name="cli_flag_compression">Set compression level (0=default, 1=fast, 2=balanced, 3=max, or 1-19)</string>
+    <string name="cli_flag_threads">Number of parallel threads/jobs for batch processing (default: 1)</string>
     <string name="cli_flag_lang">Set interface language (e.g. 'it', 'en', 'system')</string>
     <string name="cli_flag_debug">Enable debug logging</string>
     <string name="cli_flag_quiet">Disable all logging except for warnings and errors</string>
