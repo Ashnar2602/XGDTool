@@ -23,11 +23,20 @@ void _pack_WriteOutputData(const void* data, size_t length, void* ctx)
 	pack_context->current_out_file.write(reinterpret_cast<const char*>(data), length);
 }
 
-ZARWriter::ZARWriter(std::shared_ptr<ImageReader> image_reader)
-    : image_reader_(image_reader) {}
+ZARWriter::ZARWriter(std::shared_ptr<ImageReader> image_reader, int compression_level, int threads)
+    : image_reader_(image_reader), compression_level_(compression_level), threads_(threads) {}
 
-ZARWriter::ZARWriter(const std::filesystem::path& in_dir_path)
-    : in_dir_path_(in_dir_path) {}
+ZARWriter::ZARWriter(const std::filesystem::path& in_dir_path, int compression_level, int threads)
+    : in_dir_path_(in_dir_path), compression_level_(compression_level), threads_(threads) {}
+
+int ZARWriter::get_effective_zstd_level() const
+{
+    if (compression_level_ == 1) return 1;      // Fast
+    if (compression_level_ == 2) return 3;      // Balanced
+    if (compression_level_ == 3) return 6;      // Maximum (original default)
+    if (compression_level_ >= 1 && compression_level_ <= 19) return compression_level_;
+    return 2; // Default: level 2 (fast & balanced)
+}
 
 std::vector<std::filesystem::path> ZARWriter::convert(const std::filesystem::path& out_zar_path) 
 {
@@ -65,10 +74,11 @@ void ZARWriter::convert_from_dir(const std::filesystem::path& out_zar_path)
 	PackContext pack_context;
 	pack_context.out_filepath = out_zar_path;
 
-    ZArchiveWriter z_writer(_pack_NewOutputFile, _pack_WriteOutputData, &pack_context);
+    uint32_t num_threads = (threads_ > 0) ? threads_ : 0;
+    ZArchiveWriter z_writer(_pack_NewOutputFile, _pack_WriteOutputData, &pack_context, get_effective_zstd_level(), num_threads);
 
     std::error_code ec;
-    std::vector<char> buffer(64 * 1024);
+    std::vector<char> buffer(XGD::BUFFER_SIZE);
 
     XGDLog() << "Writing files to ZAR archive" << XGDLog::Endl;
 
@@ -134,7 +144,8 @@ void ZARWriter::convert_from_iso(const std::filesystem::path& out_zar_path)
     ImageReader& image_reader = *image_reader_;
 	PackContext pack_context;
 	pack_context.out_filepath = out_zar_path;
-    ZArchiveWriter z_writer(_pack_NewOutputFile, _pack_WriteOutputData, &pack_context);
+    uint32_t num_threads = (threads_ > 0) ? threads_ : 0;
+    ZArchiveWriter z_writer(_pack_NewOutputFile, _pack_WriteOutputData, &pack_context, get_effective_zstd_level(), num_threads);
 
     uint64_t prog_total = image_reader.total_file_bytes();
     uint64_t prog_processed = 0;

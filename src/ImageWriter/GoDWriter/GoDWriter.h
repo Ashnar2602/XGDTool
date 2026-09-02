@@ -68,6 +68,7 @@ private:
     void write_padding_sectors(std::vector<std::unique_ptr<std::ofstream>>& out_files, const uint32_t start_sector, const uint32_t num_sectors, const char pad_byte); 
     Remap remap_sector(const uint64_t iso_sector);
     Remap remap_offset(const uint64_t iso_offset);
+    uint32_t get_contiguous_sectors(const uint64_t iso_sector) const;
     uint64_t to_iso_offset(const uint64_t god_offset, const uint32_t god_file_index);
     uint32_t num_blocks(const uint64_t num_bytes);
     uint32_t num_parts(const uint32_t num_data_blocks);

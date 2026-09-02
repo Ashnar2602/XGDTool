@@ -14,8 +14,8 @@
 class XisoWriter : public ImageWriter 
 {
 public:
-    XisoWriter(std::shared_ptr<ImageReader> image_reader, ScrubType scrub_type, const bool split);
-    XisoWriter(const std::filesystem::path& in_dir_path, const bool split);
+    XisoWriter(std::shared_ptr<ImageReader> image_reader, ScrubType scrub_type, const bool split, const bool calculate_checksum = false);
+    XisoWriter(const std::filesystem::path& in_dir_path, const bool split, const bool calculate_checksum = false);
     
     ~XisoWriter() override = default;
 
@@ -27,6 +27,7 @@ private:
 
     ScrubType scrub_type_{ScrubType::NONE};
     bool split_{false};
+    bool calculate_checksum_{false};
 
     uint64_t total_bytes_{0};
     uint64_t bytes_processed_{0};

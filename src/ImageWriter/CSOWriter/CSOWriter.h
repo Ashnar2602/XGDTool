@@ -31,28 +31,33 @@ public:
 private:
     struct CompressedTaskResult 
     {
-        uint32_t sector_idx;
-        size_t compressed_size;
-        const char* buffer_to_write;
-        bool compressed;
+        uint32_t sector_idx{0};
+        size_t compressed_size{0};
+        const char* buffer_to_write{nullptr};
+        bool compressed{false};
     };
 
-    struct CompressTask 
+    struct BatchContext 
     {
-        const char* in_buffer;
-        char* out_buffer;
-        int in_size;
-        std::promise<CompressedTaskResult> promise;
-        uint32_t sector_idx;
+        const char* in_buffer{nullptr};
+        char* out_buffer{nullptr};
+        CompressedTaskResult* results{nullptr};
+        uint32_t num_sectors{0};
+        std::atomic<uint32_t> next_sector{0};
+        std::atomic<uint32_t> active_workers{0};
+        bool has_work{false};
     };
 
     const int ALIGN_B = 1 << CSO::INDEX_ALIGNMENT;
     const int ALIGN_M = ALIGN_B - 1;
 
     std::vector<std::thread> thread_pool_;
-    std::queue<CompressTask> task_queue_;
-    std::mutex queue_mutex_;
-    std::condition_variable cv_;
+    BatchContext batch_ctx_;
+    std::vector<char> batch_compress_buffer_;
+    std::vector<CompressedTaskResult> batch_results_;
+    std::mutex batch_mutex_;
+    std::condition_variable cv_start_;
+    std::condition_variable cv_done_;
     std::atomic<bool> stop_flag_{false};
 
     std::shared_ptr<ImageReader> image_reader_{nullptr};

@@ -84,17 +84,26 @@ void GoDWriter::write_iso_header(std::vector<std::unique_ptr<std::ofstream>>& ou
 
 void GoDWriter::write_padding_sectors(std::vector<std::unique_ptr<std::ofstream>>& out_files, const uint32_t start_sector, const uint32_t num_sectors, const char pad_byte)
 {
-    std::vector<char> pad_sector(Xiso::SECTOR_SIZE, pad_byte);
+    uint32_t sectors_remaining = num_sectors;
+    uint32_t cur_sector = start_sector;
 
-    for (uint32_t i = 0; i < num_sectors; ++i) 
+    while (sectors_remaining > 0)
     {
-        Remap remapped = remap_sector(start_sector + i);
+        uint32_t contiguous = std::min(sectors_remaining, get_contiguous_sectors(cur_sector));
+        size_t write_bytes = static_cast<size_t>(contiguous) * Xiso::SECTOR_SIZE;
+
+        std::vector<char> pad_chunk(write_bytes, pad_byte);
+
+        Remap remapped = remap_sector(cur_sector);
         out_files[remapped.file_index]->seekp(remapped.offset, std::ios::beg);
-        out_files[remapped.file_index]->write(pad_sector.data(), Xiso::SECTOR_SIZE);
+        out_files[remapped.file_index]->write(pad_chunk.data(), write_bytes);
         if (out_files[remapped.file_index]->fail()) 
         {
             throw XGDException(ErrCode::FILE_WRITE, HERE());
         }
+
+        sectors_remaining -= contiguous;
+        cur_sector += contiguous;
     }
 }
 
@@ -199,22 +208,27 @@ void GoDWriter::write_file_from_reader(std::vector<std::unique_ptr<std::ofstream
     uint64_t read_position = image_reader_->image_offset() + (node.old_start_sector * Xiso::SECTOR_SIZE);
     uint64_t bytes_remaining = node.file_size;
 
-    std::vector<char> read_buffer(Xiso::SECTOR_SIZE);
+    std::vector<char> read_buffer(GoD::DATA_BLOCKS_PER_SHT * GoD::BLOCK_SIZE); // 816 KB
 
     while (bytes_remaining > 0)
     {
-        uint64_t read_size = std::min(bytes_remaining, Xiso::SECTOR_SIZE);   
+        uint32_t contiguous = get_contiguous_sectors(static_cast<uint32_t>(current_write_sector));
+        uint64_t max_bytes = static_cast<uint64_t>(contiguous) * Xiso::SECTOR_SIZE;
+        uint64_t read_size = std::min(bytes_remaining, max_bytes);
 
         image_reader_->read_bytes(read_position, read_size, read_buffer.data());
 
-        if (read_size < Xiso::SECTOR_SIZE) 
+        uint64_t write_sectors = num_sectors(read_size);
+        uint64_t total_write_bytes = write_sectors * Xiso::SECTOR_SIZE;
+
+        if (read_size < total_write_bytes) 
         {
-            std::memset(read_buffer.data() + read_size, Xiso::PAD_BYTE, Xiso::SECTOR_SIZE - read_size);
+            std::memset(read_buffer.data() + read_size, Xiso::PAD_BYTE, total_write_bytes - read_size);
         }
 
-        Remap remapped = remap_sector(current_write_sector);
+        Remap remapped = remap_sector(static_cast<uint32_t>(current_write_sector));
         out_files[remapped.file_index]->seekp(remapped.offset, std::ios::beg);
-        out_files[remapped.file_index]->write(read_buffer.data(), Xiso::SECTOR_SIZE);
+        out_files[remapped.file_index]->write(read_buffer.data(), total_write_bytes);
         if (out_files[remapped.file_index]->fail()) 
         {
             throw XGDException(ErrCode::FILE_WRITE, HERE());
@@ -222,9 +236,9 @@ void GoDWriter::write_file_from_reader(std::vector<std::unique_ptr<std::ofstream
 
         XGDLog().print_progress(prog_processed_ += read_size, prog_total_);
 
-        read_position += read_size;
         bytes_remaining -= read_size;
-        current_write_sector++;
+        read_position += read_size;
+        current_write_sector += write_sectors;
 
         check_status_flags();
     }
@@ -235,16 +249,19 @@ void GoDWriter::write_file_from_directory(std::vector<std::unique_ptr<std::ofstr
     std::ifstream in_file(node.path, std::ios::binary);
     if (!in_file.is_open()) 
     {
-        throw XGDException(ErrCode::FILE_OPEN, HERE());
+        throw XGDException(ErrCode::FILE_OPEN, HERE(), node.path.string());
     }
 
     uint64_t current_write_sector = node.start_sector;
     uint64_t bytes_remaining = node.file_size;
-    std::vector<char> read_buffer(Xiso::SECTOR_SIZE);
+
+    std::vector<char> read_buffer(GoD::DATA_BLOCKS_PER_SHT * GoD::BLOCK_SIZE); // 816 KB
 
     while (bytes_remaining > 0)
     {
-        uint64_t read_size = std::min(bytes_remaining, Xiso::SECTOR_SIZE);   
+        uint32_t contiguous = get_contiguous_sectors(static_cast<uint32_t>(current_write_sector));
+        uint64_t max_bytes = static_cast<uint64_t>(contiguous) * Xiso::SECTOR_SIZE;
+        uint64_t read_size = std::min(bytes_remaining, max_bytes);
 
         in_file.read(read_buffer.data(), read_size);
         if (in_file.fail()) 
@@ -252,14 +269,17 @@ void GoDWriter::write_file_from_directory(std::vector<std::unique_ptr<std::ofstr
             throw XGDException(ErrCode::FILE_READ, HERE());
         }
 
-        if (read_size < Xiso::SECTOR_SIZE) 
+        uint64_t write_sectors = num_sectors(read_size);
+        uint64_t total_write_bytes = write_sectors * Xiso::SECTOR_SIZE;
+
+        if (read_size < total_write_bytes) 
         {
-            std::memset(read_buffer.data() + read_size, Xiso::PAD_BYTE, Xiso::SECTOR_SIZE - read_size);
+            std::memset(read_buffer.data() + read_size, Xiso::PAD_BYTE, total_write_bytes - read_size);
         }
 
-        Remap remapped = remap_sector(current_write_sector);
+        Remap remapped = remap_sector(static_cast<uint32_t>(current_write_sector));
         out_files[remapped.file_index]->seekp(remapped.offset, std::ios::beg);
-        out_files[remapped.file_index]->write(read_buffer.data(), Xiso::SECTOR_SIZE);
+        out_files[remapped.file_index]->write(read_buffer.data(), total_write_bytes);
         if (out_files[remapped.file_index]->fail()) 
         {
             throw XGDException(ErrCode::FILE_WRITE, HERE());
@@ -268,7 +288,7 @@ void GoDWriter::write_file_from_directory(std::vector<std::unique_ptr<std::ofstr
         XGDLog().print_progress(prog_processed_ += read_size, prog_total_);
 
         bytes_remaining -= read_size;
-        current_write_sector++;
+        current_write_sector += write_sectors;
 
         check_status_flags();
     }
@@ -311,39 +331,41 @@ std::vector<std::filesystem::path> GoDWriter::write_data_files(const std::filesy
     }
 
     uint32_t current_sector = sector_offset;
-    std::vector<char> buffer(Xiso::SECTOR_SIZE);
+    std::vector<char> buffer(GoD::DATA_BLOCKS_PER_SHT * GoD::BLOCK_SIZE); // 816 KB
 
     XGDLog() << "Writing data files" << XGDLog::Endl;
 
     while (current_sector <= last_sector) 
     {
-        bool write_sector = true;
+        uint32_t current_out_sector = current_sector - sector_offset;
+        uint32_t contiguous = get_contiguous_sectors(current_out_sector);
+        uint32_t read_sectors = std::min(last_sector - current_sector + 1, contiguous);
 
-        if (scrub && image_reader.platform() == Platform::OGX) //No need to zero out padding for Xbox 360
+        image_reader.read_sectors(current_sector, read_sectors, buffer.data());
+
+        if (scrub && image_reader.platform() == Platform::OGX) 
         {
-            write_sector = data_sectors->find(current_sector) != data_sectors->end();
+            for (uint32_t i = 0; i < read_sectors; ++i)
+            {
+                if (data_sectors->find(current_sector + i) == data_sectors->end())
+                {
+                    std::memset(buffer.data() + (static_cast<size_t>(i) * Xiso::SECTOR_SIZE), 0x00, Xiso::SECTOR_SIZE);
+                }
+            }
         }
 
-        if (write_sector) 
-        {
-            image_reader.read_sector(current_sector, buffer.data());
-        } 
-        else 
-        {
-            std::memset(buffer.data(), 0x00, Xiso::SECTOR_SIZE);
-        }
-
-        Remap remapped = remap_sector(current_sector - sector_offset);
+        size_t write_bytes = static_cast<size_t>(read_sectors) * Xiso::SECTOR_SIZE;
+        Remap remapped = remap_sector(current_out_sector);
         out_files[remapped.file_index]->seekp(remapped.offset, std::ios::beg);
-        out_files[remapped.file_index]->write(buffer.data(), buffer.size());
+        out_files[remapped.file_index]->write(buffer.data(), write_bytes);
         if (out_files[remapped.file_index]->fail()) 
         {
             throw XGDException(ErrCode::FILE_WRITE, HERE());
         }
 
-        current_sector++;
+        current_sector += read_sectors;
 
-        XGDLog().print_progress(prog_processed_++, prog_total_);
+        XGDLog().print_progress(prog_processed_ += read_sectors, prog_total_);
 
         check_status_flags();
     }
@@ -407,26 +429,25 @@ void GoDWriter::write_hashtables(const std::vector<std::filesystem::path>& part_
 
         for (uint32_t i = 0; i < sub_hashtables; ++i) 
         {
-            uint32_t blocks_in_sht = 0;
-            std::vector<char> block_buffer(GoD::BLOCK_SIZE, 0);
+            uint32_t blocks_in_sht = std::min(static_cast<uint32_t>(GoD::DATA_BLOCKS_PER_SHT), blocks_left);
+            std::vector<char> sht_data_buffer(blocks_in_sht * GoD::BLOCK_SIZE, 0);
             std::vector<SHA1Hash> sub_hashtable;
+            sub_hashtable.reserve(blocks_in_sht);
 
             current_file.seekp(GoD::BLOCK_SIZE, std::ios::cur);
             blocks_left--;
 
-            while (blocks_in_sht < GoD::DATA_BLOCKS_PER_SHT && 0 < blocks_left) 
+            current_file.read(sht_data_buffer.data(), sht_data_buffer.size());
+            if (current_file.fail()) 
             {
-                current_file.read(block_buffer.data(), block_buffer.size());
-                if (current_file.fail()) 
-                {
-                    throw XGDException(ErrCode::FILE_READ, HERE());
-                }
-
-                sub_hashtable.push_back(compute_sha1(block_buffer.data(), block_buffer.size()));
-
-                blocks_in_sht++;
-                blocks_left--;
+                throw XGDException(ErrCode::FILE_READ, HERE());
             }
+
+            for (uint32_t b = 0; b < blocks_in_sht; ++b)
+            {
+                sub_hashtable.push_back(compute_sha1(sht_data_buffer.data() + (b * GoD::BLOCK_SIZE), GoD::BLOCK_SIZE));
+            }
+            blocks_left -= blocks_in_sht;
 
             uint64_t position = current_file.tellp();
 
@@ -602,6 +623,15 @@ GoDWriter::Remap GoDWriter::remap_offset(const uint64_t iso_offset)
     Remap remapped = remap_sector(iso_offset / Xiso::SECTOR_SIZE);
     remapped.offset += (iso_offset % Xiso::SECTOR_SIZE);
     return { remapped.offset, remapped.file_index };
+}
+
+uint32_t GoDWriter::get_contiguous_sectors(const uint64_t iso_sector) const
+{
+    uint64_t block_num = (iso_sector * Xiso::SECTOR_SIZE) / GoD::BLOCK_SIZE;
+    uint64_t data_block_within_file = block_num % GoD::DATA_BLOCKS_PER_PART;
+    uint32_t blocks_to_next_sht = GoD::DATA_BLOCKS_PER_SHT - static_cast<uint32_t>(data_block_within_file % GoD::DATA_BLOCKS_PER_SHT);
+    uint32_t sectors_to_next_sht = (blocks_to_next_sht * (GoD::BLOCK_SIZE / Xiso::SECTOR_SIZE)) - static_cast<uint32_t>((iso_sector * Xiso::SECTOR_SIZE % GoD::BLOCK_SIZE) / Xiso::SECTOR_SIZE);
+    return sectors_to_next_sht;
 }
 
 uint64_t GoDWriter::to_iso_offset(const uint64_t god_offset, const uint32_t god_file_index) 

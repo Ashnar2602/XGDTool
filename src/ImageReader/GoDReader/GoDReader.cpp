@@ -86,6 +86,15 @@ GoDReader::Remap GoDReader::remap_offset(uint64_t xiso_offset)
     return { remapped.offset, remapped.file_index };
 }
 
+uint32_t GoDReader::get_contiguous_sectors(const uint64_t iso_sector) const
+{
+    uint64_t block_num = (iso_sector * Xiso::SECTOR_SIZE) / GoD::BLOCK_SIZE;
+    uint64_t data_block_within_file = block_num % GoD::DATA_BLOCKS_PER_PART;
+    uint32_t blocks_to_next_sht = GoD::DATA_BLOCKS_PER_SHT - static_cast<uint32_t>(data_block_within_file % GoD::DATA_BLOCKS_PER_SHT);
+    uint32_t sectors_to_next_sht = (blocks_to_next_sht * (GoD::BLOCK_SIZE / Xiso::SECTOR_SIZE)) - static_cast<uint32_t>((iso_sector * Xiso::SECTOR_SIZE % GoD::BLOCK_SIZE) / Xiso::SECTOR_SIZE);
+    return sectors_to_next_sht;
+}
+
 void GoDReader::read_sector(const uint32_t sector, char* out_buffer) 
 {
     Remap remap = remap_sector(static_cast<uint64_t>(sector));
@@ -98,18 +107,39 @@ void GoDReader::read_sector(const uint32_t sector, char* out_buffer)
     XGDLog(Debug) << "Read sector " << sector << " from file " << remap.file_index << " at offset " << remap.offset << "\n";
 }
 
+void GoDReader::read_sectors(const uint32_t start_sector, const uint32_t count, char* out_buffer)
+{
+    uint32_t sectors_remaining = count;
+    uint32_t cur_sector = start_sector;
+    char* cur_out = out_buffer;
+
+    while (sectors_remaining > 0)
+    {
+        uint32_t contiguous = std::min(sectors_remaining, get_contiguous_sectors(cur_sector));
+        size_t read_bytes_len = static_cast<size_t>(contiguous) * Xiso::SECTOR_SIZE;
+
+        Remap remap = remap_sector(static_cast<uint64_t>(cur_sector));
+        in_files_[remap.file_index]->seekg(remap.offset, std::ios::beg);
+        in_files_[remap.file_index]->read(cur_out, read_bytes_len);
+        if (in_files_[remap.file_index]->fail())
+        {
+            throw XGDException(ErrCode::FILE_READ, HERE());
+        }
+
+        sectors_remaining -= contiguous;
+        cur_sector += contiguous;
+        cur_out += read_bytes_len;
+    }
+}
+
 void GoDReader::read_bytes(const uint64_t offset, const size_t size, char* out_buffer) 
 {
-    auto sectors_to_read = (size / Xiso::SECTOR_SIZE) + ((size % Xiso::SECTOR_SIZE) > 0 ? 1 : 0);
-    auto start_sector = offset / Xiso::SECTOR_SIZE;
+    auto sectors_to_read = static_cast<uint32_t>((size / Xiso::SECTOR_SIZE) + ((size % Xiso::SECTOR_SIZE) > 0 ? 1 : 0));
+    auto start_sector = static_cast<uint32_t>(offset / Xiso::SECTOR_SIZE);
     auto start_offset = offset % Xiso::SECTOR_SIZE;
 
-    std::vector<char> buffer(sectors_to_read * Xiso::SECTOR_SIZE);
-
-    for (auto i = 0; i < sectors_to_read; i++) 
-    {
-        read_sector(static_cast<uint32_t>(start_sector + i), buffer.data() + (i * Xiso::SECTOR_SIZE));
-    }
+    std::vector<char> buffer(static_cast<size_t>(sectors_to_read) * Xiso::SECTOR_SIZE);
+    read_sectors(start_sector, sectors_to_read, buffer.data());
 
     std::memcpy(out_buffer, buffer.data() + start_offset, size);
 }

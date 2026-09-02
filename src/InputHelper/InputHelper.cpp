@@ -9,60 +9,7 @@
 #include "InputHelper/InputHelper.h"
 #include "Executable/AttachXbeTool.h"
 #include "Utils/LocalizationManager.h"
-
-struct ChecksumResult
-{
-    uint32_t crc32{0};
-    std::string md5;
-    std::string sha1;
-};
-
-static ChecksumResult calculate_file_checksums(const std::filesystem::path& file_path)
-{
-    std::ifstream is(file_path, std::ios::binary);
-    if (!is.is_open()) return {};
-
-    EVP_MD_CTX* md5_ctx = EVP_MD_CTX_new();
-    EVP_MD_CTX* sha1_ctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(md5_ctx, EVP_md5(), nullptr);
-    EVP_DigestInit_ex(sha1_ctx, EVP_sha1(), nullptr);
-
-    uLong crc = crc32(0L, Z_NULL, 0);
-
-    std::vector<char> buffer(128 * 1024);
-    while (is.read(buffer.data(), buffer.size()) || is.gcount() > 0)
-    {
-        size_t bytes_read = static_cast<size_t>(is.gcount());
-        crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), static_cast<uInt>(bytes_read));
-        EVP_DigestUpdate(md5_ctx, buffer.data(), bytes_read);
-        EVP_DigestUpdate(sha1_ctx, buffer.data(), bytes_read);
-    }
-
-    unsigned char md5_digest[EVP_MAX_MD_SIZE];
-    unsigned int md5_len = 0;
-    EVP_DigestFinal_ex(md5_ctx, md5_digest, &md5_len);
-    EVP_MD_CTX_free(md5_ctx);
-
-    unsigned char sha1_digest[EVP_MAX_MD_SIZE];
-    unsigned int sha1_len = 0;
-    EVP_DigestFinal_ex(sha1_ctx, sha1_digest, &sha1_len);
-    EVP_MD_CTX_free(sha1_ctx);
-
-    auto to_hex = [](const unsigned char* data, unsigned int len) {
-        std::ostringstream oss;
-        oss << std::hex << std::setfill('0');
-        for (unsigned int i = 0; i < len; ++i) {
-            oss << std::setw(2) << static_cast<int>(data[i]);
-        }
-        return oss.str();
-    };
-
-    ChecksumResult res;
-    res.crc32 = static_cast<uint32_t>(crc);
-    res.md5 = to_hex(md5_digest, md5_len);
-    res.sha1 = to_hex(sha1_digest, sha1_len);
-    return res;
-}
+#include "Utils/ChecksumHelper.h"
 
 static void generate_dvd_file(const std::filesystem::path& iso_path)
 {
@@ -242,7 +189,15 @@ void InputHelper::process_single(InputInfo input_info)
                 if (output_settings_.calculate_checksum && std::filesystem::is_regular_file(out_file))
                 {
                     XGDLog(Normal) << "Calculating checksums for " << out_file.filename().string() << "..." << XGDLog::Endl;
-                    auto chk = calculate_file_checksums(out_file);
+                    ChecksumResult chk;
+                    if (image_writer_)
+                    {
+                        chk = image_writer_->get_precalculated_checksum(out_file);
+                    }
+                    if (!chk.valid)
+                    {
+                        chk = calculate_file_checksums(out_file);
+                    }
                     std::ostringstream crc_hex;
                     crc_hex << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << chk.crc32;
                     XGDLog(Normal) << "  CRC32:  " << crc_hex.str() << XGDLog::Endl;

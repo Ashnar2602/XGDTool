@@ -14,9 +14,9 @@ std::unique_ptr<ImageWriter> ImageWriter::create_instance(std::shared_ptr<ImageR
     switch (out_settings.file_type) 
     {
         case FileType::ISO:
-            return std::make_unique<XisoWriter>(image_reader, out_settings.scrub_type, out_settings.split);
+            return std::make_unique<XisoWriter>(image_reader, out_settings.scrub_type, out_settings.split, out_settings.calculate_checksum);
         case FileType::ZAR:
-            return std::make_unique<ZARWriter>(image_reader);
+            return std::make_unique<ZARWriter>(image_reader, out_settings.compression_level, out_settings.threads);
         case FileType::GoD:
             return std::make_unique<GoDWriter>(image_reader, title_helper, out_settings.scrub_type);
         case FileType::CSO:
@@ -33,9 +33,9 @@ std::unique_ptr<ImageWriter> ImageWriter::create_instance(const std::filesystem:
     switch (out_settings.file_type) 
     {
         case FileType::ISO:
-            return std::make_unique<XisoWriter>(in_dir_path, out_settings.split);
+            return std::make_unique<XisoWriter>(in_dir_path, out_settings.split, out_settings.calculate_checksum);
         case FileType::ZAR:
-            return std::make_unique<ZARWriter>(in_dir_path);
+            return std::make_unique<ZARWriter>(in_dir_path, out_settings.compression_level, out_settings.threads);
         case FileType::GoD:
             return std::make_unique<GoDWriter>(in_dir_path, title_helper);
         case FileType::CSO:

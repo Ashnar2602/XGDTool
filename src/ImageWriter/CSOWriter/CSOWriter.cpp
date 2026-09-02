@@ -32,11 +32,11 @@ CSOWriter::CSOWriter(const std::filesystem::path& in_dir_path, int compression_l
 CSOWriter::~CSOWriter() 
 {
     {
-        std::lock_guard<std::mutex> lock(queue_mutex_);
+        std::lock_guard<std::mutex> lock(batch_mutex_);
         stop_flag_ = true;
     }
 
-    cv_.notify_all();
+    cv_start_.notify_all();
 
     for (std::thread& thread : thread_pool_) 
     {
@@ -54,13 +54,9 @@ CSOWriter::~CSOWriter()
 
 void CSOWriter::init_cso_writer() 
 {
-    for (uint32_t i = 0; i < std::min(std::thread::hardware_concurrency(), static_cast<uint32_t>(32)); ++i) 
-    {
-        // Pass i so each thread has a unique index and compression context
-        thread_pool_.emplace_back(&CSOWriter::thread_worker, this, i);
-    }
+    uint32_t num_threads = std::max(1u, std::min(std::thread::hardware_concurrency(), 32u));
 
-    for (size_t i = 0; i < thread_pool_.size(); ++i)
+    for (size_t i = 0; i < num_threads; ++i)
     {
         lz4f_ctx_pool_.emplace_back(LZ4F_compressionContext_t());
 
@@ -72,6 +68,12 @@ void CSOWriter::init_cso_writer()
     }
 
     lz4f_max_size_ = LZ4F_compressBound(Xiso::SECTOR_SIZE, &lz4f_prefs_);
+
+    for (uint32_t i = 0; i < num_threads; ++i) 
+    {
+        // Pass i so each thread has a unique index and compression context
+        thread_pool_.emplace_back(&CSOWriter::thread_worker, this, i);
+    }
 }
 
 std::vector<std::filesystem::path> CSOWriter::convert(const std::filesystem::path& out_cso_path) 
@@ -139,35 +141,29 @@ void CSOWriter::convert_to_cso(const bool scrub)
     std::vector<uint32_t> block_index;
     block_index.reserve((end_sector - sector_offset) + 1);
 
-    uint32_t num_threads = static_cast<uint32_t>(thread_pool_.size());
-    std::vector<char> read_buffer(Xiso::SECTOR_SIZE * num_threads);
+    constexpr uint32_t BATCH_SECTORS = 1024; // 2MB batch
+    std::vector<char> read_buffer(BATCH_SECTORS * Xiso::SECTOR_SIZE);
 
     XGDLog() << "Writing CSO file" << XGDLog::Endl;
 
     while (current_sector < end_sector) 
     {
-        uint32_t read_sectors = std::min(end_sector - current_sector, num_threads);
+        uint32_t read_sectors = std::min(end_sector - current_sector, BATCH_SECTORS);
 
-        for (uint32_t i = 0; i < read_sectors; ++i)
+        image_reader.read_sectors(current_sector, read_sectors, read_buffer.data());
+
+        if (scrub && image_reader.platform() == Platform::OGX) 
         {
-            bool write_sector = true;
-
-            if (scrub && image_reader.platform() == Platform::OGX) 
+            for (uint32_t i = 0; i < read_sectors; ++i)
             {
-                write_sector = data_sectors->find(current_sector) != data_sectors->end();
+                if (data_sectors->find(current_sector + i) == data_sectors->end())
+                {
+                    std::memset(read_buffer.data() + (static_cast<size_t>(i) * Xiso::SECTOR_SIZE), 0x00, Xiso::SECTOR_SIZE);
+                }
             }
-
-            if (write_sector) 
-            {
-                image_reader.read_sector(current_sector, read_buffer.data() + (i * Xiso::SECTOR_SIZE));
-            } 
-            else 
-            {
-                std::memset(read_buffer.data() + (i * Xiso::SECTOR_SIZE), 0x00, Xiso::SECTOR_SIZE);
-            }
-
-            current_sector++;
         }
+
+        current_sector += read_sectors;
 
         compress_and_write_sectors_managed(out_file, block_index, read_sectors, read_buffer.data());
         
@@ -259,7 +255,8 @@ void CSOWriter::write_file_from_reader(std::ofstream& out_file, std::vector<uint
     ImageReader& image_reader = *image_reader_;
     uint64_t bytes_remaining = node.file_size;
     uint64_t read_position = image_reader.image_offset() + (node.old_start_sector * Xiso::SECTOR_SIZE);
-    std::vector<char> read_buffer(Xiso::SECTOR_SIZE * thread_pool_.size());
+    constexpr size_t BATCH_BYTES = 1024 * Xiso::SECTOR_SIZE; // 2MB
+    std::vector<char> read_buffer(BATCH_BYTES);
 
     while (bytes_remaining > 0) 
     {
@@ -292,7 +289,8 @@ void CSOWriter::write_file_from_directory(std::ofstream& out_file, std::vector<u
     }
 
     uint64_t bytes_remaining = node.file_size;
-    std::vector<char> read_buffer(Xiso::SECTOR_SIZE * thread_pool_.size());
+    constexpr size_t BATCH_BYTES = 1024 * Xiso::SECTOR_SIZE; // 2MB
+    std::vector<char> read_buffer(BATCH_BYTES);
 
     while (bytes_remaining > 0) 
     {
@@ -325,84 +323,84 @@ void CSOWriter::thread_worker(size_t thread_idx)
 {
     while (true) 
     {
-        CompressTask task;
         {
-            std::unique_lock<std::mutex> lock(queue_mutex_);
+            std::unique_lock<std::mutex> lock(batch_mutex_);
+            cv_start_.wait(lock, [this] { return stop_flag_ || batch_ctx_.has_work; });
 
-            cv_.wait(lock, [this] { return stop_flag_ || !task_queue_.empty(); });
-
-            if (stop_flag_ && task_queue_.empty()) 
+            if (stop_flag_ && !batch_ctx_.has_work) 
             {
                 return;
             }
-
-            task = std::move(task_queue_.front());
-            task_queue_.pop();
         }
 
-        size_t header_len = LZ4F_compressBegin(lz4f_ctx_pool_[thread_idx], task.out_buffer, Xiso::SECTOR_SIZE, &lz4f_prefs_);
-        if (LZ4F_isError(header_len)) 
+        constexpr uint32_t STEAL_CHUNK = 8;
+        while (true) 
         {
-            task.promise.set_exception(std::make_exception_ptr(XGDException(ErrCode::MISC, HERE(), LZ4F_getErrorName(header_len))));
+            uint32_t sec_start = batch_ctx_.next_sector.fetch_add(STEAL_CHUNK, std::memory_order_relaxed);
+            if (sec_start >= batch_ctx_.num_sectors) break;
+
+            uint32_t sec_end = std::min(sec_start + STEAL_CHUNK, batch_ctx_.num_sectors);
+            for (uint32_t sec = sec_start; sec < sec_end; ++sec) 
+            {
+                const char* in_ptr = batch_ctx_.in_buffer + (static_cast<size_t>(sec) * Xiso::SECTOR_SIZE);
+                char* out_ptr = batch_ctx_.out_buffer + (static_cast<size_t>(sec) * lz4f_max_size_);
+
+                LZ4F_compressBegin(lz4f_ctx_pool_[thread_idx], out_ptr, Xiso::SECTOR_SIZE, &lz4f_prefs_);
+                size_t compressed_size = LZ4F_compressUpdate(lz4f_ctx_pool_[thread_idx], out_ptr, lz4f_max_size_, in_ptr, Xiso::SECTOR_SIZE, nullptr);
+
+                CompressedTaskResult& result = batch_ctx_.results[sec];
+                result.sector_idx = sec;
+                result.compressed_size = compressed_size;
+                result.compressed = !((compressed_size == 0) || ((compressed_size + 12) >= Xiso::SECTOR_SIZE));
+                result.buffer_to_write = result.compressed ? out_ptr : in_ptr;
+            }
         }
 
-        size_t compressed_size = LZ4F_compressUpdate(lz4f_ctx_pool_[thread_idx], task.out_buffer, lz4f_max_size_, task.in_buffer, Xiso::SECTOR_SIZE, nullptr);
-        if (LZ4F_isError(compressed_size)) 
+        if (batch_ctx_.active_workers.fetch_sub(1, std::memory_order_acq_rel) == 1) 
         {
-            task.promise.set_exception(std::make_exception_ptr(XGDException(ErrCode::MISC, HERE(), LZ4F_getErrorName(compressed_size))));
+            std::lock_guard<std::mutex> lock(batch_mutex_);
+            batch_ctx_.has_work = false;
+            cv_done_.notify_one();
         }
-
-        CompressedTaskResult result;
-        result.sector_idx = task.sector_idx;
-        result.compressed_size = compressed_size;
-        result.compressed = !((compressed_size == 0) || ((compressed_size + 12) >= Xiso::SECTOR_SIZE));
-        result.buffer_to_write = result.compressed ? task.out_buffer : task.in_buffer;
-
-        task.promise.set_value(result);
     }
 }
 
 void CSOWriter::compress_and_write_sectors_managed(std::ofstream& out_file, std::vector<uint32_t>& block_index, const uint32_t num_sectors, const char* in_buffer)
 {
-    std::vector<std::future<CompressedTaskResult>> futures;
-    std::vector<std::vector<char>> compress_buffers(num_sectors, std::vector<char>(lz4f_max_size_));
+    if (num_sectors == 0) return;
+
+    if (batch_compress_buffer_.size() < static_cast<size_t>(num_sectors) * lz4f_max_size_) 
+    {
+        batch_compress_buffer_.resize(static_cast<size_t>(num_sectors) * lz4f_max_size_);
+    }
+    if (batch_results_.size() < num_sectors) 
+    {
+        batch_results_.resize(num_sectors);
+    }
+
+    uint32_t num_workers = static_cast<uint32_t>(thread_pool_.size());
+
+    {
+        std::lock_guard<std::mutex> lock(batch_mutex_);
+        batch_ctx_.in_buffer = in_buffer;
+        batch_ctx_.out_buffer = batch_compress_buffer_.data();
+        batch_ctx_.results = batch_results_.data();
+        batch_ctx_.num_sectors = num_sectors;
+        batch_ctx_.next_sector.store(0, std::memory_order_relaxed);
+        batch_ctx_.active_workers.store(num_workers, std::memory_order_relaxed);
+        batch_ctx_.has_work = true;
+    }
+
+    cv_start_.notify_all();
+
+    {
+        std::unique_lock<std::mutex> lock(batch_mutex_);
+        cv_done_.wait(lock, [this] { return !batch_ctx_.has_work; });
+    }
 
     for (uint32_t i = 0; i < num_sectors; ++i)
     {
-        std::promise<CompressedTaskResult> promise;
-        futures.emplace_back(promise.get_future());
-
-        CompressTask task;
-        task.in_buffer = in_buffer + (i * Xiso::SECTOR_SIZE);
-        task.in_size = Xiso::SECTOR_SIZE;
-        task.out_buffer = compress_buffers[i].data();
-        task.sector_idx = i;
-        task.promise = std::move(promise);
-
-        {
-            std::lock_guard<std::mutex> lock(queue_mutex_);
-            task_queue_.push(std::move(task));
-        }
-
-        cv_.notify_one();
-    }
-
-    std::vector<CompressedTaskResult> ordered_results;
-    ordered_results.reserve(num_sectors);
-
-    for (auto& future : futures)
-    {
-        ordered_results.push_back(future.get());
-    }
-
-    std::sort(ordered_results.begin(), ordered_results.end(), [](const CompressedTaskResult& a, const CompressedTaskResult& b) 
-    {
-        return a.sector_idx < b.sector_idx;
-    });
-
-    for (const auto& result : ordered_results)
-    {
-        write_sector(out_file, block_index, result);
+        write_sector(out_file, block_index, batch_results_[i]);
     }
 }
 

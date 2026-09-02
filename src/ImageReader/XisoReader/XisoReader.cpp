@@ -30,7 +30,10 @@ XisoReader::~XisoReader()
 void XisoReader::read_sector(const uint32_t sector, char* out_buffer) 
 {
     uint64_t position = static_cast<uint64_t>(sector) * static_cast<uint64_t>(Xiso::SECTOR_SIZE);
-    in_file_.seekg(position, std::ios::beg);
+    if (in_file_.tellg() != position)
+    {
+        in_file_.seekg(position, std::ios::beg);
+    }
     in_file_.read(out_buffer, Xiso::SECTOR_SIZE);
 
     if (in_file_.fail() || in_file_.gcount() != Xiso::SECTOR_SIZE) 
@@ -43,12 +46,22 @@ void XisoReader::read_sector(const uint32_t sector, char* out_buffer)
     }
 }
 
+void XisoReader::read_sectors(const uint32_t start_sector, const uint32_t count, char* out_buffer)
+{
+    uint64_t position = static_cast<uint64_t>(start_sector) * static_cast<uint64_t>(Xiso::SECTOR_SIZE);
+    size_t size = static_cast<size_t>(count) * Xiso::SECTOR_SIZE;
+    read_bytes(position, size, out_buffer);
+}
+
 void XisoReader::read_bytes(const uint64_t offset, const size_t size, char* out_buffer) 
 {
-    in_file_.seekg(offset, std::ios::beg);
-    if (in_file_.fail() || in_file_.tellg() != offset) 
+    if (in_file_.tellg() != offset)
     {
-        throw XGDException(ErrCode::FILE_SEEK, HERE(), "Failed to seek to offset in input file");
+        in_file_.seekg(offset, std::ios::beg);
+        if (in_file_.fail() || in_file_.tellg() != offset) 
+        {
+            throw XGDException(ErrCode::FILE_SEEK, HERE(), "Failed to seek to offset in input file");
+        }
     }
     in_file_.read(out_buffer, size);
     if (in_file_.fail() || in_file_.gcount() != size) 

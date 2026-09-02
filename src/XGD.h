@@ -6,8 +6,8 @@
 #include "XGDLog.h"
 #include "XGDException.h"
 
-#define XGDTOOL_VERSION   "1.2.0"
-#define XGDTOOL_DATE      "09.02.26"
+#define XGDTOOL_VERSION   "1.3.0"
+#define XGDTOOL_DATE      "09.03.26"
 
 namespace XGD {
 
@@ -18,7 +18,7 @@ namespace XGD {
     constexpr uint64_t OPTIMIZED_TAG_OFFSET  = 31337;
     constexpr uint64_t OPTIMIZED_TAG_LEN     = sizeof(OPTIMIZED_TAG) - 1;
 
-    constexpr uint64_t BUFFER_SIZE    = 0x10000; // 64KB
+    constexpr uint64_t BUFFER_SIZE    = 0x200000; // 2MB
 
 };
 

@@ -18,6 +18,7 @@ public:
     ~GoDReader() override;
 
     void read_sector(const uint32_t sector, char* out_buffer) override;
+    void read_sectors(const uint32_t start_sector, const uint32_t count, char* out_buffer) override;
     void read_bytes(const uint64_t offset, const size_t size, char* out_buffer) override;
 
     uint64_t image_offset() override { return 0; };
@@ -42,6 +43,7 @@ private:
 
     Remap remap_sector(uint64_t xiso_sector);
     Remap remap_offset(uint64_t xiso_offset);
+    uint32_t get_contiguous_sectors(uint64_t iso_sector) const;
 };
 
 #endif // _GOD_READER_H_

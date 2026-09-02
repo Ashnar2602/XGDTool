@@ -25,6 +25,14 @@ std::shared_ptr<ImageReader> ImageReader::create_instance(FileType in_file_type,
     }
 }
 
+void ImageReader::read_sectors(const uint32_t start_sector, const uint32_t count, char* out_buffer)
+{
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        read_sector(start_sector + i, out_buffer + (static_cast<size_t>(i) * Xiso::SECTOR_SIZE));
+    }
+}
+
 const std::vector<Xiso::DirectoryEntry>& ImageReader::directory_entries() 
 {
     if (directory_entries_.empty()) 

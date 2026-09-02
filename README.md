@@ -1,9 +1,17 @@
-# XGDTool (v1.2.0 Fork)
+# XGDTool (v1.3.0 Fork)
 
 > **Fork maintainer**: [Ashnar2602](https://github.com/Ashnar2602) | **Original Author**: [WiredOpposite](https://github.com/wiredopposite/XGDTool)  
-> See [CHANGELOG.md](CHANGELOG.md) for full details on version updates, features, multi-disc protection, multithreading, and localization.
+> See [CHANGELOG.md](CHANGELOG.md) for full details on version updates, high-performance engine overhaul, multi-disc protection, multithreading, and localization.
 
-XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to and from any mainstream format. It is available as a portable GUI or CLI application with zero external runtime dependencies.
+XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to and from any mainstream format at ultra-high speeds. It is available as a portable GUI or CLI application with zero external runtime dependencies.
+
+## What's New in v1.3.0: High-Performance Engine
+- **2 MB Chunked Sequential I/O**: Reduced disc I/O syscalls by over 99.9% for both ISO creation and extraction.
+- **Zero-Overhead Streaming Checksums**: Simultaneous CRC32, MD5, and hardware-accelerated SHA-1 calculated in RAM on the fly (0.0s extra time).
+- **Lock-Free Multithreaded CSO & CCI Engine**: Eliminates mutex contention and promise heap allocations, saturating all CPU cores.
+- **Parallel Multi-Core ZArchive (ZAR) Compression**: Utilizes all CPU threads with dedicated Zstd contexts, plus configurable compression levels (1–6).
+- **Contiguous Chunked GoD Engine**: Up to 816 KB per write syscall, eliminating 4 million individual 2 KB seek/write operations.
+- **Parallel Chunked Readers**: High-speed multi-sector reading and multithreaded decompression for CSO, CCI, and GoD inputs.
 
 ## Key Features
 - **Seamless Format Conversion**:

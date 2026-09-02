@@ -21,6 +21,7 @@ public:
     static std::shared_ptr<ImageReader> create_instance(FileType in_file_type, const std::vector<std::filesystem::path>& in_paths);
 
     virtual void read_sector(const uint32_t sector, char* out_buffer) = 0;
+    virtual void read_sectors(const uint32_t start_sector, const uint32_t count, char* out_buffer);
     virtual void read_bytes(const uint64_t offset, const size_t size, char* out_buffer) = 0;
 
     virtual uint64_t image_offset() = 0;

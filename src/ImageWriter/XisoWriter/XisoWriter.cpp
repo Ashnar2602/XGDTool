@@ -4,11 +4,11 @@
 #include "ImageWriter/XisoWriter/XisoWriter.h"
 #include "AvlTree/AvlTree.h"
 
-XisoWriter::XisoWriter(std::shared_ptr<ImageReader> image_reader, ScrubType scrub_type, const bool split) 
-    : image_reader_(image_reader), scrub_type_(scrub_type), split_(split) {}
+XisoWriter::XisoWriter(std::shared_ptr<ImageReader> image_reader, ScrubType scrub_type, const bool split, const bool calculate_checksum) 
+    : image_reader_(image_reader), scrub_type_(scrub_type), split_(split), calculate_checksum_(calculate_checksum) {}
 
-XisoWriter::XisoWriter(const std::filesystem::path& in_dir_path, const bool split) 
-    : split_(split), in_dir_path_(in_dir_path) {}
+XisoWriter::XisoWriter(const std::filesystem::path& in_dir_path, const bool split, const bool calculate_checksum) 
+    : split_(split), in_dir_path_(in_dir_path), calculate_checksum_(calculate_checksum) {}
 
 std::vector<std::filesystem::path> XisoWriter::convert(const std::filesystem::path& out_xiso_path) 
 {
@@ -52,40 +52,60 @@ std::vector<std::filesystem::path> XisoWriter::convert_to_xiso(const std::filesy
         throw XGDException(ErrCode::FILE_OPEN, HERE(), out_xiso_path.string());
     }
 
-    std::vector<char> buffer(Xiso::SECTOR_SIZE);
+    StreamingChecksum chk;
+    if (calculate_checksum_ && !split_) 
+    {
+        chk.init();
+    }
+
+    constexpr uint32_t CHUNK_SECTORS = 1024; // 2MB chunk
+    std::vector<char> buffer(CHUNK_SECTORS * Xiso::SECTOR_SIZE);
 
     XGDLog() << "Writing XISO" << XGDLog::Endl;
 
-    for (uint32_t i = sector_offset; i < end_sector; i++) 
+    for (uint32_t i = sector_offset; i < end_sector; ) 
     {
-        bool write_sector = true;
+        uint32_t current_chunk_sectors = std::min(CHUNK_SECTORS, end_sector - i);
+        size_t chunk_bytes = static_cast<size_t>(current_chunk_sectors) * Xiso::SECTOR_SIZE;
+
+        image_reader.read_sectors(i, current_chunk_sectors, buffer.data());
 
         if (scrub && image_reader.platform() == Platform::OGX) 
         {
-            write_sector = data_sectors->find(i) != data_sectors->end();
+            for (uint32_t s = 0; s < current_chunk_sectors; ++s)
+            {
+                uint32_t sec = i + s;
+                if (data_sectors->find(sec) == data_sectors->end())
+                {
+                    std::memset(buffer.data() + (static_cast<size_t>(s) * Xiso::SECTOR_SIZE), 0x00, Xiso::SECTOR_SIZE);
+                }
+            }
         }
 
-        if (write_sector) 
+        if (chk.is_active())
         {
-            image_reader.read_sector(i, buffer.data());
-        } 
-        else 
-        {
-            std::memset(buffer.data(), 0x00, buffer.size());
+            chk.update(buffer.data(), chunk_bytes);
         }
 
-        out_file.write(buffer.data(), Xiso::SECTOR_SIZE);
+        out_file.write(buffer.data(), chunk_bytes);
         if (out_file.fail()) 
         {
             throw XGDException(ErrCode::FILE_WRITE, HERE(), "Failed to write sector to output file");
         }
 
-        XGDLog().print_progress(i - sector_offset, end_sector - sector_offset - 1);
+        i += current_chunk_sectors;
+        XGDLog().print_progress(i - sector_offset, end_sector - sector_offset);
 
         check_status_flags();
     }
 
     out_file.close();
+
+    if (chk.is_active())
+    {
+        precalculated_checksums_[out_xiso_path.string()] = chk.finalize();
+    }
+
     return out_file.paths();
 }
 

@@ -39,6 +39,22 @@ endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/embed_resources.cmake)
 
+# Apply multithread patch to ZArchive submodule if needed
+if(EXISTS "${CMAKE_SOURCE_DIR}/external/ZArchive/include/zarchive/zarchivewriter.h")
+    file(READ "${CMAKE_SOURCE_DIR}/external/ZArchive/include/zarchive/zarchivewriter.h" ZARCHIVE_HEADER_CONTENT)
+    if(NOT ZARCHIVE_HEADER_CONTENT MATCHES "numThreads")
+        message(STATUS "Applying multithread patch to ZArchive...")
+        find_package(Git QUIET)
+        if(GIT_FOUND)
+            execute_process(
+                COMMAND ${GIT_EXECUTABLE} apply "${CMAKE_SOURCE_DIR}/cmake/zarchive_multithread.patch"
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/external/ZArchive"
+                RESULT_VARIABLE PATCH_RES
+            )
+        endif()
+    endif()
+endif()
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/external/ZArchive)
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)

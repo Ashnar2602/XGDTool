@@ -7,10 +7,13 @@
 #include <memory>
 #include <atomic>
 
+#include <unordered_map>
+
 #include "ImageReader/ImageReader.h"
 #include "TitleHelper/TitleHelper.h"
 #include "InputHelper/Types.h"
 #include "AvlTree/AvlIterator.h"
+#include "Utils/ChecksumHelper.h"
 
 class ImageWriter 
 {
@@ -22,6 +25,12 @@ public:
 
     virtual std::vector<std::filesystem::path> convert(const std::filesystem::path& out_filepath) = 0;
 
+    virtual ChecksumResult get_precalculated_checksum(const std::filesystem::path& out_filepath)
+    {
+        auto it = precalculated_checksums_.find(out_filepath.string());
+        return (it != precalculated_checksums_.end()) ? it->second : ChecksumResult{};
+    }
+
     void cancel_processing() { write_cancel_flag_ = true; }
     void pause_processing() { write_pause_flag_ = true; }
     void resume_processing() { write_pause_flag_ = false; }
@@ -29,6 +38,7 @@ public:
 protected:
     std::atomic<bool> write_cancel_flag_{false};
     std::atomic<bool> write_pause_flag_{false};
+    std::unordered_map<std::string, ChecksumResult> precalculated_checksums_;
 
     void check_status_flags();
     Xiso::DirectoryEntry::Header get_directory_entry_header(const AvlTree::Node& node);
