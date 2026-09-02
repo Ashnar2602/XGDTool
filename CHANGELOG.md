@@ -16,6 +16,7 @@ Version 1.1.0 is a major maintenance and reliability release by **Ashnar2602**, 
   - Automatically recalculates layout and resizes/expands the main frame when switching between languages so longer strings in Italian/English are never truncated and no manual window resizing is needed.
 - **XML-Based Localization System & Language Selectors (GUI & CLI)**:
   - Implemented `LocalizationManager` for extensible, non-hardcoded translations using XML resource files.
+  - **Embedded Single-File Executable**: All 6 language translation XML resources are embedded directly into the executable binary ([`EmbeddedLanguages.h`](file:///c:/Progetti/XGD_Tools_Merge/XGDTool/XGDTool/src/Utils/EmbeddedLanguages.h)), enabling a true portable single-file binary with zero external asset dependencies, while still allowing optional external `languages/<lang>.xml` file overrides.
   - Added full translation support for **6 languages**: English (`en`), Italian (`it`), German (`de`), French (`fr`), Spanish (`es`), and Portuguese (`pt`).
   - Added **"Language"** section in GUI (positioned to the right of Settings and above the action buttons) with runtime switching between **System** (default) and all 6 languages, instantly updating all labels, buttons, tooltips, and dialogs without restart.
   - Automatic detection of OS system language across Windows Win32 API (`GetUserDefaultUILanguage`, `GetUserDefaultLocaleName`), wxLocale, and POSIX environment variables (`LANG`, `LC_ALL`).

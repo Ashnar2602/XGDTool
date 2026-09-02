@@ -12,6 +12,7 @@ public:
 
     void init(const std::string& preferred_lang = "");
     bool load_from_file(const std::string& xml_file_path);
+    bool load_from_string(std::string_view xml_content);
 
     std::string get(const std::string& key, const std::vector<std::string>& args = {}) const;
 

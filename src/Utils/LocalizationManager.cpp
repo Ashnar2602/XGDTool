@@ -1,5 +1,7 @@
 #include "LocalizationManager.h"
+#include "EmbeddedLanguages.h"
 #include <wx/xml/xml.h>
+#include <wx/sstream.h>
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
 #include <wx/intl.h>
@@ -252,61 +254,8 @@ static std::string detect_system_language()
     return "en";
 }
 
-void LocalizationManager::init(const std::string& preferred_lang)
+static bool parse_xml_node(wxXmlNode* root, std::unordered_map<std::string, std::string>& strings)
 {
-    std::string lang = preferred_lang;
-    if (lang.empty() || lang == "system" || lang == "System" || lang == "default")
-    {
-        lang = detect_system_language();
-    }
-
-    current_lang_ = lang;
-    XGDLog(Normal) << "Language initialized: '" << lang << "' (preferred='" << preferred_lang << "')" << XGDLog::Endl;
-
-    // Search paths for languages/<lang>.xml
-    std::vector<std::string> candidate_paths;
-
-    // 1. Next to executable
-    wxString exe_path = wxStandardPaths::Get().GetExecutablePath();
-    wxFileName fn(exe_path);
-    std::string exe_dir = fn.GetPath().ToStdString();
-    candidate_paths.push_back(exe_dir + "/languages/" + lang + ".xml");
-    candidate_paths.push_back(exe_dir + "/../languages/" + lang + ".xml");
-    candidate_paths.push_back(exe_dir + "/../../languages/" + lang + ".xml");
-
-    // 2. Current working directory
-    candidate_paths.push_back("languages/" + lang + ".xml");
-    candidate_paths.push_back("../languages/" + lang + ".xml");
-
-    bool loaded = false;
-    for (const auto& path : candidate_paths)
-    {
-        if (fs::exists(path))
-        {
-            if (load_from_file(path))
-            {
-                XGDLog(Debug) << "Loaded localization XML from: " << path << XGDLog::Endl;
-                loaded = true;
-                break;
-            }
-        }
-    }
-
-    if (!loaded)
-    {
-        XGDLog(Normal) << "No XML localization found for '" << lang << "', using built-in defaults." << XGDLog::Endl;
-    }
-}
-
-bool LocalizationManager::load_from_file(const std::string& xml_file_path)
-{
-    wxXmlDocument doc;
-    if (!doc.Load(wxString::FromUTF8(xml_file_path)))
-    {
-        return false;
-    }
-
-    wxXmlNode* root = doc.GetRoot();
     if (!root || root->GetName() != "resources")
     {
         return false;
@@ -323,13 +272,92 @@ bool LocalizationManager::load_from_file(const std::string& xml_file_path)
                 wxString content = child->GetNodeContent();
                 // Replace escaped \n with actual newlines
                 content.Replace("\\n", "\n");
-                strings_[std::string(name_attr.utf8_str())] = std::string(content.utf8_str());
+                strings[std::string(name_attr.utf8_str())] = std::string(content.utf8_str());
             }
         }
         child = child->GetNext();
     }
 
     return true;
+}
+
+bool LocalizationManager::load_from_string(std::string_view xml_content)
+{
+    if (xml_content.empty())
+    {
+        return false;
+    }
+
+    wxString str = wxString::FromUTF8(xml_content.data(), xml_content.size());
+    wxStringInputStream stream(str);
+    wxXmlDocument doc;
+    if (!doc.Load(stream))
+    {
+        return false;
+    }
+
+    return parse_xml_node(doc.GetRoot(), strings_);
+}
+
+bool LocalizationManager::load_from_file(const std::string& xml_file_path)
+{
+    wxXmlDocument doc;
+    if (!doc.Load(wxString::FromUTF8(xml_file_path)))
+    {
+        return false;
+    }
+
+    return parse_xml_node(doc.GetRoot(), strings_);
+}
+
+void LocalizationManager::init(const std::string& preferred_lang)
+{
+    std::string lang = preferred_lang;
+    if (lang.empty() || lang == "system" || lang == "System" || lang == "default")
+    {
+        lang = detect_system_language();
+    }
+
+    current_lang_ = lang;
+    load_default_fallback_strings();
+
+    // 1. Load embedded XML compiled directly into the binary
+    std::string_view embedded_xml = EmbeddedLanguages::get(lang);
+    if (!embedded_xml.empty())
+    {
+        load_from_string(embedded_xml);
+    }
+    else
+    {
+        // Fallback to embedded English if requested language is not recognized
+        load_from_string(EmbeddedLanguages::XML_EN);
+    }
+
+    // 2. Search disk for custom external languages/<lang>.xml overrides
+    std::vector<std::string> candidate_paths;
+
+    wxString exe_path = wxStandardPaths::Get().GetExecutablePath();
+    wxFileName fn(exe_path);
+    std::string exe_dir = fn.GetPath().ToStdString();
+    candidate_paths.push_back(exe_dir + "/languages/" + lang + ".xml");
+    candidate_paths.push_back(exe_dir + "/../languages/" + lang + ".xml");
+    candidate_paths.push_back(exe_dir + "/../../languages/" + lang + ".xml");
+    candidate_paths.push_back("languages/" + lang + ".xml");
+    candidate_paths.push_back("../languages/" + lang + ".xml");
+
+    for (const auto& path : candidate_paths)
+    {
+        if (fs::exists(path))
+        {
+            if (load_from_file(path))
+            {
+                XGDLog(Debug) << "Loaded external localization override from: " << path << XGDLog::Endl;
+                break;
+            }
+        }
+    }
+
+    XGDLog(Normal) << "Language initialized: '" << lang << "' (preferred='" << preferred_lang << "')" << XGDLog::Endl;
 }
 
 std::string LocalizationManager::format_string(const std::string& template_str, const std::vector<std::string>& args) const
