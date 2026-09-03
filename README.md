@@ -3,7 +3,7 @@
 > **Fork maintainer**: [Ashnar2602](https://github.com/Ashnar2602) | **Original Author**: [WiredOpposite](https://github.com/wiredopposite/XGDTool)  
 > See [CHANGELOG.md](CHANGELOG.md) for full details on version updates, high-performance engine overhaul, multi-disc protection, multithreading, and localization.
 
-XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to and from any mainstream format at ultra-high speeds. It is available as a portable GUI or CLI application with zero external runtime dependencies.
+XGDTool is an OG Xbox and Xbox 360 disc utility, capable of converting discs to and from any mainstream format at ultra-high speeds. It is available as a portable Windows GUI, a standalone CLI application, and a native Android mobile APK with zero external runtime dependencies.
 
 ## What's New in v1.3.0: High-Performance Engine
 - **2 MB Chunked Sequential I/O**: Reduced disc I/O syscalls by over 99.9% for both ISO creation and extraction.
@@ -148,3 +148,26 @@ cd build
 cmake ..
 make -j$(nproc)
 ```
+
+### Android (APK)
+
+XGDTool includes a native Android app (`android/`) with an Xbox neon-green dark theme, Storage Access Framework (SAF) integration, background conversion service with notification progress, and 7-language localization.
+
+#### Building the APK
+Requires JDK 17+ and the Android SDK. Uses the included Gradle wrapper:
+
+```bash
+cd android
+./gradlew assembleRelease
+# Output: android/app/build/outputs/apk/release/app-release.apk
+```
+
+#### User Manuals
+Comprehensive user guides for the Android app are available in 7 languages:
+* [English Manual](docs/MANUAL.md)
+* [Manuale Italiano](docs/MANUAL.it.md)
+* [Manual en Español](docs/MANUAL.es.md)
+* [Deutsches Handbuch](docs/MANUAL.de.md)
+* [Manuel Français](docs/MANUAL.fr.md)
+* [Manual em Português](docs/MANUAL.pt.md)
+* [中文用户手册](docs/MANUAL.zh-CN.md)

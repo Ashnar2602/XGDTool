@@ -7,3 +7,11 @@ external/CLI
 external/nlohmann
 *.log
 xgdtool.log
+
+# Android
+.gradle/
+**/build/
+android/.gradle/
+android/app/build/
+local.properties
+.cxx/

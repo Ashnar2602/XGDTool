@@ -13,6 +13,7 @@ This document defines the architecture, design principles, performance rules, bu
 * **Targets**:
   * `XGDTool-GUI`: Full wxWidgets-based GUI application with Drag & Drop, Dark Theme, Queue management, and embedded multilingual support.
   * `XGDTool-CLI`: Lean, standalone command-line executable for terminal scripting, automation, and batch processing.
+  * `XGDTool-Android`: Native Android application with Material 3 UI, Xbox neon-green dark theme, SAF storage integration, background conversion service, and 7-language localization.
 * **Supported Formats**:
   * **ISO / XISO**: Xbox and Xbox 360 disc images (including XGD2 / XGD3, layerbreak handling, and scrubbed zero-padding).
   * **CSO**: Compressed ISO format using LZ4.
@@ -81,7 +82,11 @@ XGDTool/
 │   ├── Resources/
 │   │   └── i18n.h                      <-- Embedded multilingual XML resources (EN, IT, ES, FR, DE, etc.)
 │   └── GUI/                            <-- wxWidgets GUI (Dark theme, D&D, Queue manager)
-├── dist/                               <-- Release binaries (XGDTool-GUI.exe, XGDTool-CLI.exe) & notes
+├── android/                            <-- Android Studio project (Gradle 8.7+, Kotlin UI, SAF service)
+│   ├── app/                            <-- Android app module, layouts, and prebuilt/packaged jniLibs
+│   └── jni/                            <-- Native JNI bridge (xgd_jni.cpp, XGDLog_JNI.cpp, CMakeLists.txt)
+├── docs/                               <-- Comprehensive user manuals in 7 languages (EN, IT, ES, DE, FR, PT, ZH)
+├── dist/                               <-- Release binaries (GUI, CLI, Android APK) & notes
 ├── cmake/
 │   └── zarchive_multithread.patch      <-- Patch for parallel multi-core ZArchive compression
 ├── CMakeLists.txt                      <-- Master CMake configuration (supports -DBUILD_CLI_ONLY)
@@ -93,21 +98,28 @@ XGDTool/
 
 ## 4. Build, Test & Release Workflow
 
-### Build Commands (Windows / MSVC 2022)
+### Build Commands
 
-* **Build GUI (Release)**:
+* **Build GUI (Windows / Release)**:
   ```powershell
   cmake -B build -S XGDTool
   cmake --build build --config Release -j
   ```
   Executable: `build/Release/XGDTool-GUI.exe`
 
-* **Build CLI (Release)**:
+* **Build CLI (Windows / Release)**:
   ```powershell
   cmake -B build_cli -S XGDTool -DBUILD_CLI_ONLY=ON
   cmake --build build_cli --config Release -j
   ```
   Executable: `build_cli/Release/XGDTool-CLI.exe`
+
+* **Build Android APK (Release)**:
+  ```powershell
+  cd XGDTool/android
+  ./gradlew assembleRelease
+  ```
+  Package: `android/app/build/outputs/apk/release/app-release.apk`
 
 ### Release Packaging Protocol
 When publishing a new release:
