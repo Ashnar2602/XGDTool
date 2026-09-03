@@ -202,18 +202,67 @@ class ConvertService : Service() {
                 }
             }
 
-            val resultCode = XgdNative.convert(
-                inputPathToUse,
-                outputDirToUse,
-                settings.fileType,
-                settings.scrubType,
-                settings.split,
-                settings.offlineMode,
-                settings.renameXbe,
-                settings.attachXbe,
-                settings.amPatch,
-                callback
-            )
+            val isZarToImage = (inputPathToUse.endsWith(".zar", ignoreCase = true) && settings.fileType != XgdNative.FORMAT_DIR)
+
+            val resultCode = if (isZarToImage) {
+                val tempExtractBase = if (useDirectMode && directOutputDir != null) {
+                    File(directOutputDir, ".xgd_zar_temp")
+                } else {
+                    File(cacheDir, "zar_temp")
+                }
+                tempExtractBase.mkdirs()
+
+                postToUi { listener?.onLog(getString(R.string.log_zar_extracting)) }
+                val extractCode = XgdNative.convert(
+                    inputPathToUse,
+                    tempExtractBase.absolutePath,
+                    XgdNative.FORMAT_DIR,
+                    settings.scrubType,
+                    settings.split,
+                    settings.offlineMode,
+                    settings.renameXbe,
+                    settings.attachXbe,
+                    settings.amPatch,
+                    callback
+                )
+
+                if (extractCode != XgdNative.RESULT_OK) {
+                    tempExtractBase.deleteRecursively()
+                    extractCode
+                } else {
+                    val extractedGameDir = tempExtractBase.listFiles()?.firstOrNull { it.isDirectory } ?: tempExtractBase
+                    postToUi { listener?.onLog(getString(R.string.log_zar_creating_image)) }
+
+                    val imageCode = XgdNative.convert(
+                        extractedGameDir.absolutePath,
+                        outputDirToUse,
+                        settings.fileType,
+                        settings.scrubType,
+                        settings.split,
+                        settings.offlineMode,
+                        settings.renameXbe,
+                        settings.attachXbe,
+                        settings.amPatch,
+                        callback
+                    )
+
+                    tempExtractBase.deleteRecursively()
+                    imageCode
+                }
+            } else {
+                XgdNative.convert(
+                    inputPathToUse,
+                    outputDirToUse,
+                    settings.fileType,
+                    settings.scrubType,
+                    settings.split,
+                    settings.offlineMode,
+                    settings.renameXbe,
+                    settings.attachXbe,
+                    settings.amPatch,
+                    callback
+                )
+            }
 
             // If fallback cache was used, clean local input now:
             localInputFile?.let {

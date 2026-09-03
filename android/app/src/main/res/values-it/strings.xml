@@ -134,4 +134,6 @@
     <string name="dialog_permission_skip">Usa Cache</string>
     <string name="log_zero_copy_active">⚡ Zero-Copy Attivo: I/O diretto su %1$s (0 byte di cache)</string>
     <string name="log_cache_cleanup_verified">✓ Verifica integrità superata (%1$s): cache intermedia liberata</string>
+    <string name="log_zar_extracting">[2/3] Scompattamento archivio ZAR…</string>
+    <string name="log_zar_creating_image">[2/3] Generazione immagine dal contenuto estratto…</string>
 </resources>
