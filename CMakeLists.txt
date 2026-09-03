@@ -12,6 +12,9 @@ project(XGDTool)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+if(DEFINED XGDTOOL_BUILD_GUI)
+    set(ENABLE_GUI ${XGDTOOL_BUILD_GUI})
+endif()
 option(ENABLE_GUI "Enable GUI" ON)  # Set to OFF for CLI only
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -47,7 +50,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/external/ZArchive/include/zarchive/zarchivewriter
         find_package(Git QUIET)
         if(GIT_FOUND)
             execute_process(
-                COMMAND ${GIT_EXECUTABLE} apply "${CMAKE_SOURCE_DIR}/cmake/zarchive_multithread.patch"
+                COMMAND ${GIT_EXECUTABLE} apply --ignore-space-change --ignore-whitespace --whitespace=nowarn "${CMAKE_SOURCE_DIR}/cmake/zarchive_multithread.patch"
                 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/external/ZArchive"
                 RESULT_VARIABLE PATCH_RES
             )

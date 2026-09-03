@@ -1,0 +1,19 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Binary files
+*.png binary
+*.ico binary
+*.webp binary
+*.jpg binary
+*.jpeg binary
+*.exe binary
+*.dll binary
+*.lib binary
+*.zip binary
+*.7z binary
+*.apk binary
+
+# Patch files must be kept verbatim without newline translation
+*.patch -text
+*.diff -text

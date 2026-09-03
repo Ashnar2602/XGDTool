@@ -22,7 +22,10 @@ jobs:
       - name: Apply ZArchive multithread patch
         shell: pwsh
         run: |
-          git -C external/ZArchive apply "$PWD/cmake/zarchive_multithread.patch"
+          $header = Get-Content "external/ZArchive/include/zarchive/zarchivewriter.h" -Raw
+          if ($header -notmatch "numThreads") {
+            git -C external/ZArchive apply --ignore-space-change --ignore-whitespace --whitespace=nowarn "$PWD/cmake/zarchive_multithread.patch"
+          }
 
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -57,8 +60,9 @@ jobs:
       - name: Prepare Windows Release Artifacts
         shell: pwsh
         run: |
-          $tag = if ($env:GITHUB_REF -match "refs/tags/(.*)") { $matches[1] } else { "v1.3.0" }
+          $tag = if ($env:GITHUB_REF -match "refs/tags/(.*)") { $matches[1] } else { "v1.4.0" }
           New-Item -ItemType Directory -Force -Path dist
+          New-Item -ItemType Directory -Force -Path artifacts
           Copy-Item "build\Release\XGDTool.exe" "dist\XGDTool-GUI.exe"
           Copy-Item "build_cli\Release\XGDTool.exe" "dist\XGDTool-CLI.exe"
           Copy-Item "README.md" "dist\"

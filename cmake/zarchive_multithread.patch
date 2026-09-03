@@ -73,7 +73,7 @@ index 6d00f7a..a4860e7 100644
  };
 \ No newline at end of file
 diff --git a/src/zarchivewriter.cpp b/src/zarchivewriter.cpp
-index b4ee074..1e0640e 100644
+index b4ee074..612b6fb 100644
 --- a/src/zarchivewriter.cpp
 +++ b/src/zarchivewriter.cpp
 @@ -12,15 +12,56 @@
@@ -81,7 +81,7 @@ index b4ee074..1e0640e 100644
  #include <algorithm>
  
 -ZArchiveWriter::ZArchiveWriter(CB_NewOutputFile cbNewOutputFile, CB_WriteOutputData cbWriteOutputData, void* ctx) : m_cbCtx(ctx), m_cbNewOutputFile(cbNewOutputFile), m_cbWriteOutputData(cbWriteOutputData)
-+ZArchiveWriter::ZArchiveWriter(CB_NewOutputFile cbNewOutputFile, CB_WriteOutputData cbWriteOutputData, void* ctx, int compressionLevel, uint32_t numThreads) 
++ZArchiveWriter::ZArchiveWriter(CB_NewOutputFile cbNewOutputFile, CB_WriteOutputData cbWriteOutputData, void* ctx, int compressionLevel, uint32_t numThreads)
 +	: m_cbCtx(ctx), m_cbNewOutputFile(cbNewOutputFile), m_cbWriteOutputData(cbWriteOutputData), m_compressionLevel(compressionLevel)
  {
  	cbNewOutputFile(-1, ctx);
