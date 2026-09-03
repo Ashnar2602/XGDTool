@@ -18,7 +18,12 @@ import java.io.File
 data class ConversionSettings(
     val fileType: Int,
     val scrubType: Int,
-    val offlineMode: Boolean
+    val offlineMode: Boolean,
+    val compressionLevel: Int = 2,
+    val split: Boolean = false,
+    val renameXbe: Boolean = true,
+    val attachXbe: Boolean = false,
+    val amPatch: Boolean = false
 )
 
 interface ConvertServiceListener {
@@ -182,11 +187,11 @@ class ConvertService : Service() {
                 cacheOut.absolutePath,
                 settings.fileType,
                 settings.scrubType,
-                /* split = */ false,
+                settings.split,
                 settings.offlineMode,
-                /* renameXbe = */ !settings.offlineMode,
-                /* attachXbe = */ false,
-                /* amPatch = */ false,
+                settings.renameXbe,
+                settings.attachXbe,
+                settings.amPatch,
                 callback
             )
 

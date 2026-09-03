@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="6dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/xgd_outline"
+    app:cardBackgroundColor="@color/xgd_surface_variant">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_file_open"
+            app:tint="@color/xgd_green_primary"
+            android:contentDescription="@null"
+            android:layout_marginEnd="10dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/itemFileName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="middle"
+                android:singleLine="true"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textStyle="bold"
+                tools:text="Halo_Reach.iso" />
+
+            <TextView
+                android:id="@+id/itemFileSize"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/TextAppearance.XGDToolAndroid.Caption"
+                tools:text="7.29 GB" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/itemStatusBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="6dp"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"
+            android:background="@drawable/bg_badge"
+            android:textColor="@color/xgd_green_on_container"
+            android:visibility="gone"
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+            tools:text="In attesa" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRemoveItem"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            app:icon="@drawable/ic_close"
+            app:iconTint="@color/xgd_on_surface_variant"
+            app:iconSize="18dp"
+            android:contentDescription="@string/btn_remove_item" />
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
