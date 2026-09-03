@@ -310,6 +310,32 @@ class MainActivity : AppCompatActivity(), ConvertServiceListener {
             return
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !PathUtils.hasAllFilesAccess()) {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.dialog_permission_title)
+                .setMessage(R.string.dialog_permission_message)
+                .setPositiveButton(R.string.dialog_permission_grant) { _, _ ->
+                    try {
+                        val intent = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                            data = Uri.parse("package:$packageName")
+                        }
+                        startActivity(intent)
+                    } catch (_: Exception) {
+                        val intent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                        startActivity(intent)
+                    }
+                }
+                .setNegativeButton(R.string.dialog_permission_skip) { _, _ ->
+                    proceedWithConversion(outputTree)
+                }
+                .show()
+            return
+        }
+
+        proceedWithConversion(outputTree)
+    }
+
+    private fun proceedWithConversion(outputTree: Uri) {
         val fileType = when (binding.formatGroup.checkedChipId) {
             binding.formatGod.id -> XgdNative.FORMAT_GOD
             binding.formatCci.id -> XgdNative.FORMAT_CCI

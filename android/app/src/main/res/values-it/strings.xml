@@ -126,4 +126,12 @@
     <string name="log_write_error_partial">[3/3] ERRORE: \'%1$s\' scritto solo parzialmente (%2$s di %3$s).</string>
 
     <string name="bytes_unknown">dimensione sconosciuta</string>
+
+    <!-- Zero-Copy & Permissions -->
+    <string name="dialog_permission_title">Accesso Diretto ai File (Zero-Copy)</string>
+    <string name="dialog_permission_message">Abilita l\'accesso completo ai file per convertire direttamente sul posto alla massima velocità, senza consumare fino a 20 GB di copie temporanee in cache.</string>
+    <string name="dialog_permission_grant">Abilita</string>
+    <string name="dialog_permission_skip">Usa Cache</string>
+    <string name="log_zero_copy_active">⚡ Zero-Copy Attivo: I/O diretto su %1$s (0 byte di cache)</string>
+    <string name="log_cache_cleanup_verified">✓ Verifica integrità superata (%1$s): cache intermedia liberata</string>
 </resources>

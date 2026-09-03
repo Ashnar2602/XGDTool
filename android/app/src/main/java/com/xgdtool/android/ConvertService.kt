@@ -112,48 +112,68 @@ class ConvertService : Service() {
             val fileTag = "(${index + 1}/${inputs.size}) $displayName"
             postToUi { listener?.onQueueProgress(index + 1, inputs.size, displayName) }
 
-            cacheIn.listFiles()?.forEach { it.delete() }
+            cacheIn.listFiles()?.forEach { it.deleteRecursively() }
             cacheOut.listFiles()?.forEach { it.deleteRecursively() }
 
-            // --- Phase 1: copy SAF input into local cache ---
-            val localInput = File(cacheIn, displayName)
-            val sourceSize = querySize(uri)
-            phase(getString(R.string.phase_copy_label, displayName), false, getString(R.string.notif_copy, fileTag))
-            postToUi { listener?.onLog(getString(R.string.log_copy_start, displayName, formatBytes(sourceSize))) }
-            try {
-                contentResolver.openInputStream(uri).use { input ->
-                    localInput.outputStream().use { output ->
-                        if (input == null) throw java.io.IOException(getString(R.string.error_input_stream_null))
-                        val buffer = ByteArray(1 shl 20)
-                        var copied = 0L
-                        var lastReportMs = 0L
-                        while (true) {
-                            val read = input.read(buffer)
-                            if (read < 0) break
-                            output.write(buffer, 0, read)
-                            copied += read
-                            val now = System.currentTimeMillis()
-                            if (now - lastReportMs > 150 || copied == sourceSize) {
-                                lastReportMs = now
-                                val total = if (sourceSize > 0) sourceSize else copied
-                                postToUi { listener?.onFileProgress(copied, total) }
-                                val pct = if (total > 0) ((copied * 1000) / total).toInt() else 0
-                                updateNotification(getString(R.string.notif_copy, fileTag), pct, 1000, false)
+            // 1. Check if direct zero-copy is available
+            val directInput = PathUtils.resolveDocumentFile(this, uri)
+            val directOutputDir = PathUtils.resolveTreeDir(this, outputTree)
+            val useDirectMode = (directInput != null && directOutputDir != null)
+
+            val inputPathToUse: String
+            val outputDirToUse: String
+            var localInputFile: File? = null
+
+            if (useDirectMode) {
+                inputPathToUse = directInput!!.absolutePath
+                outputDirToUse = directOutputDir!!.absolutePath
+                postToUi { listener?.onLog(getString(R.string.log_zero_copy_active, directInput.name)) }
+            } else {
+                // --- Fallback: copy SAF input into local cache ---
+                val localInput = File(cacheIn, displayName)
+                localInputFile = localInput
+                val sourceSize = querySize(uri)
+                phase(getString(R.string.phase_copy_label, displayName), false, getString(R.string.notif_copy, fileTag))
+                postToUi { listener?.onLog(getString(R.string.log_copy_start, displayName, formatBytes(sourceSize))) }
+                try {
+                    contentResolver.openInputStream(uri).use { input ->
+                        localInput.outputStream().use { output ->
+                            if (input == null) throw java.io.IOException(getString(R.string.error_input_stream_null))
+                            val buffer = ByteArray(1 shl 20)
+                            var copied = 0L
+                            var lastReportMs = 0L
+                            while (true) {
+                                val read = input.read(buffer)
+                                if (read < 0) break
+                                output.write(buffer, 0, read)
+                                copied += read
+                                val now = System.currentTimeMillis()
+                                if (now - lastReportMs > 150 || copied == sourceSize) {
+                                    lastReportMs = now
+                                    val total = if (sourceSize > 0) sourceSize else copied
+                                    postToUi { listener?.onFileProgress(copied, total) }
+                                    val pct = if (total > 0) ((copied * 1000) / total).toInt() else 0
+                                    updateNotification(getString(R.string.notif_copy, fileTag), pct, 1000, false)
+                                }
                             }
                         }
                     }
+                    val actualSize = localInput.length()
+                    if (sourceSize > 0 && actualSize != sourceSize) {
+                        throw java.io.IOException(
+                            getString(R.string.error_copy_incomplete, formatBytes(sourceSize), formatBytes(actualSize))
+                        )
+                    }
+                    postToUi { listener?.onLog(getString(R.string.log_copy_done, formatBytes(sourceSize))) }
+                } catch (e: Exception) {
+                    postToUi { listener?.onLog(getString(R.string.log_copy_error, displayName, e.message)) }
+                    failed++
+                    cacheIn.listFiles()?.forEach { it.deleteRecursively() }
+                    continue
                 }
-                val actualSize = localInput.length()
-                if (sourceSize > 0 && actualSize != sourceSize) {
-                    throw java.io.IOException(
-                        getString(R.string.error_copy_incomplete, formatBytes(sourceSize), formatBytes(actualSize))
-                    )
-                }
-                postToUi { listener?.onLog(getString(R.string.log_copy_done, formatBytes(sourceSize))) }
-            } catch (e: Exception) {
-                postToUi { listener?.onLog(getString(R.string.log_copy_error, displayName, e.message)) }
-                failed++
-                continue
+
+                inputPathToUse = localInput.absolutePath
+                outputDirToUse = cacheOut.absolutePath
             }
 
             // --- Phase 2: native conversion (connectivity check + title lookup + actual write) ---
@@ -183,8 +203,8 @@ class ConvertService : Service() {
             }
 
             val resultCode = XgdNative.convert(
-                localInput.absolutePath,
-                cacheOut.absolutePath,
+                inputPathToUse,
+                outputDirToUse,
                 settings.fileType,
                 settings.scrubType,
                 settings.split,
@@ -195,7 +215,13 @@ class ConvertService : Service() {
                 callback
             )
 
-            localInput.delete()
+            // If fallback cache was used, clean local input now:
+            localInputFile?.let {
+                if (it.exists()) {
+                    it.delete()
+                }
+            }
+
             val resultLabel = when (resultCode) {
                 XgdNative.RESULT_OK -> getString(R.string.result_ok)
                 XgdNative.RESULT_CANCELLED -> getString(R.string.result_cancelled)
@@ -205,19 +231,25 @@ class ConvertService : Service() {
 
             when (resultCode) {
                 XgdNative.RESULT_OK -> {
-                    // --- Phase 3: copy converted output(s) to the SAF destination ---
-                    phase(getString(R.string.phase_write_label), false, getString(R.string.notif_write, fileTag))
-                    val copied = copyOutputToTree(cacheOut, outputTree) { done, total ->
-                        postToUi { listener?.onFileProgress(done, total) }
-                        val pct = if (total > 0) ((done * 1000) / total).toInt() else 0
-                        updateNotification(getString(R.string.notif_write, fileTag), pct, 1000, false)
-                    }
-                    if (copied) {
+                    if (useDirectMode) {
+                        // Direct mode: output was written directly to destination!
                         postToUi { listener?.onLog(getString(R.string.log_write_done)) }
                         succeeded++
                     } else {
-                        postToUi { listener?.onLog(getString(R.string.log_write_no_output)) }
-                        failed++
+                        // --- Phase 3: copy converted output(s) to the SAF destination ---
+                        phase(getString(R.string.phase_write_label), false, getString(R.string.notif_write, fileTag))
+                        val copied = copyOutputToTree(cacheOut, outputTree) { done, total ->
+                            postToUi { listener?.onFileProgress(done, total) }
+                            val pct = if (total > 0) ((done * 1000) / total).toInt() else 0
+                            updateNotification(getString(R.string.notif_write, fileTag), pct, 1000, false)
+                        }
+                        if (copied) {
+                            postToUi { listener?.onLog(getString(R.string.log_write_done)) }
+                            succeeded++
+                        } else {
+                            postToUi { listener?.onLog(getString(R.string.log_write_no_output)) }
+                            failed++
+                        }
                     }
                 }
                 XgdNative.RESULT_CANCELLED -> {
@@ -228,6 +260,8 @@ class ConvertService : Service() {
                 }
             }
 
+            // Always ensure cache is completely purged of any leftovers
+            cacheIn.listFiles()?.forEach { it.deleteRecursively() }
             cacheOut.listFiles()?.forEach { it.deleteRecursively() }
         }
 
@@ -298,7 +332,12 @@ class ConvertService : Service() {
                             }
                         }
                     }
-                    if (writtenForFile != child.length()) {
+                    if (writtenForFile == child.length() && child.length() > 0L) {
+                        child.delete()
+                        postToUi {
+                            listener?.onLog(getString(R.string.log_cache_cleanup_verified, child.name))
+                        }
+                    } else if (writtenForFile != child.length()) {
                         anyFailure = true
                         postToUi {
                             listener?.onLog(
