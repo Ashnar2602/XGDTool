@@ -230,6 +230,7 @@ void InputHelper::process_single(InputInfo input_info)
 std::vector<std::filesystem::path> InputHelper::create_image(InputInfo& input_info)
 {
     std::filesystem::path temp_path;
+    const std::filesystem::path orig_input_path = input_info.paths.front();
 
     if (input_info.file_type == FileType::ZAR) 
     {
@@ -256,7 +257,7 @@ std::vector<std::filesystem::path> InputHelper::create_image(InputInfo& input_in
             break;
     }
 
-    std::filesystem::path out_path = get_output_path(output_directory_, *title_helper, input_info.paths.front());
+    std::filesystem::path out_path = get_output_path(output_directory_, *title_helper, orig_input_path);
 
     switch (input_info.file_type) 
     {
@@ -379,7 +380,7 @@ void InputHelper::list_files(const InputInfo& input_info)
 
 std::filesystem::path InputHelper::extract_temp_zar(const std::filesystem::path& in_path)
 {
-    std::filesystem::path temp_path = output_directory_ / "_temp";
+    std::filesystem::path temp_path = output_directory_ / ".xgd_temp";
 
     try 
     {

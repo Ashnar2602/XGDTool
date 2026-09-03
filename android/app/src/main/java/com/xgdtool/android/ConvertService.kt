@@ -233,6 +233,15 @@ class ConvertService : Service() {
                 XgdNative.RESULT_OK -> {
                     if (useDirectMode) {
                         // Direct mode: output was written directly to destination!
+                        // Scan files into Android MediaStore so they immediately appear in file explorers
+                        directOutputDir?.walkTopDown()?.filter { it.isFile }?.forEach { f ->
+                            android.media.MediaScannerConnection.scanFile(
+                                this@ConvertService,
+                                arrayOf(f.absolutePath),
+                                null,
+                                null
+                            )
+                        }
                         postToUi { listener?.onLog(getString(R.string.log_write_done)) }
                         succeeded++
                     } else {
