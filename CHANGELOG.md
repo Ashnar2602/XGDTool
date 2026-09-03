@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-09-03
+
+### Summary
+Version 1.3.1 brings critical engine fixes and major Android storage optimizations by **Ashnar2602**, featuring **Zero-Copy direct storage access** (eliminating up to 20 GB of duplicate cache consumption on mobile devices), a **critical fix for ZAR-to-image conversion** across all platforms, and a redesigned responsive Android UI.
+
+---
+
+### Key Improvements & Fixes
+- **Critical Fix for ZAR ➔ Image Conversions (`InputHelper::create_image`)**:
+  - Fixed an engine bug where extracting a `.zar` archive into an intermediate directory caused the output image path to be computed inside the temporary folder (`_temp/_temp.iso`), leading to the generated image being deleted during post-conversion cleanup.
+  - Preserved the original input file path so images are placed into their correct title folder, and isolated temporary extraction files in a dedicated hidden `.xgd_temp` folder.
+- **Android Zero-Copy Direct Storage Access (`MANAGE_EXTERNAL_STORAGE`)**:
+  - Enabled all-files access permission and implemented direct SAF path resolution in `PathUtils.kt`.
+  - Conversions now read and write directly to the device storage at full native UFS speed without duplicating input and output files into internal app cache, saving over 15–20 GB of storage.
+- **Android 2-Step ZAR Conversion Pipeline (`ConvertService.kt`)**:
+  - Automated 2-step conversion for ZAR archives (clean extraction to `.xgd_zar_temp` followed by direct image building), guaranteeing 100% reliability.
+- **Verified Cache Cleanup & MediaStore Indexing**:
+  - Intermediate cache files are verified for exact byte length before removal, ensuring no data loss while keeping device flash clean. User source files are never touched.
+  - Integrated `MediaScannerConnection.scanFile()` so newly generated ISO, CSO, CCI, GoD, and ZAR files show up immediately in all Android file explorers.
+- **Android UI Modernization**:
+  - Fully adaptive scrollable interface, compact side-by-side collapsible source/destination cards, collapsible conversion queue, expandable log viewer, and sticky footer action bar.
+  - Added top app bar author attribution (`by Ashnar2602`) and neon version badge.
+
+---
+
 ## [1.3.0] - 2026-09-03
 
 ### Summary
