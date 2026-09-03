@@ -422,6 +422,15 @@ void MainFrame::on_thread_completed(wxThreadEvent& event)
     notif.Show(wxNotificationMessage::Timeout_Auto);
 
     // Modal Completion Dialog (with 'Open Log' button if errors occurred)
+    if (out_settings_cbs_.play_sound && out_settings_cbs_.play_sound->GetValue())
+    {
+        wxBell();
+    }
+    if (out_settings_cbs_.open_output_dir && out_settings_cbs_.open_output_dir->GetValue() && !output_path_.empty())
+    {
+        wxLaunchDefaultApplication(output_path_.string());
+    }
+
     CompletionDialog dlg(this, dialog_title, dialog_msg, has_errors, "xgdtool.log");
     dlg.ShowModal();
 }
@@ -476,12 +485,12 @@ void MainFrame::on_pick_output_path(wxCommandEvent& event)
     }
 }
 
-void MainFrame::update_progress_bar(uint64_t progress, uint64_t total)
+void MainFrame::update_progress_bar(uint64_t progress, uint64_t total, double mb_per_sec, uint32_t eta_seconds)
 {
     if (wxTheApp && wxTheApp->GetTopWindow())
     {
         wxThreadEvent* event = new wxThreadEvent(wxEVT_UPDATE_CURRENT_PROGRESS);
-        event->SetPayload(std::make_pair(progress, total));
+        event->SetPayload(ProgressPayload{progress, total, mb_per_sec, eta_seconds});
         wxQueueEvent(wxTheApp->GetTopWindow(), event);
     }
 }
@@ -493,7 +502,7 @@ void MainFrame::update_current_progress_bar(uint64_t progress, uint64_t total)
         return;
     }
 
-    double percentage = static_cast<double>(progress) / static_cast<double>(total) * 100.0;
+    double percentage = (total > 0) ? (static_cast<double>(progress) / static_cast<double>(total) * 100.0) : 0.0;
     auto gauge_range = current_progress_bar_->GetRange();
     int gauge_value = static_cast<int>(percentage / 100.0 * gauge_range);
 
@@ -511,11 +520,31 @@ void MainFrame::update_current_progress_bar(uint64_t progress, uint64_t total)
 
 void MainFrame::on_update_current_progress(wxThreadEvent& event)
 {
-    auto data = event.GetPayload<std::pair<uint64_t, uint64_t>>();
-    uint64_t progress = data.first;
-    uint64_t total = data.second;
+    auto data = event.GetPayload<ProgressPayload>();
+    uint64_t progress = data.progress;
+    uint64_t total = data.total;
 
     update_current_progress_bar(progress, total);
+
+    if (ui_labels_.current_progress)
+    {
+        if (total > 0 && progress < total && data.mb_s > 0.0)
+        {
+            uint32_t s = data.eta % 60;
+            uint32_t m = (data.eta / 60) % 60;
+            uint32_t h = data.eta / 3600;
+            wxString eta_str = (h > 0) ? wxString::Format("%02u:%02u:%02u", h, m, s) : wxString::Format("%02u:%02u", m, s);
+            double percentage = (static_cast<double>(progress) / total) * 100.0;
+            ui_labels_.current_progress->SetLabel(
+                wxString::Format("%s (%.1f%% | %.1f MB/s | ETA: %s)",
+                    wxString::FromUTF8(I18n::get("label_current_progress")),
+                    percentage, data.mb_s, eta_str));
+        }
+        else if (progress >= total)
+        {
+            ui_labels_.current_progress->SetLabel(wxString::FromUTF8(I18n::get("label_current_progress")));
+        }
+    }
 
     // Update real-time total progress
     if (total_progress_bar_ && total_files_count_ > 0)
@@ -630,6 +659,7 @@ void MainFrame::update_button_states()
 {
     bool processing = current_status_ == Status::PROCESSING || current_status_ == Status::PAUSED;
     process_buttons_.process->Enable(!processing);
+    if (process_buttons_.verify) process_buttons_.verify->Enable(!processing);
     process_buttons_.pause->Enable(processing);
     process_buttons_.cancel->Enable(processing);
 
@@ -735,6 +765,9 @@ OutputSettings MainFrame::parse_ui_settings()
     output_settings.keep_name = out_settings_cbs_.keep_name->GetValue();
     if (out_settings_cbs_.generate_dvd) output_settings.generate_dvd = out_settings_cbs_.generate_dvd->GetValue();
     if (out_settings_cbs_.calculate_checksum) output_settings.calculate_checksum = out_settings_cbs_.calculate_checksum->GetValue();
+    if (out_settings_cbs_.smart_rename) output_settings.smart_rename = out_settings_cbs_.smart_rename->GetValue();
+    if (out_settings_cbs_.play_sound) output_settings.play_sound = out_settings_cbs_.play_sound->GetValue();
+    if (out_settings_cbs_.open_output_dir) output_settings.open_output_dir = out_settings_cbs_.open_output_dir->GetValue();
 
     if (compression_choice_)
     {
@@ -752,6 +785,53 @@ OutputSettings MainFrame::parse_ui_settings()
     }
 
     return output_settings;
+}
+
+void MainFrame::on_verify_image(wxCommandEvent& event)
+{
+    std::filesystem::path target_file;
+    long item = -1;
+    if (file_list_)
+    {
+        item = file_list_->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+        if (item != -1)
+        {
+            wxString path_str = file_list_->GetItemText(item);
+            target_file = std::filesystem::path(path_str.ToStdString());
+        }
+    }
+
+    if (target_file.empty() && !input_paths_.empty())
+    {
+        target_file = input_paths_.front();
+    }
+
+    if (target_file.empty() || !std::filesystem::exists(target_file))
+    {
+        wxMessageBox(
+            wxString::FromUTF8("Please select an image file to verify from the list or browse an input path."),
+            wxString::FromUTF8("Verify Image"),
+            wxOK | wxICON_INFORMATION, this);
+        return;
+    }
+
+    OutputSettings verify_settings;
+    verify_settings.file_type = FileType::VERIFY;
+
+    current_status_ = Status::PROCESSING;
+    update_button_states();
+    status_field_->ChangeValue(wxString::FromUTF8("Verifying image integrity..."));
+
+    processing_thread_ = std::make_unique<std::thread>([this, target_file, verify_settings]() {
+        try {
+            InputHelper helper(target_file, "", verify_settings);
+            helper.process_all();
+        } catch (const std::exception& e) {
+            XGDLog(Error) << "Verification failed: " << e.what() << "\n";
+        }
+        wxThreadEvent* comp_event = new wxThreadEvent(wxEVT_THREAD_COMPLETED);
+        wxQueueEvent(this, comp_event);
+    });
 }
 
 void MainFrame::on_language_selected(const std::string& lang_code)

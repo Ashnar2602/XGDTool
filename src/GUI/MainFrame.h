@@ -25,13 +25,21 @@ wxDECLARE_EVENT(wxEVT_THREAD_COMPLETED, wxThreadEvent);
 wxDECLARE_EVENT(wxEVT_UPDATE_CURRENT_STAGE, wxThreadEvent);
 wxDECLARE_EVENT(wxEVT_UPDATE_ITEM_STATUS, wxThreadEvent);
 
+struct ProgressPayload
+{
+    uint64_t progress{0};
+    uint64_t total{0};
+    double mb_s{0.0};
+    uint32_t eta{0};
+};
+
 class MainFrame : public wxFrame
 {
 public:
     MainFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
     ~MainFrame();
 
-    static void update_progress_bar(uint64_t current, uint64_t total);
+    static void update_progress_bar(uint64_t current, uint64_t total, double mb_per_sec = 0.0, uint32_t eta_seconds = 0);
     static void update_status_field(const std::string status);
     void update_ui_language();
     void handle_dropped_files(const wxArrayString& files);
@@ -80,12 +88,16 @@ private:
         wxCheckBox* keep_name{nullptr};
         wxCheckBox* generate_dvd{nullptr};
         wxCheckBox* calculate_checksum{nullptr};
+        wxCheckBox* smart_rename{nullptr};
+        wxCheckBox* play_sound{nullptr};
+        wxCheckBox* open_output_dir{nullptr};
         wxCheckBox* dark_mode{nullptr};
     };
 
     struct ProcessButtons
     {
         wxButton* process{nullptr};
+        wxButton* verify{nullptr};
         wxButton* pause{nullptr};
         wxButton* cancel{nullptr};
     };
@@ -153,6 +165,7 @@ private:
     void on_pick_input_path(wxCommandEvent& event);
     void on_pick_output_path(wxCommandEvent& event);
     void on_process_all(wxCommandEvent& event);
+    void on_verify_image(wxCommandEvent& event);
     void on_pause_process(wxCommandEvent& event);
     void on_cancel_process(wxCommandEvent& event);
     void on_update_current_progress(wxThreadEvent& event);

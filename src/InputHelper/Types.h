@@ -6,7 +6,7 @@
 #include "XGDLog.h"
 
 enum class Platform { UNKNOWN, OGX, X360 };
-enum class FileType { UNKNOWN, CCI, CSO, ISO, ZAR, DIR, GoD, XBE, LIST };
+enum class FileType { UNKNOWN, CCI, CSO, ISO, ZAR, DIR, GoD, XBE, LIST, VERIFY };
 enum class ScrubType { NONE, PARTIAL, FULL };
 enum class AutoFormat { NONE, OGXBOX, XBOX360, XEMU, XENIA };
 
@@ -26,6 +26,9 @@ struct OutputSettings
     bool generate_dvd{false};      // Auto-generate .dvd with LayerBreak
     bool calculate_checksum{false};// Compute CRC32 / MD5 / SHA-1
     int threads{1};                // Parallel batch jobs
+    bool smart_rename{false};      // Auto-rename with Title ID and Game Title
+    bool play_sound{false};        // Sound alert upon completion
+    bool open_output_dir{false};   // Open output directory when done
 };
 
 #endif // _IHTYPES_H_

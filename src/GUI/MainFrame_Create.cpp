@@ -158,11 +158,15 @@ wxBoxSizer* MainFrame::create_process_buttons_box(wxPanel* panel)
     wxBoxSizer* buttons_sizer = new wxBoxSizer(wxVERTICAL);
 
     process_buttons_.process = new wxButton(panel, wxID_ANY, "Process All", wxDefaultPosition, wxSize(100, 25));
+    process_buttons_.verify = new wxButton(panel, wxID_ANY, "Verify Image", wxDefaultPosition, wxSize(100, 25));
     process_buttons_.pause = new wxButton(panel, wxID_ANY, "Pause", wxDefaultPosition, wxSize(100, 25));
     process_buttons_.cancel = new wxButton(panel, wxID_ANY, "Cancel", wxDefaultPosition, wxSize(100, 25));
 
     process_buttons_.process->SetToolTip("Process all files in the File List");
     process_buttons_.process->Bind(wxEVT_BUTTON, &MainFrame::on_process_all, this);
+
+    process_buttons_.verify->SetToolTip("Fast integrity and structural verification of the selected image");
+    process_buttons_.verify->Bind(wxEVT_BUTTON, &MainFrame::on_verify_image, this);
 
     process_buttons_.pause->SetToolTip("Pause processing of files");
     process_buttons_.pause->Bind(wxEVT_BUTTON, &MainFrame::on_pause_process, this);
@@ -171,9 +175,11 @@ wxBoxSizer* MainFrame::create_process_buttons_box(wxPanel* panel)
     process_buttons_.cancel->Bind(wxEVT_BUTTON, &MainFrame::on_cancel_process, this);
 
     buttons_sizer->Add(process_buttons_.process, 0, wxEXPAND);
-    buttons_sizer->AddSpacer(10);
+    buttons_sizer->AddSpacer(6);
+    buttons_sizer->Add(process_buttons_.verify, 0, wxEXPAND);
+    buttons_sizer->AddSpacer(6);
     buttons_sizer->Add(process_buttons_.pause, 0, wxEXPAND);
-    buttons_sizer->AddSpacer(10);
+    buttons_sizer->AddSpacer(6);
     buttons_sizer->Add(process_buttons_.cancel, 0, wxEXPAND);
 
     return buttons_sizer;
@@ -217,6 +223,9 @@ wxBoxSizer* MainFrame::create_out_settings_check_box(wxPanel* panel)
     out_settings_cbs_.keep_name = new wxCheckBox(panel, wxID_ANY, "Keep Original Name");
     out_settings_cbs_.generate_dvd = new wxCheckBox(panel, wxID_ANY, "Generate .dvd file");
     out_settings_cbs_.calculate_checksum = new wxCheckBox(panel, wxID_ANY, "Calculate Checksum");
+    out_settings_cbs_.smart_rename = new wxCheckBox(panel, wxID_ANY, "Smart Title Renaming");
+    out_settings_cbs_.play_sound = new wxCheckBox(panel, wxID_ANY, "Sound Notification");
+    out_settings_cbs_.open_output_dir = new wxCheckBox(panel, wxID_ANY, "Open Output Folder");
     out_settings_cbs_.dark_mode = new wxCheckBox(panel, wxID_ANY, "Dark Theme");
     
     out_settings_cbs_.split->SetToolTip("Splits the resulting XISO file if it's too large for OG Xbox");
@@ -227,6 +236,9 @@ wxBoxSizer* MainFrame::create_out_settings_check_box(wxPanel* panel)
     out_settings_cbs_.keep_name->SetToolTip("Keeps the original input filename for output files, preventing overwrites for multi-disc games");
     out_settings_cbs_.generate_dvd->SetToolTip("Generates a companion .dvd file with the correct LayerBreak for disc burning");
     out_settings_cbs_.calculate_checksum->SetToolTip("Calculates CRC32, MD5, and SHA-1 checksums during processing");
+    out_settings_cbs_.smart_rename->SetToolTip("Automatically names output files as [TitleID] TitleName");
+    out_settings_cbs_.play_sound->SetToolTip("Plays a completion sound alert when the queue finishes");
+    out_settings_cbs_.open_output_dir->SetToolTip("Automatically opens the destination folder in Explorer upon completion");
     out_settings_cbs_.dark_mode->SetToolTip("Toggle dark mode theme");
 
     out_settings_cbs_.dark_mode->Bind(wxEVT_CHECKBOX, &MainFrame::on_dark_mode_toggle, this);
@@ -239,6 +251,9 @@ wxBoxSizer* MainFrame::create_out_settings_check_box(wxPanel* panel)
     out_settings_sizer->Add(out_settings_cbs_.keep_name, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.generate_dvd, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.calculate_checksum, 0, wxEXPAND);
+    out_settings_sizer->Add(out_settings_cbs_.smart_rename, 0, wxEXPAND);
+    out_settings_sizer->Add(out_settings_cbs_.play_sound, 0, wxEXPAND);
+    out_settings_sizer->Add(out_settings_cbs_.open_output_dir, 0, wxEXPAND);
     out_settings_sizer->Add(out_settings_cbs_.dark_mode, 0, wxEXPAND);
 
     out_settings_sizer->AddSpacer(6);

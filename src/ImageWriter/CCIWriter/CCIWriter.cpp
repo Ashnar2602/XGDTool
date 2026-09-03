@@ -114,35 +114,63 @@ void CCIWriter::convert_to_cci(const bool scrub)
 
     uint32_t current_sector = sector_offset;
     constexpr uint32_t BATCH_SECTORS = 1024; // 2MB batch
-    std::vector<char> read_buffer(BATCH_SECTORS * Xiso::SECTOR_SIZE);
+    std::vector<char> buffer_a(BATCH_SECTORS * Xiso::SECTOR_SIZE);
+    std::vector<char> buffer_b(BATCH_SECTORS * Xiso::SECTOR_SIZE);
+    char* current_buf = buffer_a.data();
+    char* next_buf = buffer_b.data();
     
     std::vector<CCI::IndexInfo> index_infos;
     index_infos.reserve((end_sector - sector_offset) + 1);
 
-    while (current_sector < end_sector) 
+    uint32_t current_read_sectors = (current_sector < end_sector) ? std::min(end_sector - current_sector, BATCH_SECTORS) : 0;
+    if (current_read_sectors > 0)
     {
-        uint32_t read_sectors = std::min(end_sector - current_sector, BATCH_SECTORS);
+        image_reader.read_sectors(current_sector, current_read_sectors, current_buf);
+    }
+    uint32_t batch_sector_idx = current_sector;
+    current_sector += current_read_sectors;
 
-        image_reader.read_sectors(current_sector, read_sectors, read_buffer.data());
+    while (current_read_sectors > 0) 
+    {
+        std::future<uint32_t> next_read_future;
+        uint32_t next_read_sectors = (current_sector < end_sector) ? std::min(end_sector - current_sector, BATCH_SECTORS) : 0;
+        if (next_read_sectors > 0)
+        {
+            uint32_t sec_to_read = current_sector;
+            next_read_future = std::async(std::launch::async, [&image_reader, sec_to_read, next_read_sectors, next_buf]() {
+                image_reader.read_sectors(sec_to_read, next_read_sectors, next_buf);
+                return next_read_sectors;
+            });
+            current_sector += next_read_sectors;
+        }
 
         if (scrub && image_reader.platform() == Platform::OGX) 
         {
-            for (uint32_t i = 0; i < read_sectors; ++i)
+            for (uint32_t i = 0; i < current_read_sectors; ++i)
             {
-                if (data_sectors->find(current_sector + i) == data_sectors->end())
+                if (data_sectors->find(batch_sector_idx + i) == data_sectors->end())
                 {
-                    std::memset(read_buffer.data() + (static_cast<size_t>(i) * Xiso::SECTOR_SIZE), 0x00, Xiso::SECTOR_SIZE);
+                    std::memset(current_buf + (static_cast<size_t>(i) * Xiso::SECTOR_SIZE), 0x00, Xiso::SECTOR_SIZE);
                 }
             }
         }
 
-        current_sector += read_sectors;
+        compress_and_write_sectors_managed(out_file, index_infos, current_read_sectors, current_buf);
 
-        compress_and_write_sectors_managed(out_file, index_infos, read_sectors, read_buffer.data());
-
-        XGDLog().print_progress(prog_processed_ += read_sectors, prog_total_);
+        XGDLog().print_progress(prog_processed_ += current_read_sectors, prog_total_);
 
         check_status_flags();
+
+        if (next_read_sectors > 0)
+        {
+            current_read_sectors = next_read_future.get();
+            batch_sector_idx = current_sector - current_read_sectors;
+            std::swap(current_buf, next_buf);
+        }
+        else
+        {
+            current_read_sectors = 0;
+        }
     }
 
     finalize_out_file(out_file, index_infos);

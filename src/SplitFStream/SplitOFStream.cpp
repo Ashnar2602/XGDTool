@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "SplitFStream/SplitFStream.h"
+#include "Utils/IOHints.h"
 
 split::ofstream::ofstream(ofstream&& other) noexcept
     : outfiles(std::move(other.outfiles)),
@@ -137,6 +138,7 @@ void split::ofstream::clear() {
 void split::ofstream::close() {
     for (auto& file : outfiles) {
         file.stream.close();
+        IOHints::hint_sequential_write_done(file.path);
     }
     rename_output_files();
 }

@@ -1,6 +1,6 @@
 .vscode
 .ignore
-build*
+/build*/
 dist
 src/Executable/AttachXbe.h
 external/CLI

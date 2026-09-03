@@ -53,6 +53,7 @@ private:
     std::vector<std::filesystem::path> create_dir(const InputInfo& input_info);
     std::vector<std::filesystem::path> create_attach_xbe(const InputInfo& input_info);
     void list_files(const InputInfo& input_info);
+    void verify_image(const InputInfo& input_info);
     std::filesystem::path extract_temp_zar(const std::filesystem::path& in_path);
     
     void add_input(const std::filesystem::path& in_path);

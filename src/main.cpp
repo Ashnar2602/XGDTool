@@ -5,6 +5,9 @@
 #include "InputHelper/Types.h"
 #include "InputHelper/InputHelper.h" 
 #include "Utils/LocalizationManager.h"
+#if defined(_WIN32)
+#include "Utils/ShellIntegration.h"
+#endif
 
 #ifndef ENABLE_GUI
 
@@ -12,6 +15,35 @@
 
 int main(int argc, char** argv)
 {
+#if defined(_WIN32)
+    for (int i = 1; i < argc; ++i)
+    {
+        std::string arg = argv[i];
+        if (arg == "--register-shell")
+        {
+            wchar_t exe_buf[MAX_PATH];
+            GetModuleFileNameW(NULL, exe_buf, MAX_PATH);
+            if (ShellIntegration::register_context_menu(exe_buf))
+            {
+                std::cout << "Successfully registered XGDTool in Windows Explorer context menu!" << std::endl;
+                return 0;
+            }
+            std::cerr << "Failed to register context menu." << std::endl;
+            return 1;
+        }
+        else if (arg == "--unregister-shell")
+        {
+            if (ShellIntegration::unregister_context_menu())
+            {
+                std::cout << "Successfully unregistered XGDTool from Windows Explorer context menu." << std::endl;
+                return 0;
+            }
+            std::cerr << "Failed to unregister context menu." << std::endl;
+            return 1;
+        }
+    }
+#endif
+
     std::string lang_code;
     for (int i = 1; i < argc; ++i)
     {
@@ -58,6 +90,7 @@ int main(int argc, char** argv)
     output_format_group->add_flag_function("--xemu",     [&](int64_t) { output_settings.auto_format = AutoFormat::XEMU;    }, I18n::get("cli_flag_xemu"));
     output_format_group->add_flag_function("--xenia",    [&](int64_t) { output_settings.auto_format = AutoFormat::XENIA;   }, I18n::get("cli_flag_xenia"));
 
+    output_format_group->add_flag_function("--verify",   [&](int64_t) { output_settings.file_type = FileType::VERIFY; }, "Verify integrity and structure of an image");
     output_format_group->add_flag_function("--list",     [&](int64_t) { output_settings.file_type = FileType::LIST; }, I18n::get("cli_flag_list"));
     output_format_group->set_help_flag    ("--help",     I18n::get("cli_flag_help"));
     output_format_group->set_version_flag ("--version",  XGD::VERSION);
@@ -72,6 +105,7 @@ int main(int argc, char** argv)
     settings_group->add_flag_function("--am-patch",      [&](int64_t) { output_settings.allowed_media_patch = true;      }, I18n::get("cli_flag_am_patch"));
     settings_group->add_flag_function("--offline",       [&](int64_t) { output_settings.offline_mode = true;             }, I18n::get("cli_flag_offline"));
     settings_group->add_flag_function("--keep-name",     [&](int64_t) { output_settings.keep_name = true;                }, I18n::get("cli_flag_keep_name"));
+    settings_group->add_flag_function("--smart-rename",  [&](int64_t) { output_settings.smart_rename = true;             }, "Auto-rename output files as [TitleID] TitleName");
     settings_group->add_flag_function("--dvd",           [&](int64_t) { output_settings.generate_dvd = true;             }, I18n::get("cli_flag_dvd"));
     settings_group->add_flag_function("--checksum",      [&](int64_t) { output_settings.calculate_checksum = true;       }, I18n::get("cli_flag_checksum"));
     settings_group->add_option       ("-l,--level,--compression-level", output_settings.compression_level,                  I18n::get("cli_flag_compression"));

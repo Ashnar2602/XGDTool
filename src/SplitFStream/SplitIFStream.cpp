@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "SplitFStream/SplitFStream.h"
+#include "Utils/IOHints.h"
 
 split::ifstream::ifstream(ifstream&& other) noexcept
     : infiles(std::move(other.infiles)),
@@ -49,6 +50,7 @@ split::ifstream::~ifstream() {
 }
 
 void split::ifstream::push_back(const std::filesystem::path &_Path) {
+    IOHints::hint_sequential_read(_Path);
     StreamInfo new_stream_info = { 
         std::ifstream(_Path, std::ios::binary), 
         std::filesystem::file_size(_Path), 
@@ -65,6 +67,7 @@ uint64_t split::ifstream::size() const {
 
 void split::ifstream::init_streams() {
     for (auto& file : infiles) {
+        IOHints::hint_sequential_read(file.path);
         file.stream.open(file.path, std::ios::binary);
         if (!file.stream.is_open()) {
             throw std::runtime_error("Failed to open file: " + file.path.string());

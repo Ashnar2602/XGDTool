@@ -3,6 +3,7 @@
 
 #include "Executable/ExeTool.h"
 #include "Utils/StringUtils.h"
+#include "Utils/IOHints.h"
 #include "ImageExtractor/ImageExtractor.h"
 
 ImageExtractor::ImageExtractor(ImageReader& image_reader, TitleHelper& title_helper, const bool allowed_media_patch, const bool rename_xbe)
@@ -65,6 +66,7 @@ void ImageExtractor::extract(const std::filesystem::path& out_dir_path)
 
 void ImageExtractor::extract_file(const Xiso::DirectoryEntry& dir_entry) 
 {
+    IOHints::preallocate_file(dir_entry.path, dir_entry.header.file_size);
     std::ofstream out_file(dir_entry.path, std::ios::binary);
     if (!out_file.is_open()) 
     {
@@ -97,6 +99,7 @@ void ImageExtractor::extract_file(const Xiso::DirectoryEntry& dir_entry)
     }
 
     out_file.close();
+    IOHints::hint_sequential_write_done(dir_entry.path);
 }
 
 void ImageExtractor::extract_file_xbe_patch(const Xiso::DirectoryEntry& dir_entry) 
@@ -124,6 +127,7 @@ void ImageExtractor::extract_file_xbe_patch(const Xiso::DirectoryEntry& dir_entr
 
     std::vector<char> buffer(Xiso::SECTOR_SIZE);
 
+    IOHints::preallocate_file(dir_entry.path, dir_entry.header.file_size);
     std::ofstream out_file(dir_entry.path, std::ios::binary);
     if (!out_file.is_open()) 
     {
@@ -182,6 +186,7 @@ void ImageExtractor::extract_file_xbe_patch(const Xiso::DirectoryEntry& dir_entr
     }
 
     out_file.close();
+    IOHints::hint_sequential_write_done(dir_entry.path);
 }
 
 void ImageExtractor::check_status_flags() 

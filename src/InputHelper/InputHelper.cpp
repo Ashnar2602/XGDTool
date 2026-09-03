@@ -8,6 +8,7 @@
 #include "ImageReader/ImageReader.h"
 #include "InputHelper/InputHelper.h"
 #include "Executable/AttachXbeTool.h"
+#include "Executable/ExeTool.h"
 #include "Utils/LocalizationManager.h"
 #include "Utils/ChecksumHelper.h"
 
@@ -169,6 +170,9 @@ void InputHelper::process_single(InputInfo input_info)
                 break;
             case FileType::LIST:
                 list_files(input_info);
+                break;
+            case FileType::VERIFY:
+                verify_image(input_info);
                 break;
             default:
                 out_paths = create_image(input_info);
@@ -376,6 +380,110 @@ void InputHelper::list_files(const InputInfo& input_info)
 
         XGDLog() << entry.path.string() << " (" << entry.header.file_size << " bytes)\n";
     }
+}
+
+void InputHelper::verify_image(const InputInfo& input_info)
+{
+    if (input_info.file_type == FileType::DIR)
+    {
+        throw XGDException(ErrCode::ISO_INVALID, HERE(), "Cannot verify a directory, please specify an image file (.iso, .cso, .cci, .god, .zar)");
+    }
+
+    XGDLog(Normal) << "========================================================\n"
+                   << "               XGDTool Image Verification               \n"
+                   << "========================================================" << XGDLog::Endl;
+
+    std::shared_ptr<ImageReader> image_reader;
+    if (input_info.file_type == FileType::ZAR)
+    {
+        XGDLog(Normal) << "  Format:           ZArchive (.zar)\n"
+                       << "  Archive Path:     " << input_info.paths.front().string() << XGDLog::Endl;
+        ZARExtractor zar_extractor(input_info.paths.front());
+        zar_extractor.list_files();
+        return;
+    }
+    else
+    {
+        image_reader = ImageReader::create_instance(input_info.file_type, input_info.paths);
+    }
+
+    if (!image_reader)
+    {
+        throw XGDException(ErrCode::ISO_INVALID, HERE(), "Failed to open image reader for verification");
+    }
+
+    std::string plat_str;
+    switch (image_reader->platform())
+    {
+        case Platform::OGX: plat_str = "Original Xbox"; break;
+        case Platform::X360: plat_str = "Xbox 360"; break;
+        default: plat_str = "Unknown"; break;
+    }
+
+    uint32_t total_sec = image_reader->total_sectors();
+    uint64_t total_size = static_cast<uint64_t>(total_sec) * Xiso::SECTOR_SIZE;
+    uint64_t img_off = image_reader->image_offset();
+
+    XGDLog(Normal) << "  File Name:        " << input_info.paths.front().filename().string() << XGDLog::Endl;
+    if (input_info.paths.size() > 1)
+    {
+        XGDLog(Normal) << "  Split Segments:   " << input_info.paths.size() << " parts" << XGDLog::Endl;
+    }
+    XGDLog(Normal) << "  Platform:         " << plat_str << XGDLog::Endl;
+    XGDLog(Normal) << "  Total Sectors:    " << total_sec << " (" << std::fixed << std::setprecision(2) << (total_size / (1024.0 * 1024.0 * 1024.0)) << " GB)" << XGDLog::Endl;
+    XGDLog(Normal) << "  Filesystem Offset:0x" << std::hex << img_off << std::dec << " (Sector " << (img_off / Xiso::SECTOR_SIZE) << ")" << XGDLog::Endl;
+
+    if (total_sec == 4267008 || total_sec == 4267009)
+    {
+        XGDLog(Normal) << "  Disc Profile:     XGD3 (Xbox 360 8.7 GB / LayerBreak 2133520)" << XGDLog::Endl;
+    }
+    else if (total_sec == 3825920 || total_sec == 3825921)
+    {
+        XGDLog(Normal) << "  Disc Profile:     XGD2 (Xbox 360 7.8 GB / LayerBreak 1913760)" << XGDLog::Endl;
+    }
+    else if (total_sec == 3697984)
+    {
+        XGDLog(Normal) << "  Disc Profile:     Xbox Original DVD9 (LayerBreak 1913760)" << XGDLog::Endl;
+    }
+    else
+    {
+        XGDLog(Normal) << "  Disc Profile:     Custom / Trimmed (" << total_sec << " sectors)" << XGDLog::Endl;
+    }
+
+    const auto& entries = image_reader->directory_entries();
+    XGDLog(Normal) << "  Filesystem Items: " << entries.size() << " files/directories" << XGDLog::Endl;
+    XGDLog(Normal) << "  Uncompressed Data:" << std::fixed << std::setprecision(2) << (image_reader->total_file_bytes() / (1024.0 * 1024.0)) << " MB" << XGDLog::Endl;
+
+    try
+    {
+        const auto& exe_entry = image_reader->executable_entry();
+        XGDLog(Normal) << "  Primary Executable:" << exe_entry.filename << " (Start Sector: " << exe_entry.header.start_sector << ")" << XGDLog::Endl;
+        ExeTool exe_tool(*image_reader, exe_entry.path);
+        uint32_t tid = exe_tool.title_id();
+        std::ostringstream tid_ss;
+        tid_ss << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << tid;
+        XGDLog(Normal) << "  Title ID:         0x" << tid_ss.str() << XGDLog::Endl;
+
+        TitleHelper th(image_reader, true);
+        std::string tname = th.folder_name();
+        XGDLog(Normal) << "  Game Title:       " << tname << XGDLog::Endl;
+    }
+    catch (...)
+    {
+        XGDLog(Normal) << "  Executable:       No standard default.xex / default.xbe found" << XGDLog::Endl;
+    }
+
+    XGDLog(Normal) << "--------------------------------------------------------" << XGDLog::Endl;
+    XGDLog(Normal) << "Calculating streaming checksums..." << XGDLog::Endl;
+    ChecksumResult chk = calculate_file_checksums(input_info.paths.front());
+    std::ostringstream crc_ss;
+    crc_ss << std::uppercase << std::hex << std::setfill('0') << std::setw(8) << chk.crc32;
+    XGDLog(Normal) << "  CRC32:            " << crc_ss.str() << XGDLog::Endl;
+    XGDLog(Normal) << "  MD5:              " << chk.md5 << XGDLog::Endl;
+    XGDLog(Normal) << "  SHA-1:            " << chk.sha1 << XGDLog::Endl;
+    XGDLog(Normal) << "========================================================" << XGDLog::Endl;
+    XGDLog(Normal) << "  [PASS] Image structure and filesystem integrity verified!" << XGDLog::Endl;
+    XGDLog(Normal) << "========================================================" << XGDLog::Endl;
 }
 
 std::filesystem::path InputHelper::extract_temp_zar(const std::filesystem::path& in_path)

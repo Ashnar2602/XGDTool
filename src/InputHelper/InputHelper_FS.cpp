@@ -198,6 +198,18 @@ std::filesystem::path InputHelper::get_output_path(const std::filesystem::path& 
 
     std::string folder = (output_settings_.keep_name && !in_path.empty()) ? name : title_helper.folder_name();
 
+    if (output_settings_.smart_rename)
+    {
+        uint32_t tid = title_helper.xex_cert().title_id ? title_helper.xex_cert().title_id : title_helper.xbe_cert().title_id;
+        std::string tid_str = StringUtils::uint32_to_hex_string(tid);
+        std::string clean_title = title_helper.folder_name();
+        if (!tid_str.empty() && tid_str != "00000000")
+        {
+            name = "[" + tid_str + "] " + clean_title;
+            folder = name;
+        }
+    }
+
     switch (output_settings_.file_type)
     {
         case FileType::DIR:
