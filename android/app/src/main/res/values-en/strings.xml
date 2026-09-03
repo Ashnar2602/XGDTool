@@ -132,8 +132,8 @@
     <string name="dialog_permission_message">Enable all files access to convert directly in place at full speed without consuming up to 20 GB of duplicate cache storage.</string>
     <string name="dialog_permission_grant">Enable</string>
     <string name="dialog_permission_skip">Use Cache</string>
-    <string name="log_zero_copy_active">⚡ Zero-Copy Active: direct I/O on %1$s (0 cache bytes)</string>
-    <string name="log_cache_cleanup_verified">✓ Verification passed (%1$s): intermediate cache freed</string>
+    <string name="log_zero_copy_active">Zero-Copy Active: direct I/O on %1$s (0 cache bytes)</string>
+    <string name="log_cache_cleanup_verified">Verification passed (%1$s): intermediate cache freed</string>
     <string name="log_zar_extracting">[2/3] Extracting ZAR archive…</string>
     <string name="log_zar_creating_image">[2/3] Building image from extracted contents…</string>
 </resources>

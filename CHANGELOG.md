@@ -40,7 +40,7 @@ Version 1.3.1 brings critical engine fixes and major Android storage optimizatio
 ---
 
 ### Key Improvements & Fixes
-- **Critical Fix for ZAR ➔ Image Conversions (`InputHelper::create_image`)**:
+- **Critical Fix for ZAR Image Conversions (`InputHelper::create_image`)**:
   - Fixed an engine bug where extracting a `.zar` archive into an intermediate directory caused the output image path to be computed inside the temporary folder (`_temp/_temp.iso`), leading to the generated image being deleted during post-conversion cleanup.
   - Preserved the original input file path so images are placed into their correct title folder, and isolated temporary extraction files in a dedicated hidden `.xgd_temp` folder.
 - **Android Zero-Copy Direct Storage Access (`MANAGE_EXTERNAL_STORAGE`)**:

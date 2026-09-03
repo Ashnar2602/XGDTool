@@ -1,11 +1,11 @@
 <p align="center">
-  <a href="MANUAL.md">🇬🇧 English</a> ·
-  <a href="MANUAL.it.md">🇮🇹 Italiano</a> ·
-  <a href="MANUAL.fr.md">🇫🇷 Français</a> ·
-  <a href="MANUAL.de.md">🇩🇪 Deutsch</a> ·
-  <a href="MANUAL.es.md">🇪🇸 Español</a> ·
-  <a href="MANUAL.pt.md">🇵🇹 Português</a> ·
-  <a href="MANUAL.zh-CN.md">🇨🇳 简体中文</a>
+  <a href="MANUAL.md">English</a> ·
+  <a href="MANUAL.it.md">Italiano</a> ·
+  <a href="MANUAL.fr.md">Français</a> ·
+  <a href="MANUAL.de.md">Deutsch</a> ·
+  <a href="MANUAL.es.md">Español</a> ·
+  <a href="MANUAL.pt.md">Português</a> ·
+  <a href="MANUAL.zh-CN.md">简体中文</a>
 </p>
 
 # 使用与调试手册 — XGDTool Android 版

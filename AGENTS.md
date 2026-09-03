@@ -150,3 +150,5 @@ When publishing a new release:
    Never introduce synchronous single-sector reads/writes. If adding a new feature or format, design it for chunked streaming I/O from day one.
 4. **Verify Build After Modifying Code**:
    Always run CMake build after C++ source changes to verify compilation before concluding the task.
+5. **Strict No-Emoji Policy (MANDATORY)**:
+   Never use emojis anywhere in documentation, GitHub Wiki pages, README files, CHANGELOG, release notes, commit messages, or code comments. All documentation must strictly adhere to clean, professional, plain text formatting without graphical emoji characters.
