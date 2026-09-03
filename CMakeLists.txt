@@ -129,7 +129,11 @@ if (ENABLE_GUI)
 
 else()
 
-    add_executable(${PROJECT_NAME} ${SRC})
+    if (WIN32)
+        add_executable(${PROJECT_NAME} ${SRC} resources/resource.rc)
+    else()
+        add_executable(${PROJECT_NAME} ${SRC})
+    endif()
 
 endif()
 

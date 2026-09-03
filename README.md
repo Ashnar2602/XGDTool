@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="docs/assets/repo_logo.png" alt="XGDTool Logo" width="520">
+  <img src="docs/assets/logo_windows.png" alt="XGDTool Windows" width="280">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/assets/logo_android.png" alt="XGDTool Android" width="280">
 </p>
 
 <p align="center">
@@ -25,14 +26,24 @@ Whether running on a multi-core Windows desktop or on an Android smartphone, XGD
 
 ---
 
-## ⚡ Highlights of the v1.3 Engine Overhaul
+## ⚡ Highlights of the v1.4 Engine & QoL Overhaul
 
-* 🚀 **Zero-Copy Android Storage Engine (v1.3.1)**:
-  Converts directly in place via `MANAGE_EXTERNAL_STORAGE` and real SAF path resolution. Saves **15 to 20 GB** of internal storage overhead by eliminating redundant cache duplication, writing directly at native UFS/NVMe speeds (~2 GB/s).
-* ⚡ **2 MB Sequential Chunked I/O**:
-  Replaces legacy 2 KB micro-sector operations with 2 MB sequential batches, reducing operating system I/O syscalls by over **99.9%** (from ~4 million to ~4,000 per 8 GB disc).
-* 🛡️ **Zero-Overhead Streaming Checksums**:
-  CRC32, MD5, and hardware-accelerated SHA-1 (SHA-NI) are accumulated on the fly in RAM during disk writes. Checksum verification overhead during creation is **0.0 seconds** (eliminates the 8 GB re-read).
+* 🚀 **Vectorized & Hardware-Accelerated CRC32**:
+  Native ARMv8 ACLE assembly (`__crc32d`) delivering **15–20 GB/s** on mobile ARM64 devices, and Slice-by-8 vectorized algorithm on x86_64 processing 8 bytes/cycle in L1 cache (**4–5 GB/s per core**).
+* ⚡ **Asynchronous Double-Buffering Ring Pipeline**:
+  Prefetches uncompressed data blocks in background (`std::async`) while worker threads compress the current buffer, completely hiding disk read latency behind CPU passes.
+* 💾 **OS Storage Sequential Hints & Zero-Fragmentation Pre-allocation**:
+  Kernel hints (`FILE_FLAG_SEQUENTIAL_SCAN` and `POSIX_FADV_SEQUENTIAL`) and pre-allocation (`posix_fallocate` / `resize_file`) prevent disk cluster fragmentation during extraction.
+* 📊 **Live Throughput (MB/s) & Dynamic ETA Countdown**:
+  Accurate rolling transfer speed (`MB/s`) and formatted ETA countdown (`hh:mm:ss`) updated in real time in both the CLI progress bar and GUI interface.
+* 🔍 **Diagnostic Image Verification Mode (`--verify` / UI Button)**:
+  Non-destructive integrity scanner inspecting disc geometry (XGD2/XGD3, layer break), AVL filesystem structure, Title ID, Title Name, and streaming checksums (CRC32, MD5, SHA-1).
+* 🏷️ **Smart Game Renamer (`--smart-rename` / UI Option)**:
+  Automatically names output files and folders following the standard `[<TitleID>] <GameName>` convention.
+* 🖥️ **Windows Explorer Context Menu Integration**:
+  Instant non-elevated right-click registration (`--register-shell`) for `.iso`, `.xiso`, `.cso`, `.cci`, and `.zar`.
+* 📱 **Zero-Copy Android Storage Engine**:
+  Converts directly in place via `MANAGE_EXTERNAL_STORAGE` and real SAF path resolution, eliminating 15–20 GB of duplicate cache overhead.
 * 🔒 **Lock-Free Multithreaded Compression**:
   Coarse-grained batch coordinators with atomic work-stealing saturate all CPU cores for **CSO** and **CCI** compression without mutex contention.
 * 📦 **Parallel Multi-Core ZArchive (Zstd)**:
