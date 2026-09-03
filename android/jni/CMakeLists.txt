@@ -21,6 +21,14 @@ set(SRC_DIR ${REPO_ROOT}/src)
 set(CMAKE_SOURCE_DIR ${REPO_ROOT}) # embed_resources.cmake expects the repo root here
 include(${REPO_ROOT}/cmake/embed_resources.cmake)
 
+# Auto-apply multithread patch to ZArchive submodule if needed
+execute_process(
+    COMMAND git -C ${REPO_ROOT}/external/ZArchive apply ${REPO_ROOT}/cmake/zarchive_multithread.patch
+    RESULT_VARIABLE PATCH_RESULT
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+
 add_subdirectory(${REPO_ROOT}/external/ZArchive ${CMAKE_CURRENT_BINARY_DIR}/zarchive)
 
 set(CORE_SRC
@@ -63,6 +71,7 @@ set(CORE_SRC
 
     ${SRC_DIR}/Utils/EndianUtils.cpp
     ${SRC_DIR}/Utils/StringUtils.cpp
+    ${SRC_DIR}/Utils/LocalizationManager.cpp
 
     ${SRC_DIR}/Formats/Xiso.cpp
 )

@@ -1,10 +1,12 @@
 #include "LocalizationManager.h"
 #include "EmbeddedLanguages.h"
+#ifndef ANDROID_BUILD
 #include <wx/xml/xml.h>
 #include <wx/sstream.h>
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
 #include <wx/intl.h>
+#endif
 #include <filesystem>
 #include "XGDLog.h"
 
@@ -169,6 +171,7 @@ void LocalizationManager::load_default_fallback_strings()
 #include <winnls.h>
 #endif
 
+#ifndef ANDROID_BUILD
 static std::string detect_system_language()
 {
 #ifdef _WIN32
@@ -359,6 +362,15 @@ void LocalizationManager::init(const std::string& preferred_lang)
 
     XGDLog(Normal) << "Language initialized: '" << lang << "' (preferred='" << preferred_lang << "')" << XGDLog::Endl;
 }
+#else
+bool LocalizationManager::load_from_string(std::string_view) { return true; }
+bool LocalizationManager::load_from_file(const std::string&) { return true; }
+void LocalizationManager::init(const std::string& preferred_lang)
+{
+    current_lang_ = preferred_lang.empty() ? "en" : preferred_lang;
+    load_default_fallback_strings();
+}
+#endif
 
 std::string LocalizationManager::format_string(const std::string& template_str, const std::vector<std::string>& args) const
 {
