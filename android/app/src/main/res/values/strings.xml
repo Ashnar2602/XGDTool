@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">XGDTool</string>
+    <string name="app_author">by Ashnar2602</string>
+    <string name="app_version_display">1.3.0</string>
     <string name="app_subtitle">Xbox / Xbox 360 image converter</string>
 
     <!-- Sections -->
