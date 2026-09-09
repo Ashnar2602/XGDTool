@@ -84,6 +84,160 @@ jobs:
             dist/XGDTool-CLI.exe
             XGDTool-*-Win64.zip
 
+  build-linux-x86_64:
+    # Build on Ubuntu 22.04 to target glibc >= 2.35 for broad distro compatibility
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            cmake ninja-build pkg-config \
+            liblz4-dev libzstd-dev libssl-dev \
+            libcurl4-openssl-dev \
+            libwxgtk3.0-gtk3-dev \
+            file curl
+
+      - name: Configure and build CLI (x86_64)
+        run: |
+          cmake -B build_cli_x64 -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_GUI=OFF \
+            -G Ninja
+          cmake --build build_cli_x64 -j$(nproc)
+
+      - name: Configure and build GUI (x86_64)
+        run: |
+          cmake -B build_gui_x64 -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_GUI=ON \
+            -DENABLE_APPIMAGE=ON \
+            -G Ninja
+          cmake --build build_gui_x64 -j$(nproc)
+
+      - name: Verify CLI binary
+        run: |
+          file build_cli_x64/XGDTool
+          build_cli_x64/XGDTool --version
+
+      - name: Build AppImage (GUI x86_64)
+        run: |
+          cmake --build build_gui_x64 --target appimage
+
+      - name: Collect Linux x86_64 artifacts
+        run: |
+          mkdir -p linux_artifacts
+          cp build_cli_x64/XGDTool linux_artifacts/XGDTool-CLI-Linux-x86_64
+          chmod +x linux_artifacts/XGDTool-CLI-Linux-x86_64
+          # AppImage
+          APPIMG=$(find build_gui_x64 -name "XGDTool-GUI-Linux-x86_64.AppImage" | head -1)
+          if [ -n "$APPIMG" ]; then
+            cp "$APPIMG" linux_artifacts/XGDTool-GUI-Linux-x86_64.AppImage
+          else
+            # Fallback: package the GUI binary in a tarball if AppImage build failed
+            cp build_gui_x64/XGDTool linux_artifacts/XGDTool-GUI-Linux-x86_64
+            chmod +x linux_artifacts/XGDTool-GUI-Linux-x86_64
+            cp -r languages linux_artifacts/languages
+            tar -czf linux_artifacts/XGDTool-GUI-Linux-x86_64.tar.gz \
+              -C linux_artifacts XGDTool-GUI-Linux-x86_64 languages
+            rm -f linux_artifacts/XGDTool-GUI-Linux-x86_64
+            rm -rf linux_artifacts/languages
+          fi
+
+      - name: Upload Linux x86_64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64-binaries
+          path: linux_artifacts/
+
+  build-linux-aarch64:
+    # Cross-compile aarch64 on Ubuntu 22.04 using gcc-aarch64-linux-gnu
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Enable arm64 multiarch and install cross-compiler + libraries
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo sed -i 's/^deb /deb [arch=amd64,i386] /' /etc/apt/sources.list
+          # Add arm64-specific sources
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            cmake ninja-build pkg-config \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            liblz4-dev:arm64 libzstd-dev:arm64 \
+            libssl-dev:arm64 libcurl4-openssl-dev:arm64 \
+            libwxgtk3.0-gtk3-dev:arm64 \
+            file curl
+
+      - name: Configure and build CLI (aarch64)
+        run: |
+          cmake -B build_cli_aarch64 -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_GUI=OFF \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-linux-aarch64.cmake \
+            -G Ninja
+          cmake --build build_cli_aarch64 -j$(nproc)
+
+      - name: Configure and build GUI (aarch64)
+        run: |
+          cmake -B build_gui_aarch64 -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_GUI=ON \
+            -DENABLE_APPIMAGE=ON \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-linux-aarch64.cmake \
+            -G Ninja
+          cmake --build build_gui_aarch64 -j$(nproc)
+
+      - name: Verify CLI binary architecture
+        run: |
+          file build_cli_aarch64/XGDTool
+          file build_gui_aarch64/XGDTool
+
+      - name: Build AppImage (GUI aarch64)
+        run: |
+          cmake --build build_gui_aarch64 --target appimage || true
+          # AppImage for aarch64 requires running on an aarch64 host or QEMU;
+          # if it fails, fall back to a portable tarball
+
+      - name: Collect Linux aarch64 artifacts
+        run: |
+          mkdir -p linux_aarch64_artifacts
+          cp build_cli_aarch64/XGDTool linux_aarch64_artifacts/XGDTool-CLI-Linux-aarch64
+          chmod +x linux_aarch64_artifacts/XGDTool-CLI-Linux-aarch64
+          # AppImage (may not be available for aarch64 if linuxdeploy cross-build failed)
+          APPIMG=$(find build_gui_aarch64 -name "XGDTool-GUI-Linux-aarch64.AppImage" | head -1)
+          if [ -n "$APPIMG" ]; then
+            cp "$APPIMG" linux_aarch64_artifacts/XGDTool-GUI-Linux-aarch64.AppImage
+          else
+            # Fallback: package as a self-contained tarball
+            cp build_gui_aarch64/XGDTool linux_aarch64_artifacts/XGDTool-GUI-Linux-aarch64
+            chmod +x linux_aarch64_artifacts/XGDTool-GUI-Linux-aarch64
+            cp -r languages linux_aarch64_artifacts/languages
+            tar -czf linux_aarch64_artifacts/XGDTool-GUI-Linux-aarch64.tar.gz \
+              -C linux_aarch64_artifacts XGDTool-GUI-Linux-aarch64 languages
+            rm -f linux_aarch64_artifacts/XGDTool-GUI-Linux-aarch64
+            rm -rf linux_aarch64_artifacts/languages
+          fi
+
+      - name: Upload Linux aarch64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-aarch64-binaries
+          path: linux_aarch64_artifacts/
+
   build-android:
     runs-on: ubuntu-latest
 
@@ -119,7 +273,7 @@ jobs:
           path: apk_output/XGDTool-Android.apk
 
   publish-release:
-    needs: [build-windows, build-android]
+    needs: [build-windows, build-linux-x86_64, build-linux-aarch64, build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 
@@ -130,13 +284,22 @@ jobs:
           path: release_files
           merge-multiple: true
 
+      - name: List collected artifacts
+        run: find release_files -type f | sort
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             release_files/XGDTool-GUI.exe
             release_files/XGDTool-CLI.exe
-            release_files/XGDTool-*.zip
+            release_files/XGDTool-*-Win64.zip
+            release_files/XGDTool-CLI-Linux-x86_64
+            release_files/XGDTool-GUI-Linux-x86_64.AppImage
+            release_files/XGDTool-GUI-Linux-x86_64.tar.gz
+            release_files/XGDTool-CLI-Linux-aarch64
+            release_files/XGDTool-GUI-Linux-aarch64.AppImage
+            release_files/XGDTool-GUI-Linux-aarch64.tar.gz
             release_files/XGDTool-Android.apk
           draft: false
           prerelease: false

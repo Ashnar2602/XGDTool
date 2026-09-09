@@ -36,7 +36,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "-flto")
     set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "-flto")
 elseif(UNIX)
-    set(CMAKE_CXX_STANDARD_LIBRARIES "-L/usr/lib/x86_64-linux-gnu/ -lstdc++")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 endif()
 
 
@@ -125,9 +125,11 @@ if (ENABLE_GUI)
     add_definitions(-DENABLE_GUI)
 
     if (WIN32)
+        # Windows GUI: needs .rc for the embedded icon resource
         add_executable(${PROJECT_NAME} WIN32 ${SRC} resources/resource.rc)
     elseif(UNIX)
-        add_executable(${PROJECT_NAME} ${SRC} resources/resource.rc)
+        # Linux GUI: .rc files are Windows-only; the icon is loaded at runtime from a PNG
+        add_executable(${PROJECT_NAME} ${SRC})
     endif()
 
 else()
@@ -206,48 +208,114 @@ elseif(UNIX)
     pkg_check_modules(ZSTD REQUIRED libzstd)
     find_package(OpenSSL REQUIRED)
     find_package(CURL REQUIRED)
-    find_package(wxWidgets REQUIRED COMPONENTS core base)
+
+    # Option for static linking of application libraries (for portable/AppImage builds)
+    option(LINUX_STATIC_LIBS "Link lz4/zstd/openssl/curl statically on Linux" OFF)
 
     include_directories(
         ${CMAKE_SOURCE_DIR}/external
-        ${LZ4_INCLUDE_DIRS} 
-        ${ZSTD_INCLUDE_DIRS} 
-        ${OPENSSL_INCLUDE_DIR} 
-        ${CURL_INCLUDE_DIRS} 
-        ${wxWidgets_INCLUDE_DIRS}
+        ${LZ4_INCLUDE_DIRS}
+        ${ZSTD_INCLUDE_DIRS}
+        ${OPENSSL_INCLUDE_DIR}
+        ${CURL_INCLUDE_DIRS}
     )
 
     link_directories(
-        ${LZ4_LIBRARY_DIRS} 
-        ${ZSTD_LIBRARY_DIRS} 
-        ${OPENSSL_LIBRARIES} 
-        ${CURL_LIBRARIES} 
-        ${wxWidgets_LIBRARY_DIRS}
+        ${LZ4_LIBRARY_DIRS}
+        ${ZSTD_LIBRARY_DIRS}
     )
 
-    execute_process(
-        COMMAND wx-config --cxxflags
-        OUTPUT_VARIABLE wxWidgets_CXX_FLAGS
-        OUTPUT_STRIP_TRAILING_WHITESPACE
+    # Base libraries shared by both CLI and GUI on Linux
+    if(LINUX_STATIC_LIBS)
+        set(LINUX_APP_LIBS
+            zarchive
+            ${LZ4_STATIC_LIBRARIES}
+            ${ZSTD_STATIC_LIBRARIES}
+            OpenSSL::SSL
+            OpenSSL::Crypto
+            CURL::libcurl
+        )
+    else()
+        set(LINUX_APP_LIBS
+            zarchive
+            ${LZ4_LIBRARIES}
+            ${ZSTD_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${CURL_LIBRARIES}
+        )
+    endif()
+
+    if (ENABLE_GUI)
+        # wxWidgets is only required when building the GUI target
+        execute_process(
+            COMMAND wx-config --cxxflags
+            OUTPUT_VARIABLE wxWidgets_CXX_FLAGS_RAW
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE wx_config_result
+        )
+        if(NOT wx_config_result EQUAL 0)
+            message(FATAL_ERROR "wx-config not found. Install libwxgtk3.2-dev (or libwxgtk3.0-gtk3-dev) to build the GUI target, or configure with -DENABLE_GUI=OFF for CLI only.")
+        endif()
+
+        execute_process(
+            COMMAND wx-config --libs
+            OUTPUT_VARIABLE wxWidgets_LIBS_RAW
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+        # Parse wx-config output into a CMake list so -D/-I/-pthread are handled correctly
+        separate_arguments(wxWidgets_CXX_FLAGS_LIST UNIX_COMMAND "${wxWidgets_CXX_FLAGS_RAW}")
+        separate_arguments(wxWidgets_LIBS_LIST UNIX_COMMAND "${wxWidgets_LIBS_RAW}")
+
+        # GTK3 headers are required on Linux; wx-config --cxxflags omits them.
+        # GTK3 includes must be listed BEFORE wx includes because wx/gtk/*.h
+        # use GdkWindow/GtkWidget types without self-including gdk/gdk.h.
+        pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+
+        # Apply all wx compile flags (includes -D__WXGTK__, -DWXUSINGDLL, -pthread, etc.)
+        # Use target_compile_options so they only apply to the GUI target
+        target_compile_options(${PROJECT_NAME} PRIVATE
+            ${wxWidgets_CXX_FLAGS_LIST}
+            ${GTK3_CFLAGS_OTHER}
+            -Wno-ambiguous-reversed-operator
+        )
+
+        # GTK3 includes must come BEFORE wx includes in the compile command.
+        # target_include_directories preserves insertion order in the link.txt.
+        target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
+            ${GTK3_INCLUDE_DIRS}
+        )
+        # wx includes come after GTK3 (use separate call to ensure ordering)
+        target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
+            ${wxWidgets_INCLUDE_DIRS}
+        )
+
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            ${LINUX_APP_LIBS}
+            ${wxWidgets_LIBS_LIST}
+        )
+    else()
+        # CLI build: no wxWidgets dependency required
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            ${LINUX_APP_LIBS}
+        )
+    endif()
+
+    # Copy languages directory next to the executable after build (mirrors Windows behaviour)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/languages
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/languages
     )
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${wxWidgets_CXX_FLAGS} -Wno-ambiguous-reversed-operator")
-    include_directories(SYSTEM ${wxWidgets_INCLUDE_DIRS})
-
-    execute_process(
-        COMMAND wx-config --libs
-        OUTPUT_VARIABLE wxWidgets_LIBS
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE 
-        zarchive 
-        ${LZ4_LIBRARIES} 
-        ${ZSTD_LIBRARIES} 
-        ${OPENSSL_LIBRARIES} 
-        ${CURL_LIBRARIES} 
-        ${wxWidgets_LIBS}
-    )
+    # Copy the PNG application icon next to the executable (used by the GUI at runtime)
+    if(ENABLE_GUI)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.png
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>/app_icon.png
+        )
+    endif()
 
 else()
 
@@ -255,4 +323,7 @@ else()
 
 endif()
 
-
+# AppImage packaging target (Linux GUI only, opt-in via ENABLE_APPIMAGE)
+if(UNIX AND ENABLE_GUI)
+    include(${CMAKE_SOURCE_DIR}/cmake/appimage.cmake)
+endif()

@@ -1,5 +1,7 @@
 #include "LocalizationManager.h"
 #include "EmbeddedLanguages.h"
+// wx XML/locale headers are only available when building with wxWidgets (GUI build or Windows)
+#if defined(ENABLE_GUI) || defined(_WIN32)
 #ifndef ANDROID_BUILD
 #include <wx/xml/xml.h>
 #include <wx/sstream.h>
@@ -7,7 +9,12 @@
 #include <wx/filename.h>
 #include <wx/intl.h>
 #endif
+#endif
 #include <filesystem>
+#include <fstream>
+#if defined(__linux__) && !defined(ENABLE_GUI)
+#include <unistd.h>
+#endif
 #include "XGDLog.h"
 
 namespace fs = std::filesystem;
@@ -171,9 +178,11 @@ void LocalizationManager::load_default_fallback_strings()
 #include <winnls.h>
 #endif
 
-#ifndef ANDROID_BUILD
+// Full wx-based implementation for GUI builds and Windows
+#if (defined(ENABLE_GUI) || defined(_WIN32)) && !defined(ANDROID_BUILD)
 static std::string detect_system_language()
 {
+    std::string l;
 #ifdef _WIN32
     auto check_langid = [](LANGID id) -> std::string {
         WORD primary = PRIMARYLANGID(id);
@@ -185,7 +194,7 @@ static std::string detect_system_language()
         return "";
     };
 
-    std::string l = check_langid(GetUserDefaultUILanguage());
+    l = check_langid(GetUserDefaultUILanguage());
     if (!l.empty()) return l;
 
     l = check_langid(GetSystemDefaultUILanguage());
@@ -238,11 +247,19 @@ static std::string detect_system_language()
     auto check_env = [](const char* env_var) -> std::string {
         const char* val = getenv(env_var);
         if (val) {
+#if defined(_WIN32)
             if (_strnicmp(val, "it", 2) == 0) return "it";
             if (_strnicmp(val, "de", 2) == 0) return "de";
             if (_strnicmp(val, "fr", 2) == 0) return "fr";
             if (_strnicmp(val, "es", 2) == 0) return "es";
             if (_strnicmp(val, "pt", 2) == 0) return "pt";
+#else
+            if (strncasecmp(val, "it", 2) == 0) return "it";
+            if (strncasecmp(val, "de", 2) == 0) return "de";
+            if (strncasecmp(val, "fr", 2) == 0) return "fr";
+            if (strncasecmp(val, "es", 2) == 0) return "es";
+            if (strncasecmp(val, "pt", 2) == 0) return "pt";
+#endif
         }
         return "";
     };
@@ -362,7 +379,10 @@ void LocalizationManager::init(const std::string& preferred_lang)
 
     XGDLog(Normal) << "Language initialized: '" << lang << "' (preferred='" << preferred_lang << "')" << XGDLog::Endl;
 }
-#else
+
+#elif defined(ANDROID_BUILD)
+
+// Android stub: no wx, no filesystem XML loading
 bool LocalizationManager::load_from_string(std::string_view) { return true; }
 bool LocalizationManager::load_from_file(const std::string&) { return true; }
 void LocalizationManager::init(const std::string& preferred_lang)
@@ -370,6 +390,122 @@ void LocalizationManager::init(const std::string& preferred_lang)
     current_lang_ = preferred_lang.empty() ? "en" : preferred_lang;
     load_default_fallback_strings();
 }
+
+#else
+
+// Linux CLI (no wxWidgets): pure stdlib implementation
+
+static std::string detect_system_language_cli()
+{
+    // Check common POSIX locale environment variables
+    auto check_env = [](const char* var) -> std::string {
+        const char* val = getenv(var);
+        if (!val || val[0] == '\0') return "";
+        std::string s(val);
+        auto dot = s.find('.');
+        if (dot != std::string::npos) s = s.substr(0, dot);
+        auto us = s.find('_');
+        std::string lang = (us != std::string::npos) ? s.substr(0, us) : s;
+        if (lang == "it") return "it";
+        if (lang == "de") return "de";
+        if (lang == "fr") return "fr";
+        if (lang == "es") return "es";
+        if (lang == "pt") return "pt";
+        return "";
+    };
+
+    for (const char* var : {"LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"}) {
+        std::string l = check_env(var);
+        if (!l.empty()) return l;
+    }
+    return "en";
+}
+
+// Minimal XML parser for the simple <string name="key">value</string> format
+static bool parse_xml_simple(const std::string& xml, std::unordered_map<std::string, std::string>& strings)
+{
+    const std::string open_tag  = "<string name=\"";
+    const std::string close_tag = "</string>";
+    size_t pos = 0;
+    while ((pos = xml.find(open_tag, pos)) != std::string::npos) {
+        pos += open_tag.size();
+        size_t name_end = xml.find('"', pos);
+        if (name_end == std::string::npos) break;
+        std::string key = xml.substr(pos, name_end - pos);
+        size_t val_start = xml.find('>', name_end);
+        if (val_start == std::string::npos) break;
+        ++val_start;
+        size_t val_end = xml.find(close_tag, val_start);
+        if (val_end == std::string::npos) break;
+        std::string value = xml.substr(val_start, val_end - val_start);
+        // Replace escaped newlines
+        size_t np = 0;
+        while ((np = value.find("\\n", np)) != std::string::npos) {
+            value.replace(np, 2, "\n");
+            ++np;
+        }
+        if (!key.empty()) strings[key] = value;
+        pos = val_end + close_tag.size();
+    }
+    return true;
+}
+
+bool LocalizationManager::load_from_string(std::string_view xml_content)
+{
+    if (xml_content.empty()) return false;
+    return parse_xml_simple(std::string(xml_content), strings_);
+}
+
+bool LocalizationManager::load_from_file(const std::string& xml_file_path)
+{
+    std::ifstream f(xml_file_path);
+    if (!f.is_open()) return false;
+    std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return parse_xml_simple(content, strings_);
+}
+
+void LocalizationManager::init(const std::string& preferred_lang)
+{
+    std::string lang = preferred_lang;
+    if (lang.empty() || lang == "system" || lang == "System" || lang == "default") {
+        lang = detect_system_language_cli();
+    }
+    current_lang_ = lang;
+    load_default_fallback_strings();
+
+    // Load embedded XML
+    std::string_view embedded_xml = EmbeddedLanguages::get(lang);
+    if (!embedded_xml.empty()) {
+        load_from_string(embedded_xml);
+    } else {
+        load_from_string(EmbeddedLanguages::XML_EN);
+    }
+
+    // Try to load external language override from disk
+    std::vector<std::string> candidate_paths;
+    // Determine executable directory via /proc/self/exe on Linux
+    char exe_buf[4096] = {};
+    ssize_t len = readlink("/proc/self/exe", exe_buf, sizeof(exe_buf) - 1);
+    if (len > 0) {
+        std::string exe_path(exe_buf, len);
+        std::string exe_dir = exe_path.substr(0, exe_path.rfind('/'));
+        candidate_paths.push_back(exe_dir + "/languages/" + lang + ".xml");
+        candidate_paths.push_back(exe_dir + "/../languages/" + lang + ".xml");
+    }
+    candidate_paths.push_back("languages/" + lang + ".xml");
+    candidate_paths.push_back("../languages/" + lang + ".xml");
+
+    for (const auto& path : candidate_paths) {
+        if (std::filesystem::exists(path)) {
+            if (load_from_file(path)) {
+                XGDLog(Debug) << "Loaded external localization from: " << path << XGDLog::Endl;
+                break;
+            }
+        }
+    }
+    XGDLog(Normal) << "Language initialized: '" << lang << "' (preferred='" << preferred_lang << "')" << XGDLog::Endl;
+}
+
 #endif
 
 std::string LocalizationManager::format_string(const std::string& template_str, const std::vector<std::string>& args) const

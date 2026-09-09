@@ -1,4 +1,6 @@
 #include <wx/dnd.h>
+#include <wx/stdpaths.h>
+#include <wx/filename.h>
 #include "GUI/MainFrame.h"
 #include "Utils/LocalizationManager.h"
 
@@ -21,11 +23,30 @@ private:
 
 void MainFrame::create_frame()
 {
-    #ifdef WIN32
+#ifdef WIN32
+    wxIcon icon;
+    icon.LoadFile("IDI_APP_ICON", wxBITMAP_TYPE_ICO_RESOURCE);
+    SetIcon(icon);
+#elif defined(__linux__)
+    // Load the PNG icon from the directory next to the executable
+    wxFileName exe_path(wxStandardPaths::Get().GetExecutablePath());
+    wxString icon_path = exe_path.GetPath() + wxT("/app_icon.png");
+    if (!wxFileExists(icon_path))
+    {
+        // Fallback: system-wide installation path
+        icon_path = wxT("/usr/share/pixmaps/xgdtool.png");
+    }
+    if (wxFileExists(icon_path))
+    {
         wxIcon icon;
-        icon.LoadFile("IDI_APP_ICON", wxBITMAP_TYPE_ICO_RESOURCE);
-        SetIcon(icon);
-    #endif
+        wxBitmap bmp(icon_path, wxBITMAP_TYPE_PNG);
+        if (bmp.IsOk())
+        {
+            icon.CopyFromBitmap(bmp);
+            if (icon.IsOk()) SetIcon(icon);
+        }
+    }
+#endif
 
     wxPanel* panel = new wxPanel(this, wxID_ANY);
     main_panel_ = panel;

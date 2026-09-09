@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=XGDTool
+GenericName=Xbox Disc Image Tool
+Comment=Convert, compress and extract Xbox and Xbox 360 disc images
+Exec=XGDTool
+Icon=xgdtool
+Type=Application
+Categories=Utility;
+Keywords=xbox;iso;xiso;cci;cso;zar;god;disc;image;convert;compress;
+MimeType=application/x-iso9660-image;
+StartupNotify=true

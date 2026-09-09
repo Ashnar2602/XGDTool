@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-09-09
+
+### Summary
+Version 1.4.1 adds native **Linux x86_64** support for both the CLI and GUI targets. All existing C++ code was already cross-platform; this release introduces the CMake build infrastructure, dependency detection, and source-level portability fixes required to compile and run on Linux distributions.
+
+---
+
+### New: Linux x86_64 Support
+
+- **Linux CLI target** (`-DENABLE_GUI=OFF`): Fully functional standalone command-line executable on Linux. Dependency-free from wxWidgets; links only against ZArchive, LZ4, Zstd, OpenSSL, and libcurl.
+- **Linux GUI target** (`-DENABLE_GUI=ON`): Full wxWidgets 3.2 GTK3 GUI application on Linux. Requires `libwxgtk3.2-dev` and `libgtk-3-dev`.
+- **CMake Linux build system** (`CMakeLists.txt`):
+  - Added `pkg_check_modules(GTK3)` for GTK3 header discovery.
+  - Used `separate_arguments` to properly parse `wx-config --cxxflags` output, ensuring `-D__WXGTK__`, `-DWXUSINGDLL`, and `-pthread` are correctly propagated to the compiler.
+  - GTK3 includes are applied before wx includes via `target_include_directories` ordering, resolving `GdkWindow`/`GtkWidget` undeclared-type errors in wx/gtk internal headers.
+  - Added `cmake/toolchain-linux-aarch64.cmake` for cross-compilation to Linux aarch64 targets.
+  - Added `cmake/appimage.cmake` for optional AppImage packaging (`-DENABLE_APPIMAGE=ON`).
+- **LocalizationManager portability** (`src/Utils/LocalizationManager.cpp`):
+  - Added pure-stdlib CLI fallback for Linux: detects language via `$LANG`/`$LC_ALL`/`$LC_MESSAGES` environment variables and parses embedded XML with `std::string` operations instead of `wxXmlDocument`.
+  - Replaced MSVC-only `_strnicmp` with POSIX `strncasecmp` under `#ifndef _WIN32` guard.
+  - Fixed variable scope: `std::string l` declared at function scope rather than inside the `#ifdef _WIN32` block, preventing undeclared-identifier errors on Linux.
+- **CI/CD** (`.github/workflows/release.yml`): Added Linux x86_64 build matrix entry that produces `XGDTool-CLI-linux-x86_64` and `XGDTool-GUI-linux-x86_64` release artifacts.
+
+### Build Instructions (Linux)
+
+```bash
+# CLI
+cmake -B build_linux_cli -S . -DENABLE_GUI=OFF -DCMAKE_BUILD_TYPE=Release
+cmake --build build_linux_cli -j$(nproc)
+
+# GUI (requires libwxgtk3.2-dev libgtk-3-dev)
+cmake -B build_linux_gui -S . -DENABLE_GUI=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build_linux_gui -j$(nproc)
+```
+
+---
+
 ## [1.4.0] - 2026-09-03
 
 ### Summary
