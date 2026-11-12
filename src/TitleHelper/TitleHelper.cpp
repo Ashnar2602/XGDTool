@@ -248,10 +248,10 @@ bool TitleHelper::set_x360_titles_online(ExeTool& exe_tool)
 {
     title_id_ = exe_tool.title_id();
 
-    std::string name = unity_get_title_name(title_id_);
-    if (name == "Error") 
+    std::string name = x360db_get_title_name(title_id_);
+    if (name.empty())
     {
-        XGDLog(Error) << "Failed to get title name from Unity." << XGDLog::Endl;
+        XGDLog(Error) << "Failed to get title name from X360DB." << XGDLog::Endl;
         return false;
     }
 
@@ -335,58 +335,66 @@ size_t TitleHelper::unity_write_callback(void* contents, size_t size, size_t nme
     return size * nmemb;
 }
 
-std::string TitleHelper::unity_query(const std::string& title_id) 
+std::string TitleHelper::x360db_get_title_name(uint32_t title_id)
 {
-    CURL* curl;
-    CURLcode res;
-    std::string readBuffer;
+    const std::string title_id_str = StringUtils::uint32_to_hex_string(title_id);
+    const std::string url = X360DB_URL;
+    std::string response;
 
-    curl = curl_easy_init();
-
-    if (curl) 
+    CURL* curl = curl_easy_init();
+    if (!curl)
     {
-        std::string url = UNITY_URL_PREFIX + title_id;
-
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, unity_write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
-
-        res = curl_easy_perform(curl);
-
-        if (res != CURLE_OK) 
-        {
-            XGDLog(Error) << "curl_easy_perform() failed: " << curl_easy_strerror(res) << XGDLog::Endl;
-        }
-
-        curl_easy_cleanup(curl);
+        XGDLog(Error) << "Failed to initialize CURL for X360DB." << XGDLog::Endl;
+        return "";
     }
 
-    return readBuffer;
-}
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, unity_write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 
-std::string TitleHelper::unity_parse_json(const std::string& json_response) 
-{
-    auto json = nlohmann::json::parse(json_response);
+    CURLcode result = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
 
-    if (json.contains("MediaIDS") && !json["MediaIDS"].empty()) 
+    if (result != CURLE_OK)
     {
-        auto updates = json["MediaIDS"][0]["Updates"];
+        XGDLog(Error) << "X360DB download failed: "
+                      << curl_easy_strerror(result) << XGDLog::Endl;
+        return "";
+    }
 
-        if (!updates.empty() && updates[0].contains("Name")) 
+    try
+    {
+        const auto database = nlohmann::json::parse(response);
+
+        if (!database.is_array())
+            return "";
+
+        for (const auto& entry : database)
         {
-            return updates[0]["Name"].get<std::string>();
+            if (!entry.is_object())
+                continue;
+
+            if (!entry.contains("id") || !entry["id"].is_string())
+                continue;
+
+            if (!entry.contains("title") || !entry["title"].is_string())
+                continue;
+
+            if (entry["id"].get<std::string>() == title_id_str)
+                return entry["title"].get<std::string>();
         }
     }
-    return "Error";
-}
+    catch (const nlohmann::json::exception& e)
+    {
+        XGDLog(Error) << "Failed to parse X360DB: "
+                      << e.what() << XGDLog::Endl;
+    }
 
-std::string TitleHelper::unity_get_title_name(uint32_t title_id) 
-{
-    std::string title_id_str = StringUtils::uint32_to_hex_string(title_id);
-    std::string response = unity_query(title_id_str);
-    return unity_parse_json(response);
+    return "";
 }
 
 size_t TitleHelper::unity_png_write_callback(void* contents, size_t size, size_t nmemb, void* userp) 

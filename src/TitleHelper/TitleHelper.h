@@ -34,8 +34,8 @@ public:
     const Xbe::Cert& xbe_cert() { return xbe_cert_; };
 
 private:
-    const std::string REPACK_LIST_URL = "https://raw.githubusercontent.com/Team-Resurgent/Repackinator/main/RepackList.json";
-    const std::string UNITY_URL_PREFIX = "http://xboxunity.net/Resources/Lib/TitleUpdateInfo.php?titleid=";
+    const std::string REPACK_LIST_URL = "https://raw.githubusercontent.com/Team-Resurgent/Repackinator/main/Repackinator.Core/Resources/RepackList.json";
+    const std::string X360DB_URL = "https://xenia-manager.github.io/x360db/games.json";
 
     bool offline_mode_{false};
 
@@ -72,10 +72,8 @@ private:
 
     // XboxUnity
     static size_t unity_write_callback(void* contents, size_t size, size_t nmemb, void* userp);
-    std::string unity_query(const std::string& title_id);
-    std::string unity_parse_json(const std::string& json_response);
+    std::string x360db_get_title_name(uint32_t title_id);
     static size_t unity_png_write_callback(void* contents, size_t size, size_t nmemb, void* userp);
-    std::string unity_get_title_name(uint32_t title_id);
     bool unity_get_title_icon(uint32_t title_id, std::vector<char>& icon_data);
 
     // Repackinator
