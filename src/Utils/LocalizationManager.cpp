@@ -322,7 +322,7 @@ bool LocalizationManager::load_from_string(std::string_view xml_content)
 bool LocalizationManager::load_from_file(const std::string& xml_file_path)
 {
     wxXmlDocument doc;
-    if (!doc.Load(wxString::FromUTF8(xml_file_path)))
+    if (!doc.Load(wxString::FromUTF8(xml_file_path.c_str())))
     {
         return false;
     }

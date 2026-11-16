@@ -277,7 +277,7 @@ elseif(UNIX)
         target_compile_options(${PROJECT_NAME} PRIVATE
             ${wxWidgets_CXX_FLAGS_LIST}
             $<$<BOOL:${GTK3_FOUND}>:${GTK3_CFLAGS_OTHER}>
-            -Wno-ambiguous-reversed-operator
+            $<$<CXX_COMPILER_ID:Clang>:-Wno-ambiguous-reversed-operator>
         )
 
         if(GTK3_FOUND)

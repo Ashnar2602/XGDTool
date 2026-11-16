@@ -109,7 +109,7 @@ void MainFrame::handle_dropped_files(const wxArrayString& files)
     InputHelper temp_helper(new_paths, "", OutputSettings());
     if (temp_helper.input_infos().empty())
     {
-        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_valid_files")));
+        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_valid_files").c_str()));
         return;
     }
 
@@ -122,21 +122,21 @@ void MainFrame::handle_dropped_files(const wxArrayString& files)
 
         long item_index = file_list_->InsertItem(file_list_->GetItemCount(), get_file_type_string(info.file_type));
         file_list_->SetItem(item_index, 1, info.paths.front().filename().string());
-        file_list_->SetItem(item_index, 2, wxString::FromUTF8(I18n::get("status_queued")));
+        file_list_->SetItem(item_index, 2, wxString::FromUTF8(I18n::get("status_queued").c_str()));
     }
 
     input_picker_.field->Clear();
     for (const auto& p : input_paths_)
     {
-        input_picker_.field->AppendText(wxString::FromUTF8(p.string()) + "\n");
+        input_picker_.field->AppendText(wxString::FromUTF8(p.string().c_str()) + "\n");
     }
 }
 
 void MainFrame::on_list_item_right_click(wxListEvent& event)
 {
     wxMenu menu;
-    menu.Append(1001, wxString::FromUTF8(I18n::get("menu_remove_selected")));
-    menu.Append(1002, wxString::FromUTF8(I18n::get("menu_clear_list")));
+    menu.Append(1001, wxString::FromUTF8(I18n::get("menu_remove_selected").c_str()));
+    menu.Append(1002, wxString::FromUTF8(I18n::get("menu_clear_list").c_str()));
 
     menu.Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::on_remove_selected_items, this, 1001);
     menu.Bind(wxEVT_COMMAND_MENU_SELECTED, &MainFrame::on_clear_file_list, this, 1002);
@@ -181,7 +181,7 @@ void MainFrame::on_remove_selected_items(wxCommandEvent& event)
     input_picker_.field->Clear();
     for (const auto& p : input_paths_)
     {
-        input_picker_.field->AppendText(wxString::FromUTF8(p.string()) + "\n");
+        input_picker_.field->AppendText(wxString::FromUTF8(p.string().c_str()) + "\n");
     }
 }
 
@@ -200,7 +200,7 @@ void MainFrame::on_update_item_status(wxThreadEvent& event)
     std::string status = payload.second;
     if (file_list_ && row >= 0 && row < file_list_->GetItemCount())
     {
-        file_list_->SetItem(row, 2, wxString::FromUTF8(status));
+        file_list_->SetItem(row, 2, wxString::FromUTF8(status.c_str()));
     }
 }
 
@@ -226,12 +226,12 @@ MainFrame::~MainFrame()
 void MainFrame::on_pause_process(wxCommandEvent& event)
 {
     current_status_ = current_status_ == Status::PAUSED ? Status::PROCESSING : Status::PAUSED;
-    process_buttons_.pause->SetLabel(current_status_ == Status::PAUSED ? wxString::FromUTF8(I18n::get("btn_resume")) : wxString::FromUTF8(I18n::get("btn_pause")));
+    process_buttons_.pause->SetLabel(current_status_ == Status::PAUSED ? wxString::FromUTF8(I18n::get("btn_resume").c_str()) : wxString::FromUTF8(I18n::get("btn_pause").c_str()));
 
     if (current_status_ == Status::PAUSED)
     {
         stored_status_ = status_field_->GetValue().ToStdString();
-        status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_paused")));
+        status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_paused").c_str()));
 
         if (input_helper_)
         {
@@ -275,13 +275,13 @@ void MainFrame::on_process_all(wxCommandEvent& event)
 {
     if (input_paths_.empty())
     {
-        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_input_files")));
+        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_input_files").c_str()));
         return;
     }
 
     if (output_path_.empty())
     {
-        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_output_dir")));
+        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_output_dir").c_str()));
         return;
     }
 
@@ -290,14 +290,14 @@ void MainFrame::on_process_all(wxCommandEvent& event)
 
     if (input_helper_->input_infos().empty())
     {
-        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_valid_files")));
+        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_valid_files").c_str()));
         input_helper_.reset();
         return;
     }
 
     log_output_settings(settings);
 
-    status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_processing")));
+    status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_processing").c_str()));
 
     total_files_count_ = input_helper_->input_infos().size();
     current_file_index_ = 0;
@@ -349,7 +349,7 @@ void MainFrame::on_thread_completed(wxThreadEvent& event)
         processing_thread_.reset();
     }
 
-    status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_complete")));
+    status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_complete").c_str()));
 
     uint64_t total = input_helper_ ? input_helper_->input_infos().size() : 0;
     uint64_t failed = input_helper_ ? input_helper_->failed_inputs().size() : 0;
@@ -365,7 +365,7 @@ void MainFrame::on_thread_completed(wxThreadEvent& event)
 
         if (was_cancelled)
         {
-            status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_cancelled")));
+            status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_cancelled").c_str()));
         }
     }
 
@@ -414,8 +414,8 @@ void MainFrame::on_thread_completed(wxThreadEvent& event)
 
     // Windows Toast / Balloon notification in bottom-right corner
     wxNotificationMessage notif(
-        wxString::FromUTF8(I18n::get("notification_title")),
-        wxString::FromUTF8(toast_msg),
+        wxString::FromUTF8(I18n::get("notification_title").c_str()),
+        wxString::FromUTF8(toast_msg.c_str()),
         this,
         has_errors ? wxICON_WARNING : wxICON_INFORMATION
     );
@@ -438,19 +438,19 @@ void MainFrame::on_thread_completed(wxThreadEvent& event)
 void MainFrame::on_pick_input_path(wxCommandEvent& event)
 {
     wxString choices[] = { 
-        wxString::FromUTF8(I18n::get("choice_select_files")), 
-        wxString::FromUTF8(I18n::get("choice_select_dir")) 
+        wxString::FromUTF8(I18n::get("choice_select_files").c_str()), 
+        wxString::FromUTF8(I18n::get("choice_select_dir").c_str()) 
     };
     int choice = wxGetSingleChoiceIndex(
-        wxString::FromUTF8(I18n::get("choose_selection_type_title")), 
-        wxString::FromUTF8(I18n::get("choose_selection_type_caption")), 
+        wxString::FromUTF8(I18n::get("choose_selection_type_title").c_str()), 
+        wxString::FromUTF8(I18n::get("choose_selection_type_caption").c_str()), 
         2, choices, this
     );
 
     if (choice == 0)
     {
-        wxString wildcard = wxString::FromUTF8(I18n::get("wildcard_xbox_images"));
-        wxFileDialog open_file_dialog(this, wxString::FromUTF8(I18n::get("dialog_select_files_title")), "", "", wildcard, wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_MULTIPLE);
+        wxString wildcard = wxString::FromUTF8(I18n::get("wildcard_xbox_images").c_str());
+        wxFileDialog open_file_dialog(this, wxString::FromUTF8(I18n::get("dialog_select_files_title").c_str()), "", "", wildcard, wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_MULTIPLE);
 
         if (open_file_dialog.ShowModal() == wxID_OK)
         {
@@ -461,7 +461,7 @@ void MainFrame::on_pick_input_path(wxCommandEvent& event)
     }
     else if (choice == 1)
     {
-        wxDirDialog open_dir_dialog(this, wxString::FromUTF8(I18n::get("dialog_select_dir_title")), "", wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+        wxDirDialog open_dir_dialog(this, wxString::FromUTF8(I18n::get("dialog_select_dir_title").c_str()), "", wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
 
         if (open_dir_dialog.ShowModal() == wxID_OK)
         {
@@ -474,7 +474,7 @@ void MainFrame::on_pick_input_path(wxCommandEvent& event)
 
 void MainFrame::on_pick_output_path(wxCommandEvent& event)
 {
-    wxDirDialog open_dir_dialog(this, wxString::FromUTF8(I18n::get("dialog_select_out_dir_title")), "", wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+    wxDirDialog open_dir_dialog(this, wxString::FromUTF8(I18n::get("dialog_select_out_dir_title").c_str()), "", wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
 
     if (open_dir_dialog.ShowModal() == wxID_OK)
     {
@@ -537,12 +537,12 @@ void MainFrame::on_update_current_progress(wxThreadEvent& event)
             double percentage = (static_cast<double>(progress) / total) * 100.0;
             ui_labels_.current_progress->SetLabel(
                 wxString::Format("%s (%.1f%% | %.1f MB/s | ETA: %s)",
-                    wxString::FromUTF8(I18n::get("label_current_progress")),
+                    wxString::FromUTF8(I18n::get("label_current_progress").c_str()),
                     percentage, data.mb_s, eta_str));
         }
         else if (progress >= total)
         {
-            ui_labels_.current_progress->SetLabel(wxString::FromUTF8(I18n::get("label_current_progress")));
+            ui_labels_.current_progress->SetLabel(wxString::FromUTF8(I18n::get("label_current_progress").c_str()));
         }
     }
 
@@ -842,166 +842,166 @@ void MainFrame::on_language_selected(const std::string& lang_code)
 
 void MainFrame::update_ui_language()
 {
-    if (ui_labels_.input_path) ui_labels_.input_path->SetLabel(wxString::FromUTF8(I18n::get("label_input_path")));
-    if (ui_labels_.output_dir) ui_labels_.output_dir->SetLabel(wxString::FromUTF8(I18n::get("label_output_dir")));
-    if (ui_labels_.file_list) ui_labels_.file_list->SetLabel(wxString::FromUTF8(I18n::get("label_file_list")));
-    if (ui_labels_.status) ui_labels_.status->SetLabel(wxString::FromUTF8(I18n::get("label_status")));
-    if (ui_labels_.current_progress) ui_labels_.current_progress->SetLabel(wxString::FromUTF8(I18n::get("label_current_progress")));
-    if (ui_labels_.total_progress) ui_labels_.total_progress->SetLabel(wxString::FromUTF8(I18n::get("label_total_progress")));
-    if (ui_labels_.out_format) ui_labels_.out_format->SetLabel(wxString::FromUTF8(I18n::get("section_output_format")));
-    if (ui_labels_.scrub) ui_labels_.scrub->SetLabel(wxString::FromUTF8(I18n::get("section_scrub")));
-    if (ui_labels_.settings) ui_labels_.settings->SetLabel(wxString::FromUTF8(I18n::get("section_settings")));
-    if (ui_labels_.language) ui_labels_.language->SetLabel(wxString::FromUTF8(I18n::get("section_language")));
-    if (ui_labels_.compression) ui_labels_.compression->SetLabel(wxString::FromUTF8(I18n::get("label_compression_level")));
-    if (ui_labels_.threads) ui_labels_.threads->SetLabel(wxString::FromUTF8(I18n::get("label_threads")));
+    if (ui_labels_.input_path) ui_labels_.input_path->SetLabel(wxString::FromUTF8(I18n::get("label_input_path").c_str()));
+    if (ui_labels_.output_dir) ui_labels_.output_dir->SetLabel(wxString::FromUTF8(I18n::get("label_output_dir").c_str()));
+    if (ui_labels_.file_list) ui_labels_.file_list->SetLabel(wxString::FromUTF8(I18n::get("label_file_list").c_str()));
+    if (ui_labels_.status) ui_labels_.status->SetLabel(wxString::FromUTF8(I18n::get("label_status").c_str()));
+    if (ui_labels_.current_progress) ui_labels_.current_progress->SetLabel(wxString::FromUTF8(I18n::get("label_current_progress").c_str()));
+    if (ui_labels_.total_progress) ui_labels_.total_progress->SetLabel(wxString::FromUTF8(I18n::get("label_total_progress").c_str()));
+    if (ui_labels_.out_format) ui_labels_.out_format->SetLabel(wxString::FromUTF8(I18n::get("section_output_format").c_str()));
+    if (ui_labels_.scrub) ui_labels_.scrub->SetLabel(wxString::FromUTF8(I18n::get("section_scrub").c_str()));
+    if (ui_labels_.settings) ui_labels_.settings->SetLabel(wxString::FromUTF8(I18n::get("section_settings").c_str()));
+    if (ui_labels_.language) ui_labels_.language->SetLabel(wxString::FromUTF8(I18n::get("section_language").c_str()));
+    if (ui_labels_.compression) ui_labels_.compression->SetLabel(wxString::FromUTF8(I18n::get("label_compression_level").c_str()));
+    if (ui_labels_.threads) ui_labels_.threads->SetLabel(wxString::FromUTF8(I18n::get("label_threads").c_str()));
 
     if (input_picker_.button) {
-        input_picker_.button->SetLabel(wxString::FromUTF8(I18n::get("btn_browse")));
-        input_picker_.button->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_browse_input")));
+        input_picker_.button->SetLabel(wxString::FromUTF8(I18n::get("btn_browse").c_str()));
+        input_picker_.button->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_browse_input").c_str()));
     }
     if (output_picker_.button) {
-        output_picker_.button->SetLabel(wxString::FromUTF8(I18n::get("btn_browse")));
-        output_picker_.button->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_browse_output")));
+        output_picker_.button->SetLabel(wxString::FromUTF8(I18n::get("btn_browse").c_str()));
+        output_picker_.button->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_browse_output").c_str()));
     }
 
     if (file_list_)
     {
         wxListItem col0, col1, col2;
         col0.SetId(0);
-        col0.SetText(wxString::FromUTF8(I18n::get("col_format")));
+        col0.SetText(wxString::FromUTF8(I18n::get("col_format").c_str()));
         file_list_->SetColumn(0, col0);
         col1.SetId(1);
-        col1.SetText(wxString::FromUTF8(I18n::get("col_filename")));
+        col1.SetText(wxString::FromUTF8(I18n::get("col_filename").c_str()));
         file_list_->SetColumn(1, col1);
         col2.SetId(2);
-        col2.SetText(wxString::FromUTF8(I18n::get("col_status")));
+        col2.SetText(wxString::FromUTF8(I18n::get("col_status").c_str()));
         file_list_->SetColumn(2, col2);
     }
 
-    if (out_format_rbs_.iso) out_format_rbs_.iso->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_iso")));
-    if (out_format_rbs_.god) out_format_rbs_.god->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_god")));
-    if (out_format_rbs_.cci) out_format_rbs_.cci->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_cci")));
-    if (out_format_rbs_.cso) out_format_rbs_.cso->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_cso")));
-    if (out_format_rbs_.zar) out_format_rbs_.zar->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_zar")));
-    if (out_format_rbs_.extract) out_format_rbs_.extract->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_extract")));
+    if (out_format_rbs_.iso) out_format_rbs_.iso->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_iso").c_str()));
+    if (out_format_rbs_.god) out_format_rbs_.god->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_god").c_str()));
+    if (out_format_rbs_.cci) out_format_rbs_.cci->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_cci").c_str()));
+    if (out_format_rbs_.cso) out_format_rbs_.cso->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_cso").c_str()));
+    if (out_format_rbs_.zar) out_format_rbs_.zar->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_zar").c_str()));
+    if (out_format_rbs_.extract) out_format_rbs_.extract->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_fmt_extract").c_str()));
 
-    if (auto_format_rbs_.ogxbox) auto_format_rbs_.ogxbox->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_auto_ogxbox")));
-    if (auto_format_rbs_.xbox360) auto_format_rbs_.xbox360->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_auto_xbox360")));
-    if (auto_format_rbs_.xemu) auto_format_rbs_.xemu->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_auto_xemu")));
-    if (auto_format_rbs_.xenia) auto_format_rbs_.xenia->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_auto_xenia")));
+    if (auto_format_rbs_.ogxbox) auto_format_rbs_.ogxbox->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_auto_ogxbox").c_str()));
+    if (auto_format_rbs_.xbox360) auto_format_rbs_.xbox360->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_auto_xbox360").c_str()));
+    if (auto_format_rbs_.xemu) auto_format_rbs_.xemu->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_auto_xemu").c_str()));
+    if (auto_format_rbs_.xenia) auto_format_rbs_.xenia->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_auto_xenia").c_str()));
 
     if (out_scrub_rbs_.none) {
-        out_scrub_rbs_.none->SetLabel(wxString::FromUTF8(I18n::get("scrub_none")));
-        out_scrub_rbs_.none->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_scrub_none")));
+        out_scrub_rbs_.none->SetLabel(wxString::FromUTF8(I18n::get("scrub_none").c_str()));
+        out_scrub_rbs_.none->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_scrub_none").c_str()));
     }
     if (out_scrub_rbs_.partial) {
-        out_scrub_rbs_.partial->SetLabel(wxString::FromUTF8(I18n::get("scrub_partial")));
-        out_scrub_rbs_.partial->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_scrub_partial")));
+        out_scrub_rbs_.partial->SetLabel(wxString::FromUTF8(I18n::get("scrub_partial").c_str()));
+        out_scrub_rbs_.partial->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_scrub_partial").c_str()));
     }
     if (out_scrub_rbs_.full) {
-        out_scrub_rbs_.full->SetLabel(wxString::FromUTF8(I18n::get("scrub_full")));
-        out_scrub_rbs_.full->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_scrub_full")));
+        out_scrub_rbs_.full->SetLabel(wxString::FromUTF8(I18n::get("scrub_full").c_str()));
+        out_scrub_rbs_.full->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_scrub_full").c_str()));
     }
 
     if (out_settings_cbs_.split) {
-        out_settings_cbs_.split->SetLabel(wxString::FromUTF8(I18n::get("setting_split")));
-        out_settings_cbs_.split->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_split")));
+        out_settings_cbs_.split->SetLabel(wxString::FromUTF8(I18n::get("setting_split").c_str()));
+        out_settings_cbs_.split->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_split").c_str()));
     }
     if (out_settings_cbs_.attach_xbe) {
-        out_settings_cbs_.attach_xbe->SetLabel(wxString::FromUTF8(I18n::get("setting_attach_xbe")));
-        out_settings_cbs_.attach_xbe->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_attach_xbe")));
+        out_settings_cbs_.attach_xbe->SetLabel(wxString::FromUTF8(I18n::get("setting_attach_xbe").c_str()));
+        out_settings_cbs_.attach_xbe->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_attach_xbe").c_str()));
     }
     if (out_settings_cbs_.allowed_media_xbe) {
-        out_settings_cbs_.allowed_media_xbe->SetLabel(wxString::FromUTF8(I18n::get("setting_am_patch")));
-        out_settings_cbs_.allowed_media_xbe->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_am_patch")));
+        out_settings_cbs_.allowed_media_xbe->SetLabel(wxString::FromUTF8(I18n::get("setting_am_patch").c_str()));
+        out_settings_cbs_.allowed_media_xbe->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_am_patch").c_str()));
     }
     if (out_settings_cbs_.rename_xbe) {
-        out_settings_cbs_.rename_xbe->SetLabel(wxString::FromUTF8(I18n::get("setting_rename_xbe")));
-        out_settings_cbs_.rename_xbe->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_rename_xbe")));
+        out_settings_cbs_.rename_xbe->SetLabel(wxString::FromUTF8(I18n::get("setting_rename_xbe").c_str()));
+        out_settings_cbs_.rename_xbe->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_rename_xbe").c_str()));
     }
     if (out_settings_cbs_.offline_mode) {
-        out_settings_cbs_.offline_mode->SetLabel(wxString::FromUTF8(I18n::get("setting_offline_mode")));
-        out_settings_cbs_.offline_mode->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_offline_mode")));
+        out_settings_cbs_.offline_mode->SetLabel(wxString::FromUTF8(I18n::get("setting_offline_mode").c_str()));
+        out_settings_cbs_.offline_mode->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_offline_mode").c_str()));
     }
     if (out_settings_cbs_.keep_name) {
-        out_settings_cbs_.keep_name->SetLabel(wxString::FromUTF8(I18n::get("setting_keep_name")));
-        out_settings_cbs_.keep_name->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_keep_name")));
+        out_settings_cbs_.keep_name->SetLabel(wxString::FromUTF8(I18n::get("setting_keep_name").c_str()));
+        out_settings_cbs_.keep_name->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_keep_name").c_str()));
     }
     if (out_settings_cbs_.generate_dvd) {
-        out_settings_cbs_.generate_dvd->SetLabel(wxString::FromUTF8(I18n::get("setting_generate_dvd")));
-        out_settings_cbs_.generate_dvd->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_generate_dvd")));
+        out_settings_cbs_.generate_dvd->SetLabel(wxString::FromUTF8(I18n::get("setting_generate_dvd").c_str()));
+        out_settings_cbs_.generate_dvd->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_generate_dvd").c_str()));
     }
     if (out_settings_cbs_.calculate_checksum) {
-        out_settings_cbs_.calculate_checksum->SetLabel(wxString::FromUTF8(I18n::get("setting_checksum")));
-        out_settings_cbs_.calculate_checksum->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_checksum")));
+        out_settings_cbs_.calculate_checksum->SetLabel(wxString::FromUTF8(I18n::get("setting_checksum").c_str()));
+        out_settings_cbs_.calculate_checksum->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_checksum").c_str()));
     }
     if (out_settings_cbs_.dark_mode) {
-        out_settings_cbs_.dark_mode->SetLabel(wxString::FromUTF8(I18n::get("setting_dark_mode")));
-        out_settings_cbs_.dark_mode->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_dark_mode")));
+        out_settings_cbs_.dark_mode->SetLabel(wxString::FromUTF8(I18n::get("setting_dark_mode").c_str()));
+        out_settings_cbs_.dark_mode->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_dark_mode").c_str()));
     }
 
     if (compression_choice_) {
-        compression_choice_->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_compression")));
+        compression_choice_->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_compression").c_str()));
         int current_sel = compression_choice_->GetSelection();
-        compression_choice_->SetString(0, wxString::FromUTF8(I18n::get("compress_default")));
-        compression_choice_->SetString(1, wxString::FromUTF8(I18n::get("compress_fast")));
-        compression_choice_->SetString(2, wxString::FromUTF8(I18n::get("compress_balanced")));
-        compression_choice_->SetString(3, wxString::FromUTF8(I18n::get("compress_max")));
+        compression_choice_->SetString(0, wxString::FromUTF8(I18n::get("compress_default").c_str()));
+        compression_choice_->SetString(1, wxString::FromUTF8(I18n::get("compress_fast").c_str()));
+        compression_choice_->SetString(2, wxString::FromUTF8(I18n::get("compress_balanced").c_str()));
+        compression_choice_->SetString(3, wxString::FromUTF8(I18n::get("compress_max").c_str()));
         compression_choice_->SetSelection(current_sel == wxNOT_FOUND ? 0 : current_sel);
     }
 
     if (threads_choice_) {
-        threads_choice_->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_threads")));
+        threads_choice_->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_threads").c_str()));
     }
 
     if (language_rbs_.system) {
-        language_rbs_.system->SetLabel(wxString::FromUTF8(I18n::get("lang_system")));
-        language_rbs_.system->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_system")));
+        language_rbs_.system->SetLabel(wxString::FromUTF8(I18n::get("lang_system").c_str()));
+        language_rbs_.system->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_system").c_str()));
     }
     if (language_rbs_.english) {
-        language_rbs_.english->SetLabel(wxString::FromUTF8(I18n::get("lang_english")));
-        language_rbs_.english->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_english")));
+        language_rbs_.english->SetLabel(wxString::FromUTF8(I18n::get("lang_english").c_str()));
+        language_rbs_.english->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_english").c_str()));
     }
     if (language_rbs_.italian) {
-        language_rbs_.italian->SetLabel(wxString::FromUTF8(I18n::get("lang_italian")));
-        language_rbs_.italian->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_italian")));
+        language_rbs_.italian->SetLabel(wxString::FromUTF8(I18n::get("lang_italian").c_str()));
+        language_rbs_.italian->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_italian").c_str()));
     }
     if (language_rbs_.german) {
-        language_rbs_.german->SetLabel(wxString::FromUTF8(I18n::get("lang_german")));
-        language_rbs_.german->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_german")));
+        language_rbs_.german->SetLabel(wxString::FromUTF8(I18n::get("lang_german").c_str()));
+        language_rbs_.german->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_german").c_str()));
     }
     if (language_rbs_.french) {
-        language_rbs_.french->SetLabel(wxString::FromUTF8(I18n::get("lang_french")));
-        language_rbs_.french->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_french")));
+        language_rbs_.french->SetLabel(wxString::FromUTF8(I18n::get("lang_french").c_str()));
+        language_rbs_.french->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_french").c_str()));
     }
     if (language_rbs_.spanish) {
-        language_rbs_.spanish->SetLabel(wxString::FromUTF8(I18n::get("lang_spanish")));
-        language_rbs_.spanish->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_spanish")));
+        language_rbs_.spanish->SetLabel(wxString::FromUTF8(I18n::get("lang_spanish").c_str()));
+        language_rbs_.spanish->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_spanish").c_str()));
     }
     if (language_rbs_.portuguese) {
-        language_rbs_.portuguese->SetLabel(wxString::FromUTF8(I18n::get("lang_portuguese")));
-        language_rbs_.portuguese->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_portuguese")));
+        language_rbs_.portuguese->SetLabel(wxString::FromUTF8(I18n::get("lang_portuguese").c_str()));
+        language_rbs_.portuguese->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_lang_portuguese").c_str()));
     }
 
     if (process_buttons_.process) {
-        process_buttons_.process->SetLabel(wxString::FromUTF8(I18n::get("btn_process_all")));
-        process_buttons_.process->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_process_all")));
+        process_buttons_.process->SetLabel(wxString::FromUTF8(I18n::get("btn_process_all").c_str()));
+        process_buttons_.process->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_process_all").c_str()));
     }
     if (process_buttons_.pause) {
         if (current_status_ == Status::PAUSED) {
-            process_buttons_.pause->SetLabel(wxString::FromUTF8(I18n::get("btn_resume")));
+            process_buttons_.pause->SetLabel(wxString::FromUTF8(I18n::get("btn_resume").c_str()));
         } else {
-            process_buttons_.pause->SetLabel(wxString::FromUTF8(I18n::get("btn_pause")));
+            process_buttons_.pause->SetLabel(wxString::FromUTF8(I18n::get("btn_pause").c_str()));
         }
-        process_buttons_.pause->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_pause")));
+        process_buttons_.pause->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_pause").c_str()));
     }
     if (process_buttons_.cancel) {
-        process_buttons_.cancel->SetLabel(wxString::FromUTF8(I18n::get("btn_cancel")));
-        process_buttons_.cancel->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_cancel")));
+        process_buttons_.cancel->SetLabel(wxString::FromUTF8(I18n::get("btn_cancel").c_str()));
+        process_buttons_.cancel->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_cancel").c_str()));
     }
 
     if (status_field_ && current_status_ == Status::IDLE) {
-        status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_idle")));
+        status_field_->ChangeValue(wxString::FromUTF8(I18n::get("status_idle").c_str()));
     }
 
     if (main_panel_ && main_panel_->GetSizer())

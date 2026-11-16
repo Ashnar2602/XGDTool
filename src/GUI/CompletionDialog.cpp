@@ -13,7 +13,7 @@ CompletionDialog::CompletionDialog(wxWindow* parent,
                                    const std::string& message,
                                    bool has_errors,
                                    const std::string& log_file_path)
-    : wxDialog(parent, wxID_ANY, wxString::FromUTF8(title), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
+    : wxDialog(parent, wxID_ANY, wxString::FromUTF8(title.c_str()), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
       log_file_path_(log_file_path)
 {
     SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_FRAMEBK));
@@ -27,7 +27,7 @@ CompletionDialog::CompletionDialog(wxWindow* parent,
     content_sizer->Add(icon, 0, wxALIGN_TOP | wxALL, 15);
 
     // Message
-    wxStaticText* text = new wxStaticText(this, wxID_ANY, wxString::FromUTF8(message));
+    wxStaticText* text = new wxStaticText(this, wxID_ANY, wxString::FromUTF8(message.c_str()));
     content_sizer->Add(text, 1, wxEXPAND | wxTOP | wxBOTTOM | wxRIGHT, 15);
 
     main_sizer->Add(content_sizer, 1, wxEXPAND);
@@ -39,12 +39,12 @@ CompletionDialog::CompletionDialog(wxWindow* parent,
 
     if (has_errors)
     {
-        wxButton* open_log_btn = new wxButton(this, wxID_ANY, wxString::FromUTF8(I18n::get("btn_open_log")));
+        wxButton* open_log_btn = new wxButton(this, wxID_ANY, wxString::FromUTF8(I18n::get("btn_open_log").c_str()));
         open_log_btn->Bind(wxEVT_BUTTON, &CompletionDialog::on_open_log, this);
         button_sizer->Add(open_log_btn, 0, wxALL, 10);
     }
 
-    wxButton* ok_btn = new wxButton(this, wxID_OK, wxString::FromUTF8(I18n::get("btn_ok")));
+    wxButton* ok_btn = new wxButton(this, wxID_OK, wxString::FromUTF8(I18n::get("btn_ok").c_str()));
     ok_btn->SetDefault();
     button_sizer->Add(ok_btn, 0, wxALL, 10);
 
@@ -71,7 +71,7 @@ void CompletionDialog::on_open_log(wxCommandEvent&)
 
     if (fs::exists(target))
     {
-        wxLaunchDefaultApplication(wxString::FromUTF8(target));
+        wxLaunchDefaultApplication(wxString::FromUTF8(target.c_str()));
     }
     else
     {

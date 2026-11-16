@@ -315,13 +315,13 @@ wxBoxSizer* MainFrame::create_language_radio_box(wxPanel* panel)
     lang_sizer->Add(ui_labels_.language, 0, wxALIGN_LEFT);
     lang_sizer->AddSpacer(5);
 
-    language_rbs_.system     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_system")), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
-    language_rbs_.english    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_english")));
-    language_rbs_.italian    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_italian")));
-    language_rbs_.german     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_german")));
-    language_rbs_.french     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_french")));
-    language_rbs_.spanish    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_spanish")));
-    language_rbs_.portuguese = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_portuguese")));
+    language_rbs_.system     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_system").c_str()), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+    language_rbs_.english    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_english").c_str()));
+    language_rbs_.italian    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_italian").c_str()));
+    language_rbs_.german     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_german").c_str()));
+    language_rbs_.french     = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_french").c_str()));
+    language_rbs_.spanish    = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_spanish").c_str()));
+    language_rbs_.portuguese = new wxRadioButton(panel, wxID_ANY, wxString::FromUTF8(I18n::get("lang_portuguese").c_str()));
 
     language_rbs_.system->SetValue(true);
 
