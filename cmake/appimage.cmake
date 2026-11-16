@@ -90,7 +90,8 @@ add_custom_target(appimage
     COMMAND ${CMAKE_COMMAND} -E copy "${APPIMAGE_DESKTOP}" "${APPIMAGE_APPDIR}/usr/share/applications/xgdtool.desktop"
 
     # Run linuxdeploy with GTK plugin to bundle shared libraries
-    COMMAND sh -c "export OUTPUT='${CMAKE_BINARY_DIR}/${APPIMAGE_OUTPUT_NAME}'; \
+    COMMAND sh -c "export APPIMAGE_EXTRACT_AND_RUN=1; \
+                   export OUTPUT='${CMAKE_BINARY_DIR}/${APPIMAGE_OUTPUT_NAME}'; \
                    export ARCH='${APPIMAGE_ARCH}'; \
                    if [ '${APPIMAGE_ARCH}' = 'x86_64' ] && [ -f '${LINUXDEPLOY_GTK_PLUGIN}' ]; then \
                      DEPLOY_PLUGIN='--plugin gtk'; \

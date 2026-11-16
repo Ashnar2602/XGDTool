@@ -202,7 +202,9 @@ elseif(UNIX)
     endif()
 
     find_package(PkgConfig REQUIRED)
-    set(ENV{PKG_CONFIG_PATH} "/usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    if(NOT CMAKE_CROSSCOMPILING)
+        set(ENV{PKG_CONFIG_PATH} "/usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    endif()
 
     pkg_check_modules(LZ4 REQUIRED liblz4)
     pkg_check_modules(ZSTD REQUIRED libzstd)
@@ -267,24 +269,23 @@ elseif(UNIX)
         separate_arguments(wxWidgets_CXX_FLAGS_LIST UNIX_COMMAND "${wxWidgets_CXX_FLAGS_RAW}")
         separate_arguments(wxWidgets_LIBS_LIST UNIX_COMMAND "${wxWidgets_LIBS_RAW}")
 
-        # GTK3 headers are required on Linux; wx-config --cxxflags omits them.
-        # GTK3 includes must be listed BEFORE wx includes because wx/gtk/*.h
-        # use GdkWindow/GtkWidget types without self-including gdk/gdk.h.
-        pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+        # GTK3 headers may be needed on some distros; check quietly so cross-builds without libgtk-3-dev still succeed.
+        pkg_check_modules(GTK3 QUIET gtk+-3.0)
 
         # Apply all wx compile flags (includes -D__WXGTK__, -DWXUSINGDLL, -pthread, etc.)
         # Use target_compile_options so they only apply to the GUI target
         target_compile_options(${PROJECT_NAME} PRIVATE
             ${wxWidgets_CXX_FLAGS_LIST}
-            ${GTK3_CFLAGS_OTHER}
+            $<$<BOOL:${GTK3_FOUND}>:${GTK3_CFLAGS_OTHER}>
             -Wno-ambiguous-reversed-operator
         )
 
-        # GTK3 includes must come BEFORE wx includes in the compile command.
-        # target_include_directories preserves insertion order in the link.txt.
-        target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
-            ${GTK3_INCLUDE_DIRS}
-        )
+        if(GTK3_FOUND)
+            # GTK3 includes must come BEFORE wx includes in the compile command.
+            target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
+                ${GTK3_INCLUDE_DIRS}
+            )
+        endif()
         # wx includes come after GTK3 (use separate call to ensure ordering)
         target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
             ${wxWidgets_INCLUDE_DIRS}

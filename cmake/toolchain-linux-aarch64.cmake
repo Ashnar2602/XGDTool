@@ -25,6 +25,7 @@
 
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
+set(CMAKE_LIBRARY_ARCHITECTURE aarch64-linux-gnu)
 
 # Cross-compiler binaries (provided by gcc-aarch64-linux-gnu package)
 set(CMAKE_C_COMPILER   aarch64-linux-gnu-gcc)
@@ -47,10 +48,12 @@ endforeach()
 set(CMAKE_FIND_ROOT_PATH
     /usr/aarch64-linux-gnu
     /usr/lib/aarch64-linux-gnu
+    /usr/include/aarch64-linux-gnu
+    /usr
 )
 
 # pkg-config must use arm64 libraries, not host x86_64 libraries
-set(PKG_CONFIG_EXECUTABLE pkg-config)
+set(PKG_CONFIG_EXECUTABLE "/usr/bin/pkg-config" CACHE FILEPATH "pkg-config executable" FORCE)
 set(ENV{PKG_CONFIG_PATH}         "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
 set(ENV{PKG_CONFIG_SYSROOT_DIR}  "/")
 set(ENV{PKG_CONFIG_LIBDIR}       "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
@@ -61,7 +64,7 @@ set(wxWidgets_CONFIG_EXECUTABLE /usr/bin/wx-config)
 
 # Search for programs in the BUILD host directories
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-# Search for libraries and headers in the TARGET directories only
+# Search for libraries and headers in the TARGET directories
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
