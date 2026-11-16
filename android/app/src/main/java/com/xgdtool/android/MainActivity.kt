@@ -14,15 +14,26 @@ import android.provider.OpenableColumns
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.documentfile.provider.DocumentFile
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.xgdtool.android.databinding.ActivityMainBinding
 import com.xgdtool.android.databinding.ItemQueueFileBinding
+import java.io.File
 
 data class QueueItem(
     val uri: Uri,
     val name: String,
     val size: Long,
-    var status: String = ""
+    var status: String = "",
+    val isDirectory: Boolean = false
+)
+
+data class XexFolderCandidate(
+    val uri: Uri,
+    val name: String,
+    val size: Long
 )
 
 class MainActivity : AppCompatActivity(), ConvertServiceListener {
@@ -56,12 +67,39 @@ class MainActivity : AppCompatActivity(), ConvertServiceListener {
     private val pickFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) {
             uris.forEach { uri ->
-                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                try {
+                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (_: Exception) { }
+
+                val directFile = PathUtils.resolveDocumentFile(this, uri)
+                if (directFile != null && directFile.isFile &&
+                    (directFile.name.endsWith(".xex", ignoreCase = true) || directFile.name.endsWith(".xbe", ignoreCase = true))
+                ) {
+                    val parentDir = directFile.parentFile
+                    if (parentDir != null && parentDir.isDirectory) {
+                        val folderUri = Uri.fromFile(parentDir)
+                        if (queueItems.none { it.uri == folderUri }) {
+                            val dirSize = computeDirSize(parentDir)
+                            queueItems.add(
+                                QueueItem(
+                                    uri = folderUri,
+                                    name = "[XEX] ${parentDir.name}",
+                                    size = dirSize,
+                                    status = getString(R.string.queue_status_waiting),
+                                    isDirectory = true
+                                )
+                            )
+                        }
+                        return@forEach
+                    }
+                }
+
                 if (queueItems.none { it.uri == uri }) {
                     val (name, size) = queryFileInfo(uri)
-                    queueItems.add(QueueItem(uri, name, size, getString(R.string.queue_status_waiting)))
+                    queueItems.add(QueueItem(uri, name, size, getString(R.string.queue_status_waiting), isDirectory = false))
                 }
             }
+            updateFormatOptionsForQueue()
             refreshQueueUi()
             updatePathsUi(autoCollapseIfReady = true)
 
@@ -69,6 +107,18 @@ class MainActivity : AppCompatActivity(), ConvertServiceListener {
             if (!isQueueExpanded && queueItems.isNotEmpty()) {
                 toggleQueue(true)
             }
+        }
+    }
+
+    private val pickXexTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
+        if (treeUri != null) {
+            try {
+                contentResolver.takePersistableUriPermission(
+                    treeUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) { }
+            handleSelectedXexTree(treeUri)
         }
     }
 
@@ -118,11 +168,11 @@ class MainActivity : AppCompatActivity(), ConvertServiceListener {
         binding.headerPaths.setOnClickListener {
             togglePaths(!isPathsExpanded)
         }
-        binding.cardSource.setOnClickListener {
-            pickFiles.launch(arrayOf("*/*"))
-        }
         binding.btnSelectFiles.setOnClickListener {
             pickFiles.launch(arrayOf("*/*"))
+        }
+        binding.btnSelectXexFolders.setOnClickListener {
+            pickXexTree.launch(null)
         }
         binding.cardDestination.setOnClickListener {
             pickOutputTree.launch(null)
@@ -178,6 +228,7 @@ class MainActivity : AppCompatActivity(), ConvertServiceListener {
         }
         binding.btnClearQueue.setOnClickListener {
             queueItems.clear()
+            updateFormatOptionsForQueue()
             refreshQueueUi()
             updatePathsUi(autoCollapseIfReady = false)
         }
@@ -220,6 +271,7 @@ class MainActivity : AppCompatActivity(), ConvertServiceListener {
             itemBinding.btnRemoveItem.isEnabled = !running
             itemBinding.btnRemoveItem.setOnClickListener {
                 queueItems.removeAt(index)
+                updateFormatOptionsForQueue()
                 refreshQueueUi()
                 updatePathsUi(autoCollapseIfReady = false)
             }
@@ -228,7 +280,197 @@ class MainActivity : AppCompatActivity(), ConvertServiceListener {
         }
     }
 
-    // --- Options & Advanced UI ---
+    private fun updateFormatOptionsForQueue() {
+        val allDirs = queueItems.isNotEmpty() && queueItems.all { it.isDirectory }
+        binding.formatDir.isEnabled = !allDirs
+        if (allDirs && binding.formatGroup.checkedChipId == binding.formatDir.id) {
+            binding.formatGroup.check(binding.formatIso.id)
+        }
+    }
+
+    // --- XEX Folder Selection & Multi-Select ---
+
+    private fun handleSelectedXexTree(treeUri: Uri) {
+        val rootDir = PathUtils.resolveTreeDir(this, treeUri) ?: PathUtils.resolveDocumentFile(this, treeUri)
+        if (rootDir != null && rootDir.isDirectory) {
+            if (containsXexOrXbe(rootDir)) {
+                val candidate = XexFolderCandidate(
+                    uri = Uri.fromFile(rootDir),
+                    name = rootDir.name,
+                    size = computeDirSize(rootDir)
+                )
+                addXexFoldersToQueue(listOf(candidate))
+                return
+            }
+
+            val foundDirs = mutableListOf<File>()
+            fun scan(current: File, depth: Int) {
+                if (depth > 2) return
+                val subDirs = current.listFiles()
+                    ?.filter { it.isDirectory && !it.name.startsWith(".") }
+                    ?.sortedBy { it.name.lowercase() }
+                    ?: return
+                for (sub in subDirs) {
+                    if (containsXexOrXbe(sub)) {
+                        foundDirs.add(sub)
+                    } else {
+                        scan(sub, depth + 1)
+                    }
+                }
+            }
+            scan(rootDir, 1)
+
+            if (foundDirs.isEmpty()) {
+                binding.logView.append(getString(R.string.error_no_xex_found) + "\n")
+                Toast.makeText(this, R.string.error_no_xex_found, Toast.LENGTH_LONG).show()
+            } else if (foundDirs.size == 1) {
+                val single = foundDirs.first()
+                addXexFoldersToQueue(
+                    listOf(XexFolderCandidate(Uri.fromFile(single), single.name, computeDirSize(single)))
+                )
+            } else {
+                val candidates = foundDirs.map { dir ->
+                    XexFolderCandidate(Uri.fromFile(dir), dir.name, computeDirSize(dir))
+                }
+                showXexMultiSelectDialog(candidates)
+            }
+            return
+        }
+
+        // SAF DocumentFile fallback (when All Files Access is not granted yet)
+        val rootDoc = DocumentFile.fromTreeUri(this, treeUri)
+        if (rootDoc == null || !rootDoc.isDirectory) {
+            binding.logView.append(getString(R.string.error_no_xex_found) + "\n")
+            Toast.makeText(this, R.string.error_no_xex_found, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        if (containsXexOrXbeDoc(rootDoc)) {
+            val folderName = rootDoc.name ?: treeUri.lastPathSegment?.substringAfterLast(':')?.substringAfterLast('/') ?: "XEX"
+            addXexFoldersToQueue(listOf(XexFolderCandidate(treeUri, folderName, 0L)))
+            return
+        }
+
+        val foundDocs = mutableListOf<DocumentFile>()
+        fun scanDoc(current: DocumentFile, depth: Int) {
+            if (depth > 2) return
+            val subDocs = current.listFiles()
+                .filter { it.isDirectory && (it.name?.startsWith(".") != true) }
+                .sortedBy { it.name?.lowercase() ?: "" }
+            for (sub in subDocs) {
+                if (containsXexOrXbeDoc(sub)) {
+                    foundDocs.add(sub)
+                } else {
+                    scanDoc(sub, depth + 1)
+                }
+            }
+        }
+        scanDoc(rootDoc, 1)
+
+        if (foundDocs.isEmpty()) {
+            binding.logView.append(getString(R.string.error_no_xex_found) + "\n")
+            Toast.makeText(this, R.string.error_no_xex_found, Toast.LENGTH_LONG).show()
+        } else if (foundDocs.size == 1) {
+            val single = foundDocs.first()
+            addXexFoldersToQueue(
+                listOf(XexFolderCandidate(single.uri, single.name ?: "XEX", 0L))
+            )
+        } else {
+            val candidates = foundDocs.map { doc ->
+                XexFolderCandidate(doc.uri, doc.name ?: "XEX", 0L)
+            }
+            showXexMultiSelectDialog(candidates)
+        }
+    }
+
+    private fun showXexMultiSelectDialog(candidates: List<XexFolderCandidate>) {
+        val labels = candidates.map { c ->
+            if (c.size > 0) "${c.name} (${formatBytesUi(c.size)})" else c.name
+        }.toTypedArray()
+        val checkedItems = BooleanArray(candidates.size) { true }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.dialog_select_xex_title, candidates.size))
+            .setMultiChoiceItems(labels, checkedItems) { _, which, isChecked ->
+                checkedItems[which] = isChecked
+            }
+            .setPositiveButton(R.string.dialog_select_xex_add) { _, _ ->
+                val selected = candidates.filterIndexed { index, _ -> checkedItems[index] }
+                addXexFoldersToQueue(selected)
+            }
+            .setNeutralButton(R.string.dialog_select_xex_toggle_all, null)
+            .setNegativeButton(R.string.btn_cancel, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
+                val allChecked = checkedItems.all { it }
+                val newState = !allChecked
+                for (i in checkedItems.indices) {
+                    checkedItems[i] = newState
+                    dialog.listView?.setItemChecked(i, newState)
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun addXexFoldersToQueue(folders: List<XexFolderCandidate>) {
+        var addedCount = 0
+        for (folder in folders) {
+            if (queueItems.none { it.uri == folder.uri }) {
+                queueItems.add(
+                    QueueItem(
+                        uri = folder.uri,
+                        name = "[XEX] ${folder.name}",
+                        size = folder.size,
+                        status = getString(R.string.queue_status_waiting),
+                        isDirectory = true
+                    )
+                )
+                addedCount++
+            }
+        }
+        if (addedCount > 0) {
+            updateFormatOptionsForQueue()
+            refreshQueueUi()
+            updatePathsUi(autoCollapseIfReady = true)
+            if (!isQueueExpanded && queueItems.isNotEmpty()) {
+                toggleQueue(true)
+            }
+            Toast.makeText(
+                this,
+                resources.getQuantityString(R.plurals.xex_folders_added, addedCount, addedCount),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun containsXexOrXbe(dir: File): Boolean {
+        val files = dir.listFiles() ?: return false
+        return files.any { f ->
+            f.isFile && (f.name.endsWith(".xex", ignoreCase = true) || f.name.endsWith(".xbe", ignoreCase = true))
+        }
+    }
+
+    private fun containsXexOrXbeDoc(dir: DocumentFile): Boolean {
+        val files = dir.listFiles()
+        return files.any { f ->
+            f.isFile && (
+                f.name?.endsWith(".xex", ignoreCase = true) == true ||
+                f.name?.endsWith(".xbe", ignoreCase = true) == true
+            )
+        }
+    }
+
+    private fun computeDirSize(dir: File): Long {
+        return try {
+            dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        } catch (_: Exception) {
+            0L
+        }
+    }
 
     private fun setupOptionsCard() {
         binding.btnToggleAdvanced.setOnClickListener {
@@ -294,6 +536,7 @@ class MainActivity : AppCompatActivity(), ConvertServiceListener {
         binding.btnCancel.isEnabled = running
         binding.btnClearQueue.isEnabled = !running
         binding.btnSelectFiles.isEnabled = !running
+        binding.btnSelectXexFolders.isEnabled = !running
         binding.btnSelectOutput.isEnabled = !running
     }
 

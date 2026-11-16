@@ -213,6 +213,18 @@
                                     app:icon="@drawable/ic_file_open"
                                     app:iconSize="16dp"
                                     app:iconGravity="textStart" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/btnSelectXexFolders"
+                                    style="@style/Widget.XGDToolAndroid.Button.Tonal"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:textSize="12sp"
+                                    android:text="@string/btn_select_xex_folders"
+                                    app:icon="@drawable/ic_folder_open"
+                                    app:iconSize="16dp"
+                                    app:iconGravity="textStart" />
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
@@ -220,7 +232,7 @@
                         <com.google.android.material.card.MaterialCardView
                             android:id="@+id/cardDestination"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
+                            android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:layout_marginStart="4dp"
                             app:cardCornerRadius="12dp"
@@ -231,7 +243,7 @@
 
                             <LinearLayout
                                 android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
+                                android:layout_height="match_parent"
                                 android:orientation="vertical"
                                 android:padding="10dp">
 
@@ -246,11 +258,13 @@
                                 <TextView
                                     android:id="@+id/outputSummary"
                                     android:layout_width="match_parent"
-                                    android:layout_height="36dp"
+                                    android:layout_height="0dp"
+                                    android:layout_weight="1"
+                                    android:minHeight="36dp"
                                     android:layout_marginTop="4dp"
                                     android:gravity="center_vertical"
                                     android:ellipsize="end"
-                                    android:maxLines="2"
+                                    android:maxLines="3"
                                     android:text="@string/output_summary_none"
                                     android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
 

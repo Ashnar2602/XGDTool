@@ -123,57 +123,97 @@ class ConvertService : Service() {
             val inputPathToUse: String
             val outputDirToUse: String
             var localInputFile: File? = null
+            var tempDefaultExe: File? = null
+            var tempSafeDirectOut: File? = null
 
             if (useDirectMode) {
-                inputPathToUse = directInput!!.absolutePath
-                outputDirToUse = directOutputDir!!.absolutePath
-                postToUi { listener?.onLog(getString(R.string.log_zero_copy_active, directInput.name)) }
+                val resolvedInput = if (directInput!!.isDirectory) {
+                    resolveGameDirectory(directInput)
+                } else {
+                    directInput
+                }
+                if (resolvedInput.isDirectory) {
+                    tempDefaultExe = ensureDefaultExecutable(resolvedInput)
+                }
+                inputPathToUse = resolvedInput.absolutePath
+
+                val outCanonical = try { directOutputDir!!.canonicalPath } catch (_: Exception) { directOutputDir!!.absolutePath }
+                val inCanonical = try { resolvedInput.canonicalPath } catch (_: Exception) { resolvedInput.absolutePath }
+                if (resolvedInput.isDirectory && (outCanonical == inCanonical || outCanonical.startsWith("$inCanonical${File.separator}"))) {
+                    val safeOut = File(directOutputDir.parentFile ?: cacheOut, ".xgd_out_${System.currentTimeMillis()}").apply { mkdirs() }
+                    tempSafeDirectOut = safeOut
+                    outputDirToUse = safeOut.absolutePath
+                } else {
+                    outputDirToUse = directOutputDir.absolutePath
+                }
+                postToUi { listener?.onLog(getString(R.string.log_zero_copy_active, resolvedInput.name)) }
             } else {
                 // --- Fallback: copy SAF input into local cache ---
                 val localInput = File(cacheIn, displayName)
                 localInputFile = localInput
-                val sourceSize = querySize(uri)
-                phase(getString(R.string.phase_copy_label, displayName), false, getString(R.string.notif_copy, fileTag))
-                postToUi { listener?.onLog(getString(R.string.log_copy_start, displayName, formatBytes(sourceSize))) }
-                try {
-                    contentResolver.openInputStream(uri).use { input ->
-                        localInput.outputStream().use { output ->
-                            if (input == null) throw java.io.IOException(getString(R.string.error_input_stream_null))
-                            val buffer = ByteArray(1 shl 20)
-                            var copied = 0L
-                            var lastReportMs = 0L
-                            while (true) {
-                                val read = input.read(buffer)
-                                if (read < 0) break
-                                output.write(buffer, 0, read)
-                                copied += read
-                                val now = System.currentTimeMillis()
-                                if (now - lastReportMs > 150 || copied == sourceSize) {
-                                    lastReportMs = now
-                                    val total = if (sourceSize > 0) sourceSize else copied
-                                    postToUi { listener?.onFileProgress(copied, total) }
-                                    val pct = if (total > 0) ((copied * 1000) / total).toInt() else 0
-                                    updateNotification(getString(R.string.notif_copy, fileTag), pct, 1000, false)
+                val docDir = resolveDocumentDirectory(uri)
+                if (docDir != null && docDir.isDirectory) {
+                    val sourceSize = computeDocumentDirSize(docDir)
+                    phase(getString(R.string.phase_copy_label, displayName), false, getString(R.string.notif_copy, fileTag))
+                    postToUi { listener?.onLog(getString(R.string.log_copy_start, displayName, formatBytes(sourceSize))) }
+                    try {
+                        copyDocumentDirToLocal(docDir, localInput, sourceSize, fileTag)
+                        postToUi { listener?.onLog(getString(R.string.log_copy_done, formatBytes(sourceSize))) }
+                    } catch (e: Exception) {
+                        postToUi { listener?.onLog(getString(R.string.log_copy_error, displayName, e.message)) }
+                        failed++
+                        cacheIn.listFiles()?.forEach { it.deleteRecursively() }
+                        continue
+                    }
+                    val resolvedLocal = resolveGameDirectory(localInput)
+                    tempDefaultExe = ensureDefaultExecutable(resolvedLocal)
+                    inputPathToUse = resolvedLocal.absolutePath
+                    outputDirToUse = cacheOut.absolutePath
+                } else {
+                    val sourceSize = querySize(uri)
+                    phase(getString(R.string.phase_copy_label, displayName), false, getString(R.string.notif_copy, fileTag))
+                    postToUi { listener?.onLog(getString(R.string.log_copy_start, displayName, formatBytes(sourceSize))) }
+                    try {
+                        contentResolver.openInputStream(uri).use { input ->
+                            localInput.outputStream().use { output ->
+                                if (input == null) throw java.io.IOException(getString(R.string.error_input_stream_null))
+                                val buffer = ByteArray(1 shl 20)
+                                var copied = 0L
+                                var lastReportMs = 0L
+                                while (true) {
+                                    if (cancelRequested) throw java.io.IOException(getString(R.string.result_cancelled))
+                                    val read = input.read(buffer)
+                                    if (read < 0) break
+                                    output.write(buffer, 0, read)
+                                    copied += read
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastReportMs > 150 || copied == sourceSize) {
+                                        lastReportMs = now
+                                        val total = if (sourceSize > 0) sourceSize else copied
+                                        postToUi { listener?.onFileProgress(copied, total) }
+                                        val pct = if (total > 0) ((copied * 1000) / total).toInt() else 0
+                                        updateNotification(getString(R.string.notif_copy, fileTag), pct, 1000, false)
+                                    }
                                 }
                             }
                         }
+                        val actualSize = localInput.length()
+                        if (sourceSize > 0 && actualSize != sourceSize) {
+                            throw java.io.IOException(
+                                getString(R.string.error_copy_incomplete, formatBytes(sourceSize), formatBytes(actualSize))
+                            )
+                        }
+                        postToUi { listener?.onLog(getString(R.string.log_copy_done, formatBytes(sourceSize))) }
+                    } catch (e: Exception) {
+                        postToUi { listener?.onLog(getString(R.string.log_copy_error, displayName, e.message)) }
+                        failed++
+                        cacheIn.listFiles()?.forEach { it.deleteRecursively() }
+                        continue
                     }
-                    val actualSize = localInput.length()
-                    if (sourceSize > 0 && actualSize != sourceSize) {
-                        throw java.io.IOException(
-                            getString(R.string.error_copy_incomplete, formatBytes(sourceSize), formatBytes(actualSize))
-                        )
-                    }
-                    postToUi { listener?.onLog(getString(R.string.log_copy_done, formatBytes(sourceSize))) }
-                } catch (e: Exception) {
-                    postToUi { listener?.onLog(getString(R.string.log_copy_error, displayName, e.message)) }
-                    failed++
-                    cacheIn.listFiles()?.forEach { it.deleteRecursively() }
-                    continue
-                }
 
-                inputPathToUse = localInput.absolutePath
-                outputDirToUse = cacheOut.absolutePath
+                    inputPathToUse = localInput.absolutePath
+                    outputDirToUse = cacheOut.absolutePath
+                }
             }
 
             // --- Phase 2: native conversion (connectivity check + title lookup + actual write) ---
@@ -202,10 +242,17 @@ class ConvertService : Service() {
                 }
             }
 
-            val isZarToImage = (inputPathToUse.endsWith(".zar", ignoreCase = true) && settings.fileType != XgdNative.FORMAT_DIR)
+            val isInputDirectory = File(inputPathToUse).isDirectory
+            val effectiveFileType = if (isInputDirectory && settings.fileType == XgdNative.FORMAT_DIR) {
+                XgdNative.FORMAT_ISO
+            } else {
+                settings.fileType
+            }
+
+            val isZarToImage = (inputPathToUse.endsWith(".zar", ignoreCase = true) && effectiveFileType != XgdNative.FORMAT_DIR)
 
             val resultCode = if (isZarToImage) {
-                val tempExtractBase = if (useDirectMode && directOutputDir != null) {
+                val tempExtractBase = if (useDirectMode) {
                     File(directOutputDir, ".xgd_zar_temp")
                 } else {
                     File(cacheDir, "zar_temp")
@@ -236,7 +283,7 @@ class ConvertService : Service() {
                     val imageCode = XgdNative.convert(
                         extractedGameDir.absolutePath,
                         outputDirToUse,
-                        settings.fileType,
+                        effectiveFileType,
                         settings.scrubType,
                         settings.split,
                         settings.offlineMode,
@@ -253,7 +300,7 @@ class ConvertService : Service() {
                 XgdNative.convert(
                     inputPathToUse,
                     outputDirToUse,
-                    settings.fileType,
+                    effectiveFileType,
                     settings.scrubType,
                     settings.split,
                     settings.offlineMode,
@@ -264,10 +311,30 @@ class ConvertService : Service() {
                 )
             }
 
+            tempDefaultExe?.let {
+                if (it.exists()) {
+                    it.delete()
+                }
+            }
+
+            tempSafeDirectOut?.let { safeOut ->
+                if (safeOut.exists() && directOutputDir != null) {
+                    safeOut.listFiles()?.forEach { child ->
+                        val target = File(directOutputDir, child.name)
+                        if (target.exists()) target.deleteRecursively()
+                        if (!child.renameTo(target)) {
+                            child.copyRecursively(target, overwrite = true)
+                            child.deleteRecursively()
+                        }
+                    }
+                    safeOut.deleteRecursively()
+                }
+            }
+
             // If fallback cache was used, clean local input now:
             localInputFile?.let {
                 if (it.exists()) {
-                    it.delete()
+                    it.deleteRecursively()
                 }
             }
 
@@ -416,14 +483,153 @@ class ConvertService : Service() {
         return anyFile && !anyFailure
     }
 
+    private fun resolveGameDirectory(dir: File): File {
+        fun hasExe(d: File): Boolean {
+            return d.listFiles()?.any { f ->
+                f.isFile && (f.name.endsWith(".xex", ignoreCase = true) || f.name.endsWith(".xbe", ignoreCase = true))
+            } == true
+        }
+        if (hasExe(dir)) return dir
+
+        fun findFirstExeDir(current: File, depth: Int): File? {
+            if (depth > 2) return null
+            val subDirs = current.listFiles()?.filter { it.isDirectory && !it.name.startsWith(".") } ?: return null
+            for (sub in subDirs) {
+                if (hasExe(sub)) return sub
+                val nested = findFirstExeDir(sub, depth + 1)
+                if (nested != null) return nested
+            }
+            return null
+        }
+        return findFirstExeDir(dir, 1) ?: dir
+    }
+
+    private fun ensureDefaultExecutable(dir: File): File? {
+        val files = dir.listFiles() ?: return null
+        val hasDefault = files.any { f ->
+            f.isFile && (f.name.equals("default.xex", ignoreCase = true) || f.name.equals("default.xbe", ignoreCase = true))
+        }
+        if (hasDefault) return null
+
+        val firstXex = files.firstOrNull { f -> f.isFile && f.name.endsWith(".xex", ignoreCase = true) }
+        if (firstXex != null) {
+            val target = File(dir, "default.xex")
+            return try {
+                firstXex.copyTo(target, overwrite = false)
+                target
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        val firstXbe = files.firstOrNull { f -> f.isFile && f.name.endsWith(".xbe", ignoreCase = true) }
+        if (firstXbe != null) {
+            val target = File(dir, "default.xbe")
+            return try {
+                firstXbe.copyTo(target, overwrite = false)
+                target
+            } catch (_: Exception) {
+                null
+            }
+        }
+        return null
+    }
+
+    private fun resolveDocumentDirectory(uri: Uri): DocumentFile? {
+        return try {
+            val treeDoc = DocumentFile.fromTreeUri(this, uri)
+            if (treeDoc != null && treeDoc.isDirectory) return treeDoc
+            val singleDoc = DocumentFile.fromSingleUri(this, uri)
+            if (singleDoc != null && singleDoc.isDirectory) return singleDoc
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun computeDocumentDirSize(docDir: DocumentFile): Long {
+        var total = 0L
+        fun walk(current: DocumentFile) {
+            for (child in current.listFiles()) {
+                if (child.isDirectory) {
+                    walk(child)
+                } else if (child.isFile) {
+                    total += child.length()
+                }
+            }
+        }
+        try {
+            walk(docDir)
+        } catch (_: Exception) { }
+        return total
+    }
+
+    private fun copyDocumentDirToLocal(
+        srcDir: DocumentFile,
+        destDir: File,
+        totalBytes: Long,
+        fileTag: String
+    ) {
+        destDir.mkdirs()
+        var copiedBytes = 0L
+        var lastReportMs = 0L
+        val buffer = ByteArray(1 shl 20)
+
+        fun copyRec(currentSrc: DocumentFile, currentDest: File) {
+            currentDest.mkdirs()
+            for (child in currentSrc.listFiles()) {
+                if (cancelRequested) throw java.io.IOException(getString(R.string.result_cancelled))
+                val name = child.name ?: continue
+                if (child.isDirectory) {
+                    copyRec(child, File(currentDest, name))
+                } else if (child.isFile) {
+                    val outFile = File(currentDest, name)
+                    contentResolver.openInputStream(child.uri).use { input ->
+                        if (input == null) throw java.io.IOException(getString(R.string.error_input_stream_null))
+                        outFile.outputStream().use { output ->
+                            while (true) {
+                                if (cancelRequested) throw java.io.IOException(getString(R.string.result_cancelled))
+                                val read = input.read(buffer)
+                                if (read < 0) break
+                                output.write(buffer, 0, read)
+                                copiedBytes += read
+                                val now = System.currentTimeMillis()
+                                if (now - lastReportMs > 150 || copiedBytes == totalBytes) {
+                                    lastReportMs = now
+                                    val total = if (totalBytes > 0) totalBytes else copiedBytes
+                                    postToUi { listener?.onFileProgress(copiedBytes, total) }
+                                    val pct = if (total > 0) ((copiedBytes * 1000) / total).toInt() else 0
+                                    updateNotification(getString(R.string.notif_copy, fileTag), pct, 1000, false)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        copyRec(srcDir, destDir)
+    }
+
     private fun queryDisplayName(uri: Uri): String? {
+        if (uri.scheme == "file") {
+            return uri.path?.let { File(it).name }?.takeIf { it.isNotEmpty() }
+        }
+        PathUtils.resolveDocumentFile(this, uri)?.name?.takeIf { it.isNotEmpty() }?.let {
+            return it
+        }
+        try {
+            DocumentFile.fromTreeUri(this, uri)?.name?.takeIf { it.isNotEmpty() }?.let {
+                return it
+            }
+        } catch (_: Exception) { }
         return try {
             contentResolver.query(uri, null, null, null, null)?.use { cursor ->
                 val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                 if (idx >= 0 && cursor.moveToFirst()) cursor.getString(idx) else null
-            }
+            } ?: uri.lastPathSegment?.substringAfterLast(':')?.substringAfterLast('/')
         } catch (e: Exception) {
-            null
+            uri.lastPathSegment?.substringAfterLast(':')?.substringAfterLast('/')
         }
     }
 

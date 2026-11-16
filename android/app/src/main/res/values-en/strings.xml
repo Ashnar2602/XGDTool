@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">XGDTool</string>
     <string name="app_author">by Ashnar2602</string>
-    <string name="app_version_display">1.4.0</string>
+    <string name="app_version_display">1.4.2</string>
     <string name="app_subtitle">Xbox / Xbox 360 image converter</string>
 
     <!-- Sections -->
@@ -26,6 +26,15 @@
         <item quantity="other">%d files selected</item>
     </plurals>
     <string name="btn_select_files">Choose ISO/XISO</string>
+    <string name="btn_select_xex_folders">XEX Folders</string>
+    <string name="dialog_select_xex_title">Select XEX Folders (%1$d found)</string>
+    <string name="dialog_select_xex_add">Add</string>
+    <string name="dialog_select_xex_toggle_all">All / None</string>
+    <string name="error_no_xex_found">No XEX/XBE game folder found in the selected directory.</string>
+    <plurals name="xex_folders_added">
+        <item quantity="one">%d XEX folder added to queue</item>
+        <item quantity="other">%d XEX folders added to queue</item>
+    </plurals>
 
     <!-- Output -->
     <string name="output_summary_none">No folder selected</string>

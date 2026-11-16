@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-11-16
+
+### Summary
+Version 1.4.2 introduces dedicated **XEX/XBE Folder Selection (Single & Multi-Select)** on Android and full conversion support from extracted game folders to any target image or archive format (`ISO`, `ZAR`, `GOD`, `CCI`, `CSO`), alongside executable discovery and extension matching refinements in the C++ core.
+
+---
+
+### New Features & Improvements
+
+- **Android XEX/XBE Folder Selection UI (`activity_main.xml`, `MainActivity.kt`)**:
+  - Added a dedicated **XEX Folders** (`Cartelle XEX`) button in the Source panel right below **Choose ISO/XISO**, preserving the compact 50/50 side-by-side layout.
+  - Supports **single game folder selection** (cumulatively appending folders to the conversion queue with calculated total folder size and `[XEX]` badge).
+  - Supports **batch multi-folder selection**: when selecting a parent directory containing multiple extracted games (scanning up to 2 directory levels deep), a Material 3 multi-choice dialog lists all detected XEX/XBE game folders with sizes, checkboxes, and an **All / None** toggle for one-tap batch queueing.
+  - Added automatic parent-folder resolution if a user selects a `.xex` or `.xbe` file directly through the file picker.
+  - Automatically disables the `Extract (HDD)` output chip (and switches to `ISO` if selected) when the queue contains only extracted XEX/XBE folders, keeping all image/archive target formats (`ISO`, `ZAR`, `GOD`, `CCI`, `CSO`) active.
+- **Android Zero-Copy & SAF Directory Conversion Pipeline (`ConvertService.kt`, `PathUtils.kt`)**:
+  - Extended `PathUtils.resolveDocumentFile()` to resolve `file://` URIs, SAF Document URIs, and SAF Tree URIs for directories in Zero-Copy direct I/O mode.
+  - Added automatic nested game root discovery (`resolveGameDirectory`) and fallback `default.xex`/`default.xbe` staging (`ensureDefaultExecutable`) for game folders with non-standard executable filenames.
+  - Added safe output path isolation when the selected destination directory is identical to or nested inside the source XEX directory.
+  - Added recursive SAF directory caching (`copyDocumentDirToLocal`) with byte-accurate progress reporting when running without All Files Access permission.
+- **Core C++ Executable & Extension Discovery (`TitleHelper.cpp`, `InputHelper_FS.cpp`)**:
+  - `TitleHelper::initialize()` now falls back to any `.xex` or `.xbe` file in the input directory if `default.xex` or `default.xbe` is not present.
+  - `InputHelper::has_extension()` now performs exact case-insensitive file extension comparison via `path.extension()` instead of substring matching on the full filename.
+- **Multilingual Localization**:
+  - Updated string resources across all supported languages (EN, IT, ES, DE, FR, PT, ZH-CN).
+
+---
+
 ## [1.4.1] - 2026-09-09
 
 ### Summary

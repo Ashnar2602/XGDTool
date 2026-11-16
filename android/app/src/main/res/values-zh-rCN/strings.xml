@@ -14,6 +14,14 @@
         <item quantity="other">已选择 %d 个文件</item>
     </plurals>
     <string name="btn_select_files">选择要转换的 ISO/XISO</string>
+    <string name="btn_select_xex_folders">XEX 文件夹</string>
+    <string name="dialog_select_xex_title">选择 XEX 文件夹（找到 %1$d 个）</string>
+    <string name="dialog_select_xex_add">添加</string>
+    <string name="dialog_select_xex_toggle_all">全选 / 取消</string>
+    <string name="error_no_xex_found">在所选目录中未找到 XEX/XBE 游戏文件夹。</string>
+    <plurals name="xex_folders_added">
+        <item quantity="other">已将 %d 个 XEX 文件夹添加到队列</item>
+    </plurals>
 
     <string name="output_summary_none">未选择目标文件夹</string>
     <string name="output_summary_set">目标位置：%1$s</string>

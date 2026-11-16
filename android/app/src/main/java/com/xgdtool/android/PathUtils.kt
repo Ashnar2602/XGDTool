@@ -21,17 +21,30 @@ object PathUtils {
     }
 
     /**
-     * Resolves a SAF document Uri (for a single file) to a real filesystem File if accessible.
+     * Resolves a SAF document Uri, tree Uri, or file:// Uri to a real filesystem File if accessible.
      * Returns null if it cannot be resolved or accessed directly.
      */
     fun resolveDocumentFile(context: Context, uri: Uri): File? {
         if (!hasAllFilesAccess()) return null
 
         try {
-            val docId = if (DocumentsContract.isDocumentUri(context, uri)) {
-                DocumentsContract.getDocumentId(uri)
-            } else {
-                uri.path ?: return null
+            if (uri.scheme == "file") {
+                val path = uri.path ?: return null
+                val file = File(path)
+                return if (file.exists() && file.canRead()) file else null
+            }
+
+            val docId = when {
+                DocumentsContract.isDocumentUri(context, uri) -> {
+                    DocumentsContract.getDocumentId(uri)
+                }
+                else -> {
+                    try {
+                        DocumentsContract.getTreeDocumentId(uri)
+                    } catch (_: Exception) {
+                        uri.path ?: return null
+                    }
+                }
             }
 
             val file = resolveDocIdToFile(docId) ?: return null

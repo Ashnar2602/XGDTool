@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">XGDTool</string>
     <string name="app_author">by Ashnar2602</string>
-    <string name="app_version_display">1.4.0</string>
+    <string name="app_version_display">1.4.2</string>
     <string name="app_subtitle">Convertitore immagini Xbox / Xbox 360</string>
 
     <!-- Sections -->
@@ -26,6 +26,15 @@
         <item quantity="other">%d file selezionati</item>
     </plurals>
     <string name="btn_select_files">Scegli ISO/XISO</string>
+    <string name="btn_select_xex_folders">Cartelle XEX</string>
+    <string name="dialog_select_xex_title">Seleziona cartelle XEX (%1$d trovate)</string>
+    <string name="dialog_select_xex_add">Aggiungi</string>
+    <string name="dialog_select_xex_toggle_all">Tutti / Nessuno</string>
+    <string name="error_no_xex_found">Nessuna cartella di gioco XEX/XBE trovata nella cartella selezionata.</string>
+    <plurals name="xex_folders_added">
+        <item quantity="one">%d cartella XEX aggiunta alla coda</item>
+        <item quantity="other">%d cartelle XEX aggiunte alla coda</item>
+    </plurals>
 
     <!-- Output -->
     <string name="output_summary_none">Nessuna cartella</string>

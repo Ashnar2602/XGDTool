@@ -11,8 +11,8 @@ android {
         applicationId = "com.xgdtool.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.4.0"
+        versionCode = 5
+        versionName = "1.4.2"
 
         ndk {
             abiFilters += listOf("arm64-v8a")

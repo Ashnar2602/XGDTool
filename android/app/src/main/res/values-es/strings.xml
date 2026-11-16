@@ -15,6 +15,15 @@
         <item quantity="other">%d archivos seleccionados</item>
     </plurals>
     <string name="btn_select_files">Selecciona ISO/XISO a convertir</string>
+    <string name="btn_select_xex_folders">Carpetas XEX</string>
+    <string name="dialog_select_xex_title">Seleccionar carpetas XEX (%1$d encontradas)</string>
+    <string name="dialog_select_xex_add">Añadir</string>
+    <string name="dialog_select_xex_toggle_all">Todos / Ninguno</string>
+    <string name="error_no_xex_found">No se encontró ninguna carpeta de juego XEX/XBE en el directorio seleccionado.</string>
+    <plurals name="xex_folders_added">
+        <item quantity="one">%d carpeta XEX añadida a la cola</item>
+        <item quantity="other">%d carpetas XEX añadidas a la cola</item>
+    </plurals>
 
     <string name="output_summary_none">Ninguna carpeta de destino seleccionada</string>
     <string name="output_summary_set">Destino: %1$s</string>

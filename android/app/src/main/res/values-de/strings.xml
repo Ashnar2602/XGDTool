@@ -15,6 +15,15 @@
         <item quantity="other">%d Dateien ausgewählt</item>
     </plurals>
     <string name="btn_select_files">ISO/XISO zum Konvertieren auswählen</string>
+    <string name="btn_select_xex_folders">XEX-Ordner</string>
+    <string name="dialog_select_xex_title">XEX-Ordner auswählen (%1$d gefunden)</string>
+    <string name="dialog_select_xex_add">Hinzufügen</string>
+    <string name="dialog_select_xex_toggle_all">Alle / Keine</string>
+    <string name="error_no_xex_found">Kein XEX/XBE-Spielordner im ausgewählten Verzeichnis gefunden.</string>
+    <plurals name="xex_folders_added">
+        <item quantity="one">%d XEX-Ordner zur Warteschlange hinzugefügt</item>
+        <item quantity="other">%d XEX-Ordner zur Warteschlange hinzugefügt</item>
+    </plurals>
 
     <string name="output_summary_none">Kein Zielordner ausgewählt</string>
     <string name="output_summary_set">Ziel: %1$s</string>

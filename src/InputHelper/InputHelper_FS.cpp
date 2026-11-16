@@ -5,9 +5,10 @@
 
 bool InputHelper::has_extension(const std::filesystem::path& path, const std::string& extension) 
 {
-    if (path.filename().string().size() > extension.size()) 
+    std::string ext = path.extension().string();
+    if (ext.size() == extension.size()) 
     {
-        return StringUtils::case_insensitive_search(path.filename().string(), extension);
+        return StringUtils::case_insensitive_search(ext, extension);
     }
     return false;
 }

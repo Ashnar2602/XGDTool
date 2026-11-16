@@ -36,15 +36,31 @@ void TitleHelper::initialize()
     {
         for (const auto& entry : std::filesystem::directory_iterator(in_dir_path_)) 
         {
-            if (entry.is_regular_file() && StringUtils::case_insensitive_search(entry.path().string(), "default.xex")) 
+            if (entry.is_regular_file() && StringUtils::case_insensitive_search(entry.path().filename().string(), "default.xex")) 
             {
                 exe_tool = std::make_unique<ExeTool>(entry.path());
                 break;
             } 
-            else if (entry.is_regular_file() && StringUtils::case_insensitive_search(entry.path().string(), "default.xbe")) 
+            else if (entry.is_regular_file() && StringUtils::case_insensitive_search(entry.path().filename().string(), "default.xbe")) 
             {
                 exe_tool = std::make_unique<ExeTool>(entry.path());
                 break;
+            }
+        }
+
+        if (!exe_tool)
+        {
+            for (const auto& entry : std::filesystem::directory_iterator(in_dir_path_))
+            {
+                if (entry.is_regular_file())
+                {
+                    std::string ext = entry.path().extension().string();
+                    if (ext.size() == 4 && (StringUtils::case_insensitive_search(ext, ".xex") || StringUtils::case_insensitive_search(ext, ".xbe")))
+                    {
+                        exe_tool = std::make_unique<ExeTool>(entry.path());
+                        break;
+                    }
+                }
             }
         }
     }
