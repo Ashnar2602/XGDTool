@@ -39,7 +39,7 @@ jobs:
 
       - name: Install dependencies via vcpkg
         run: |
-          vcpkg install wxwidgets:x64-windows-static zlib:x64-windows-static openssl:x64-windows-static lz4:x64-windows-static cli11:x64-windows-static pugixml:x64-windows-static
+          vcpkg install lz4:x64-windows-static zstd:x64-windows-static nlohmann-json:x64-windows-static cli11:x64-windows-static openssl:x64-windows-static curl:x64-windows-static wxwidgets:x64-windows-static
 
       - name: Configure CMake (GUI)
         run: |
