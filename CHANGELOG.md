@@ -4,14 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [1.4.3] - 2026-11-17
 
-Fixed a disc-directory parsing error that could silently omit files during conversion or extraction. The issue was reproduced with Mobile Suit Gundam: Operation Troy, where missing shader files caused a disc-read error.
+### Summary
+Version 1.4.3 fixes a critical XDVDFS directory table padding comparison discovered during ZAR conversions that could silently omit valid directory branches and files, adds automated directory traversal regression tests, and rebuilds the Android ARM64 native core directly from source during CI releases.
 
-- Valid directory branches are preserved instead of being mistaken for padding.
-- Added regression checks for affected offsets, nested directories and executable discovery.
-- Android release builds now rebuild the native core from the current source.
-- Release pages now show version-specific notes directly and include the standalone Windows binaries.
+---
 
-Affected outputs must be recreated from a complete original source; updating the tool cannot restore files already missing from an archive.
+### Bug Fixes & Improvements
+
+- **XDVDFS 16-Bit Directory Padding Fix (`src/ImageReader/ImageReader.cpp`)**:
+  - **What changed**: Replaced `read_entry.header.left_offset == Xiso::PAD_BYTE` (`0x00FF`) with `read_entry.header.left_offset == Xiso::PAD_SHORT` (`0xFFFF`) in `ImageReader::populate_directory_entries()`.
+  - **Why**: `left_offset` in `Xiso::DirectoryEntry::Header` is a 16-bit (`uint16_t`) word offset (`byte_offset / 4`), whereas sector tail padding is filled with `0xFF` bytes (`0xFFFF` in 16-bit). Comparing against `0x00FF` treated any valid directory node whose left child resided at word offset `0x00FF` (`1020` bytes) as sector padding, skipping that entry and its entire subtree during ZAR/image conversion or extraction (reproduced with *Mobile Suit Gundam: Operation Troy*, where 6 shader files were omitted out of 654, causing a disc-read error).
+  - Previously converted archives affected by this offset must be recreated from a complete original source image.
+- **Directory Traversal Regression Suite (`tests/test_directory_entries.py`, `tests/CMakeLists.txt`)**:
+  - Added 7 CTest regression cases exercising the production `ImageReader` directory traversal against synthetic XDVDFS metadata (`0x00FF` subtree preservation, `0xFFFF` padding filtering, nested folders, executable discovery, byte total caching, and non-zero partition offsets).
+- **Android Native Core Rebuild in CI (`tools/build_android_native.sh`, `android/jni/CMakeLists.txt`)**:
+  - Added automated NDK r27c + vcpkg (`arm64-android`) compilation of `libxgdtool.so` in CI with ELF dependency and SHA-256 verification inside the packaged APK.
+- **Release Workflow Improvements (`.github/workflows/release.yml`)**:
+  - Configured GitHub Releases to publish version-specific release notes from `docs/releases/<tag>.md` instead of auto-generated diff links.
 
 ---
 

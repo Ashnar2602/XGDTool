@@ -53,11 +53,11 @@ mkdir -p -- "$VCPKG_DOWNLOADS" "$VCPKG_DEFAULT_BINARY_CACHE"
 
 # Accept only the exact checked-in patch, whether fresh or already applied.
 patch_file="$repo_root/cmake/zarchive_multithread.patch"
-if git -C external/ZArchive apply --reverse --check "$patch_file" 2>/dev/null; then
+if git -C external/ZArchive apply --reverse --check --ignore-space-change --ignore-whitespace "$patch_file" 2>/dev/null; then
     printf '%s\n' 'ZArchive multithread patch already applied.'
 else
-    git -C external/ZArchive apply --check "$patch_file"
-    git -C external/ZArchive apply "$patch_file"
+    git -C external/ZArchive apply --check --ignore-space-change --ignore-whitespace "$patch_file"
+    git -C external/ZArchive apply --ignore-space-change --ignore-whitespace --whitespace=nowarn "$patch_file"
 fi
 grep -q 'numThreads' external/ZArchive/include/zarchive/zarchivewriter.h || \
     fail 'ZArchive multithread support was not applied.'
