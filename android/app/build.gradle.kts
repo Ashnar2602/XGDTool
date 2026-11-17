@@ -11,8 +11,8 @@ android {
         applicationId = "com.xgdtool.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.4.2"
+        versionCode = 6
+        versionName = "1.4.3"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -45,9 +45,12 @@ android {
         viewBinding = true
     }
 
-    // libxgdtool.so is pre-built (cross-compiled from the XGDTool C++ core,
-    // see ../../XGDTool/android) and placed directly under src/main/jniLibs.
-    // No in-project native build step is wired up here.
+    // CI builds and strips the current core with tools/build_android_native.sh.
+    // Keep those exact verified bytes; local builds can still stage a library
+    // manually before running Gradle.
+    packaging {
+        jniLibs.keepDebugSymbols += "**/libxgdtool.so"
+    }
 }
 
 dependencies {

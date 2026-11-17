@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.3] - 2026-11-17
+
+Fixed a disc-directory parsing error that could silently omit files during conversion or extraction. The issue was reproduced with Mobile Suit Gundam: Operation Troy, where missing shader files caused a disc-read error.
+
+- Valid directory branches are preserved instead of being mistaken for padding.
+- Added regression checks for affected offsets, nested directories and executable discovery.
+- Android release builds now rebuild the native core from the current source.
+- Release pages now show version-specific notes directly and include the standalone Windows binaries.
+
+Affected outputs must be recreated from a complete original source; updating the tool cannot restore files already missing from an archive.
+
+---
+
 ## [1.4.2] - 2026-11-16
 
 ### Summary

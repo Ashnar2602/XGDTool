@@ -8,6 +8,8 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
+option(XGD_USE_VCPKG "Use imported dependency targets from the vcpkg toolchain" OFF)
+
 # Prefix where zstd / lz4 / OpenSSL / curl were cross-compiled for arm64-v8a
 if(NOT XGD_DEPS_PREFIX)
     set(XGD_DEPS_PREFIX "$ENV{HOME}/android/install-arm64")
@@ -86,27 +88,60 @@ add_library(xgdtool SHARED
     ${ANDROID_GLUE_SRC}
 )
 
-target_include_directories(xgdtool PRIVATE
-    ${SRC_DIR}
-    ${XGD_NLOHMANN_INCLUDE}
-    ${XGD_DEPS_PREFIX}/include
-)
+target_include_directories(xgdtool PRIVATE ${SRC_DIR})
 
-find_library(LZ4_LIB NAMES lz4 PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
-find_library(ZSTD_LIB NAMES zstd PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
-find_library(CURL_LIB NAMES curl PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
-find_library(SSL_LIB NAMES ssl PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
-find_library(CRYPTO_LIB NAMES crypto PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
+if(XGD_USE_VCPKG)
+    # Imported targets retain static curl/OpenSSL transitive dependencies.
+    # The manual-prefix build remains available for existing local toolchains.
+    find_package(lz4 CONFIG REQUIRED)
+    find_package(zstd CONFIG REQUIRED)
+    find_package(nlohmann_json CONFIG REQUIRED)
+    find_package(OpenSSL REQUIRED)
+    find_package(CURL REQUIRED)
 
-target_link_libraries(xgdtool PRIVATE
-    zarchive
-    ${CURL_LIB}
-    ${SSL_LIB}
-    ${CRYPTO_LIB}
-    ${ZSTD_LIB}
-    ${LZ4_LIB}
-    z
-    log
-)
+    if(TARGET zstd::libzstd_static)
+        set(XGD_ZSTD_TARGET zstd::libzstd_static)
+    elseif(TARGET zstd::libzstd)
+        set(XGD_ZSTD_TARGET zstd::libzstd)
+    elseif(TARGET zstd::zstd)
+        set(XGD_ZSTD_TARGET zstd::zstd)
+    else()
+        message(FATAL_ERROR "The zstd package did not provide a supported target")
+    endif()
+
+    target_link_libraries(xgdtool PRIVATE
+        zarchive
+        CURL::libcurl
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        ${XGD_ZSTD_TARGET}
+        lz4::lz4
+        nlohmann_json::nlohmann_json
+        z
+        log
+    )
+else()
+    target_include_directories(xgdtool PRIVATE
+        ${XGD_NLOHMANN_INCLUDE}
+        ${XGD_DEPS_PREFIX}/include
+    )
+
+    find_library(LZ4_LIB NAMES lz4 PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
+    find_library(ZSTD_LIB NAMES zstd PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
+    find_library(CURL_LIB NAMES curl PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
+    find_library(SSL_LIB NAMES ssl PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
+    find_library(CRYPTO_LIB NAMES crypto PATHS ${XGD_DEPS_PREFIX}/lib NO_DEFAULT_PATH)
+
+    target_link_libraries(xgdtool PRIVATE
+        zarchive
+        ${CURL_LIB}
+        ${SSL_LIB}
+        ${CRYPTO_LIB}
+        ${ZSTD_LIB}
+        ${LZ4_LIB}
+        z
+        log
+    )
+endif()
 
 target_compile_definitions(xgdtool PRIVATE ANDROID_BUILD=1)

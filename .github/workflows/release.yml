@@ -4,13 +4,18 @@ on:
   push:
     tags:
       - 'v*'
+  pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  directory-regression:
+    uses: ./.github/workflows/directory-tests.yml
+
   build-windows:
+    needs: directory-regression
     runs-on: windows-latest
 
     steps:
@@ -60,7 +65,9 @@ jobs:
       - name: Prepare Windows Release Artifacts
         shell: pwsh
         run: |
-          $tag = if ($env:GITHUB_REF -match "refs/tags/(.*)") { $matches[1] } else { "v1.4.0" }
+          $version = [regex]::Match((Get-Content "src/XGD.h" -Raw), '#define XGDTOOL_VERSION\s+"([^"]+)"').Groups[1].Value
+          if (-not $version) { throw "Missing XGDTool version" }
+          $tag = if ($env:GITHUB_REF -match "refs/tags/(.*)") { $matches[1] } else { "v$version" }
           New-Item -ItemType Directory -Force -Path dist
           New-Item -ItemType Directory -Force -Path artifacts
           Copy-Item "build\Release\XGDTool.exe" "dist\XGDTool-GUI.exe"
@@ -79,12 +86,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-binaries
-          path: |
-            dist/XGDTool-GUI.exe
-            dist/XGDTool-CLI.exe
-            XGDTool-*-Win64.zip
+          path: artifacts/
+          if-no-files-found: error
 
   build-linux-x86_64:
+    needs: directory-regression
     # Build on Ubuntu 22.04 to target glibc >= 2.35 for broad distro compatibility
     runs-on: ubuntu-22.04
 
@@ -157,6 +163,7 @@ jobs:
           path: linux_artifacts/
 
   build-linux-aarch64:
+    needs: directory-regression
     # Cross-compile aarch64 on Ubuntu 22.04 using gcc-aarch64-linux-gnu
     runs-on: ubuntu-22.04
 
@@ -239,17 +246,31 @@ jobs:
           path: linux_aarch64_artifacts/
 
   build-android:
+    needs: directory-regression
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install pinned Android native tools
+        run: sdkmanager 'ndk;27.2.12479018' 'platforms;android-34' 'build-tools;34.0.0'
+
+      - name: Build the current ARM64 native core
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+          bash tools/build_android_native.sh
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -260,6 +281,20 @@ jobs:
       - name: Build Android Release APK
         working-directory: android
         run: ./gradlew assembleRelease
+
+      - name: Verify the APK contains the rebuilt native core
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          from zipfile import ZipFile
+          staged = Path('android/app/src/main/jniLibs/arm64-v8a/libxgdtool.so').read_bytes()
+          with ZipFile('android/app/build/outputs/apk/release/app-release.apk') as apk:
+              packaged = apk.read('lib/arm64-v8a/libxgdtool.so')
+          if packaged != staged:
+              raise SystemExit('APK native library does not match the rebuilt core')
+          print('Packaged ARM64 core SHA-256:', hashlib.sha256(packaged).hexdigest())
+          PY
 
       - name: Copy & Rename APK
         run: |
@@ -276,8 +311,18 @@ jobs:
     needs: [build-windows, build-linux-x86_64, build-linux-aarch64, build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
 
     steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v4
+
+      - name: Require version-specific release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: test -s "docs/releases/$RELEASE_TAG.md"
+
       - name: Download all workflow artifacts
         uses: actions/download-artifact@v4
         with:
@@ -303,4 +348,5 @@ jobs:
             release_files/XGDTool-Android.apk
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body_path: docs/releases/${{ github.ref_name }}.md
+          generate_release_notes: false

@@ -26,6 +26,12 @@ Whether running on a multi-core Windows desktop or on an Android smartphone, XGD
 
 ---
 
+## v1.4.3: file integrity fix
+
+Fixes silently skipped files in disc-image directory trees, including the missing shader files reproduced in Gundam: Operation Troy. Recreate affected outputs from a complete original source. See the [1.4.3 changelog](CHANGELOG.md#143---2026-11-17).
+
+---
+
 ## Highlights of the v1.4 Engine & QoL Overhaul
 
 * **Vectorized & Hardware-Accelerated CRC32**:
