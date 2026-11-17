@@ -168,7 +168,7 @@ void ImageReader::populate_directory_entries(bool exe_only)
         read_bytes(current_position + sizeof(Xiso::DirectoryEntry::Header), filename_buffer.size(), filename_buffer.data());
         read_entry.filename.assign(filename_buffer.data(), filename_buffer.size());
 
-        if (read_entry.header.left_offset == Xiso::PAD_BYTE)
+        if (read_entry.header.left_offset == Xiso::PAD_SHORT)
         {
             continue;
         }

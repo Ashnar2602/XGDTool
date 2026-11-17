@@ -1,0 +1,30 @@
+name: Directory regression tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  directory-regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Configure metadata regression tests
+        run: cmake -S tests -B build_directory_tests -DCMAKE_BUILD_TYPE=Release
+      - name: Build production-method fixture
+        run: cmake --build build_directory_tests --config Release
+      - name: Check complete directory traversal
+        run: ctest --test-dir build_directory_tests -C Release --output-on-failure
