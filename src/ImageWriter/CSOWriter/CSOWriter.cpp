@@ -54,6 +54,16 @@ CSOWriter::~CSOWriter()
 
 void CSOWriter::init_cso_writer() 
 {
+    lz4f_prefs_.frameInfo.blockSizeID = LZ4F_default;
+    lz4f_prefs_.frameInfo.blockMode = LZ4F_blockIndependent;
+    lz4f_prefs_.frameInfo.contentChecksumFlag = LZ4F_noContentChecksum;
+    lz4f_prefs_.frameInfo.frameType = LZ4F_frame;
+    lz4f_prefs_.frameInfo.contentSize = 0ULL;
+    lz4f_prefs_.frameInfo.dictID = 0U;
+    lz4f_prefs_.frameInfo.blockChecksumFlag = LZ4F_noBlockChecksum;
+    lz4f_prefs_.autoFlush = 1;
+    lz4f_prefs_.favorDecSpeed = 0u;
+
     uint32_t num_threads = std::max(1u, std::min(std::thread::hardware_concurrency(), 32u));
 
     for (size_t i = 0; i < num_threads; ++i)

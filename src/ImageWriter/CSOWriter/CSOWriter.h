@@ -71,14 +71,7 @@ private:
 
     size_t lz4f_max_size_;
     std::vector<LZ4F_compressionContext_t> lz4f_ctx_pool_;
-    LZ4F_preferences_t lz4f_prefs_ = 
-    { 
-        { LZ4F_default, LZ4F_blockIndependent, LZ4F_noContentChecksum, LZ4F_frame, 0ULL, 0U, LZ4F_noBlockChecksum }, 
-        12, 
-        1, 
-        0u, 
-        { 0u, 0u, 0u } 
-    };
+    LZ4F_preferences_t lz4f_prefs_{};
 
     uint64_t prog_total_{0};
     uint64_t prog_processed_{0};
