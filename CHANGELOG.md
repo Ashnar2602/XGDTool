@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.4] - 2026-11-21
+
+### Summary
+Version 1.4.4 brings dedicated **XEX/XBE Folder-to-ISO** (and GoD/CCI/CSO/ZAR) conversion workflows to all Desktop targets (**Windows & Linux, CLI and GUI**), matching the Android experience with single and batch multi-folder selection, path normalization, and safety guards.
+
+---
+
+### New Features & Fixes
+
+- **Desktop GUI XEX Folder Picker (`src/GUI/MainFrame.cpp`, `src/GUI/MainFrame_Create.cpp`)**:
+  - Added a dedicated **XEX Folder** button beside **Browse** in the Input Path bar on both Windows and Linux.
+  - Supports single XEX/XBE folder selection and batch multi-selection (`wxMultiChoiceDialog`) when selecting a parent folder containing multiple games (scanning up to 2 levels deep).
+  - Automatically switches output format from `Extract` to `XISO` when XEX folders are added, prevents duplicate queue entries, and includes `*.xex;*.xbe` in the file picker wildcard.
+- **Desktop CLI & Core Path Hardening (`src/main.cpp`, `src/InputHelper/InputHelper.cpp`, `src/InputHelper/InputHelper_FS.cpp`)**:
+  - Added `--iso` as an alias for `--xiso` and explicit error reporting when no valid input files or XEX folders are found.
+  - Added `InputHelper::normalize_input_path()` to strip trailing directory slashes (fixing empty `.iso` filenames caused by shell tab-completion).
+  - Added automatic parent-directory resolution when a `.xex` file is passed directly, 2-level nested XEX directory discovery in batch folders, safe `remove_duplicate_infos()` / `is_batch_dir()` guards, and output redirection when the destination directory is inside the source XEX folder.
+- **Desktop Localization (`languages/*.xml`, `src/Utils/EmbeddedLanguages.h`)**:
+  - Added translations across all 6 desktop languages (EN, IT, DE, ES, FR, PT) and regenerated embedded language headers.
+
+---
+
 ## [1.4.3] - 2026-11-17
 
 ### Summary

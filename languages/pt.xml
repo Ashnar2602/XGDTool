@@ -20,6 +20,12 @@
     <string name="label_output_dir">Pasta de saída:</string>
     <string name="label_file_list">Lista de ficheiros:</string>
     <string name="btn_browse">Procurar</string>
+    <string name="btn_xex_folder">Pastas XEX</string>
+    <string name="dialog_select_xex_dir_title">Selecionar pasta de jogo XEX/XBE (ou pasta contendo vários jogos)</string>
+    <string name="dialog_select_xex_multi_title">Selecionar Pastas XEX</string>
+    <string name="dialog_select_xex_multi_caption">Selecione as pastas de jogos XEX/XBE para adicionar à fila:</string>
+    <string name="msg_no_xex_found">Nenhuma pasta de jogo XEX/XBE encontrada no diretório selecionado</string>
+    <string name="tooltip_browse_xex">Selecionar uma pasta de jogo XEX/XBE extraída ou uma pasta com vários jogos</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nome do ficheiro</string>
     <string name="col_status">Estado</string>

@@ -51,6 +51,7 @@ private:
     {
         wxTextCtrl* field{nullptr};
         wxButton* button{nullptr};
+        wxButton* xex_button{nullptr};
     };
 
     struct OutFormatRadioButtons
@@ -163,6 +164,7 @@ private:
     std::atomic<uint64_t> total_files_count_{1};
 
     void on_pick_input_path(wxCommandEvent& event);
+    void on_pick_xex_folders(wxCommandEvent& event);
     void on_pick_output_path(wxCommandEvent& event);
     void on_process_all(wxCommandEvent& event);
     void on_verify_image(wxCommandEvent& event);

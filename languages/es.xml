@@ -20,6 +20,12 @@
     <string name="label_output_dir">Carpeta de salida:</string>
     <string name="label_file_list">Lista de archivos:</string>
     <string name="btn_browse">Examinar</string>
+    <string name="btn_xex_folder">Carpetas XEX</string>
+    <string name="dialog_select_xex_dir_title">Seleccionar carpeta de juego XEX/XBE (o carpeta con varios juegos)</string>
+    <string name="dialog_select_xex_multi_title">Seleccionar Carpetas XEX</string>
+    <string name="dialog_select_xex_multi_caption">Seleccione las carpetas de juegos XEX/XBE para añadir a la cola:</string>
+    <string name="msg_no_xex_found">No se encontró ninguna carpeta de juego XEX/XBE en el directorio seleccionado</string>
+    <string name="tooltip_browse_xex">Seleccionar una carpeta de juego XEX/XBE extraída o una carpeta con varios juegos</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nombre de archivo</string>
     <string name="col_status">Estado</string>

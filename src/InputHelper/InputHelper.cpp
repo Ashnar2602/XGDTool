@@ -40,73 +40,111 @@ InputHelper::InputHelper(std::filesystem::path in_path, std::filesystem::path ou
     :   output_directory_(out_directory), 
         output_settings_((output_settings.auto_format != AutoFormat::NONE) ? get_auto_output_settings(output_settings.auto_format) : output_settings)
 {
-    add_input(in_path);
+    std::filesystem::path normalized_in = normalize_input_path(in_path);
+    add_input(normalized_in);
 
     if (output_directory_.empty()) 
     {
-        output_directory_ = in_path.parent_path() / "XGDTool_Output";
+        output_directory_ = normalized_in.parent_path() / "XGDTool_Output";
     }
 
-    output_directory_ = std::filesystem::absolute(output_directory_);
+    output_directory_ = normalize_input_path(std::filesystem::absolute(output_directory_));
 }
 
 InputHelper::InputHelper(std::vector<std::filesystem::path> in_paths, std::filesystem::path out_directory, OutputSettings output_settings)
     :   output_directory_(out_directory), 
         output_settings_((output_settings.auto_format != AutoFormat::NONE) ? get_auto_output_settings(output_settings.auto_format) : output_settings)
 {
+    std::filesystem::path first_normalized;
     for (const auto& in_path : in_paths) 
     {
-        add_input(in_path);
+        std::filesystem::path normalized_in = normalize_input_path(in_path);
+        if (first_normalized.empty() && !normalized_in.empty())
+        {
+            first_normalized = normalized_in;
+        }
+        add_input(normalized_in);
     }
 
-    if (output_directory_.empty()) 
+    if (output_directory_.empty() && !first_normalized.empty()) 
     {
-        output_directory_ = in_paths.front().parent_path() / "XGDTool_Output";
+        output_directory_ = first_normalized.parent_path() / "XGDTool_Output";
     }
 
-    output_directory_ = std::filesystem::absolute(output_directory_);
+    if (!output_directory_.empty())
+    {
+        output_directory_ = normalize_input_path(std::filesystem::absolute(output_directory_));
+    }
 }
 
 void InputHelper::add_input(const std::filesystem::path& in_path) 
 {
-    if (in_path.empty() || !std::filesystem::exists(in_path)) 
+    std::filesystem::path normalized = normalize_input_path(in_path);
+    if (normalized.empty() || !std::filesystem::exists(normalized)) 
     {
         return;
     }
 
-    FileType in_file_type = get_filetype(in_path);
+    if (std::filesystem::is_regular_file(normalized) && has_extension(normalized, ".xex"))
+    {
+        std::filesystem::path parent_dir = normalize_input_path(normalized.parent_path());
+        if (!parent_dir.empty() && std::filesystem::is_directory(parent_dir) && is_extracted_dir(parent_dir))
+        {
+            input_infos_.push_back({ FileType::DIR, { parent_dir } });
+            remove_duplicate_infos(input_infos_);
+        }
+        return;
+    }
+
+    FileType in_file_type = get_filetype(normalized);
 
     if (in_file_type == FileType::UNKNOWN) 
     {
-        if (!is_batch_dir(in_path)) 
+        if (!is_batch_dir(normalized)) 
         {
             return;
         }
 
-        for (const auto& entry : std::filesystem::directory_iterator(in_path)) 
+        for (const auto& entry : std::filesystem::directory_iterator(normalized)) 
         {
-            if ((in_file_type = get_filetype(entry.path())) != FileType::UNKNOWN) 
+            std::filesystem::path entry_path = normalize_input_path(entry.path());
+            if ((in_file_type = get_filetype(entry_path)) != FileType::UNKNOWN) 
             {
-                if (entry.is_regular_file() && !is_part_2_file(entry.path()))
+                if (entry.is_regular_file() && !is_part_2_file(entry_path))
                 {
-                    input_infos_.push_back({ in_file_type, find_split_filepaths(entry.path()) });
+                    input_infos_.push_back({ in_file_type, find_split_filepaths(entry_path) });
                 }
                 else if (entry.is_directory())
                 {
-                    input_infos_.push_back({ in_file_type, { entry.path() } });
+                    input_infos_.push_back({ in_file_type, { entry_path } });
+                }
+            }
+            else if (entry.is_directory())
+            {
+                // Support 1 extra level of nested extracted XEX/XBE game folders (e.g. Games/Title/Title/default.xex)
+                for (const auto& nested : std::filesystem::directory_iterator(entry_path))
+                {
+                    if (nested.is_directory())
+                    {
+                        std::filesystem::path nested_path = normalize_input_path(nested.path());
+                        if (is_extracted_dir(nested_path))
+                        {
+                            input_infos_.push_back({ FileType::DIR, { nested_path } });
+                        }
+                    }
                 }
             }
         }
     }
     else 
     {
-        if (std::filesystem::is_regular_file(in_path)) 
+        if (std::filesystem::is_regular_file(normalized)) 
         {
-            input_infos_.push_back({ in_file_type, find_split_filepaths(in_path) });
+            input_infos_.push_back({ in_file_type, find_split_filepaths(normalized) });
         } 
-        else if (std::filesystem::is_directory(in_path))
+        else if (std::filesystem::is_directory(normalized))
         {
-            input_infos_.push_back({ in_file_type, { in_path } });
+            input_infos_.push_back({ in_file_type, { normalized } });
         }
     }
 
@@ -261,7 +299,25 @@ std::vector<std::filesystem::path> InputHelper::create_image(InputInfo& input_in
             break;
     }
 
-    std::filesystem::path out_path = get_output_path(output_directory_, *title_helper, orig_input_path);
+    std::filesystem::path effective_out_dir = output_directory_;
+    if (input_info.file_type == FileType::DIR && !effective_out_dir.empty())
+    {
+        std::error_code ec;
+        std::filesystem::path in_abs = normalize_input_path(std::filesystem::weakly_canonical(input_info.paths.front(), ec));
+        std::filesystem::path out_abs = normalize_input_path(std::filesystem::weakly_canonical(effective_out_dir, ec));
+        if (!in_abs.empty() && !out_abs.empty())
+        {
+            std::string in_str = in_abs.generic_string();
+            std::string out_str = out_abs.generic_string();
+            if (out_str == in_str || (out_str.size() > in_str.size() && out_str.compare(0, in_str.size(), in_str) == 0 && out_str[in_str.size()] == '/'))
+            {
+                effective_out_dir = in_abs.parent_path() / "XGDTool_Output";
+                XGDLog(Normal) << "Output directory is inside input XEX folder; redirecting output to: " << effective_out_dir.string() << XGDLog::Endl;
+            }
+        }
+    }
+
+    std::filesystem::path out_path = get_output_path(effective_out_dir, *title_helper, orig_input_path);
 
     switch (input_info.file_type) 
     {

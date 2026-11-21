@@ -82,6 +82,12 @@
     <string name="choose_selection_type_caption">Sélectionner</string>
     <string name="choice_select_files">Sélectionner des fichiers</string>
     <string name="choice_select_dir">Sélectionner un dossier</string>
+    <string name="btn_xex_folder">Dossiers XEX</string>
+    <string name="dialog_select_xex_dir_title">Sélectionner un dossier de jeu XEX/XBE (ou un dossier contenant plusieurs jeux)</string>
+    <string name="dialog_select_xex_multi_title">Sélectionner les dossiers XEX</string>
+    <string name="dialog_select_xex_multi_caption">Sélectionnez les dossiers de jeux XEX/XBE à ajouter à la file :</string>
+    <string name="msg_no_xex_found">Aucun dossier de jeu XEX/XBE trouvé dans le répertoire sélectionné</string>
+    <string name="tooltip_browse_xex">Sélectionner un dossier de jeu XEX/XBE extrait ou un dossier contenant plusieurs jeux</string>
     <string name="dialog_select_files_title">Sélectionner un ou plusieurs fichiers</string>
     <string name="dialog_select_dir_title">Sélectionner un dossier</string>
     <string name="dialog_select_out_dir_title">Sélectionner le dossier de sortie (GoD/Jeu/Batch)</string>

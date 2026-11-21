@@ -20,6 +20,12 @@
     <string name="label_output_dir">Output Directory:</string>
     <string name="label_file_list">File List:</string>
     <string name="btn_browse">Browse</string>
+    <string name="btn_xex_folder">XEX Folder</string>
+    <string name="dialog_select_xex_dir_title">Select an XEX/XBE game folder (or a parent folder with multiple games)</string>
+    <string name="dialog_select_xex_multi_title">Select XEX Folders</string>
+    <string name="dialog_select_xex_multi_caption">Select the XEX/XBE game folders to add to the queue:</string>
+    <string name="msg_no_xex_found">No XEX/XBE game folder found in the selected directory</string>
+    <string name="tooltip_browse_xex">Select an extracted XEX/XBE game folder or a parent folder with multiple games</string>
     <string name="col_format">Format</string>
     <string name="col_filename">Filename</string>
     <string name="col_status">Status</string>
@@ -86,7 +92,7 @@
     <string name="dialog_select_files_title">Select file(s)</string>
     <string name="dialog_select_dir_title">Select a directory</string>
     <string name="dialog_select_out_dir_title">Select a GoD/Game/Batch directory</string>
-    <string name="wildcard_xbox_images">Xbox image files (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|All files (*.*)|*.*</string>
+    <string name="wildcard_xbox_images">Xbox images &amp; XEX (*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe)|*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe|All files (*.*)|*.*</string>
     <string name="msg_no_input_files">No input files selected</string>
     <string name="msg_no_output_dir">No output directory selected</string>
     <string name="msg_no_valid_files">No valid files found in selected input path</string>

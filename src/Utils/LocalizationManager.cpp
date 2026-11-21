@@ -51,6 +51,12 @@ void LocalizationManager::load_default_fallback_strings()
     strings_["label_output_dir"] = "Output Directory:";
     strings_["label_file_list"] = "File List:";
     strings_["btn_browse"] = "Browse";
+    strings_["btn_xex_folder"] = "XEX Folder";
+    strings_["dialog_select_xex_dir_title"] = "Select an XEX/XBE game folder (or a parent folder with multiple games)";
+    strings_["dialog_select_xex_multi_title"] = "Select XEX Folders";
+    strings_["dialog_select_xex_multi_caption"] = "Select the XEX/XBE game folders to add to the queue:";
+    strings_["msg_no_xex_found"] = "No XEX/XBE game folder found in the selected directory";
+    strings_["tooltip_browse_xex"] = "Select an extracted XEX/XBE game folder or a parent folder with multiple games";
     strings_["col_format"] = "Format";
     strings_["col_filename"] = "Filename";
     strings_["label_status"] = "Status:";
@@ -99,7 +105,7 @@ void LocalizationManager::load_default_fallback_strings()
     strings_["dialog_select_files_title"] = "Select file(s)";
     strings_["dialog_select_dir_title"] = "Select a directory";
     strings_["dialog_select_out_dir_title"] = "Select a GoD/Game/Batch directory";
-    strings_["wildcard_xbox_images"] = "Xbox image files (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|All files (*.*)|*.*";
+    strings_["wildcard_xbox_images"] = "Xbox images & XEX (*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe)|*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe|All files (*.*)|*.*";
     strings_["msg_no_input_files"] = "No input files selected";
     strings_["msg_no_output_dir"] = "No output directory selected";
     strings_["msg_no_valid_files"] = "No valid files found in selected input path";

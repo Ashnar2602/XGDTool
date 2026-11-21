@@ -37,6 +37,9 @@ public:
     //Return failed input paths after processing or canceling
     const std::vector<std::filesystem::path>& failed_inputs() { return failed_inputs_; }; 
 
+    static std::filesystem::path normalize_input_path(const std::filesystem::path& path);
+    static std::vector<std::filesystem::path> find_xex_directories(const std::filesystem::path& root_dir, int max_depth = 2);
+
 private:
     std::vector<InputInfo> input_infos_;
     OutputSettings output_settings_;

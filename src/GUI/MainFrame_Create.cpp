@@ -152,7 +152,12 @@ wxBoxSizer* MainFrame::create_input_picker_box(wxPanel* panel)
     input_picker_.button->SetToolTip("Select the input file or directory to process");
     input_picker_.button->Bind(wxEVT_BUTTON, &MainFrame::on_pick_input_path, this);
 
+    input_picker_.xex_button = new wxButton(panel, wxID_ANY, "XEX Folder");
+    input_picker_.xex_button->SetToolTip("Select an extracted XEX/XBE game folder or a parent folder with multiple XEX games");
+    input_picker_.xex_button->Bind(wxEVT_BUTTON, &MainFrame::on_pick_xex_folders, this);
+
     input_sizer->Add(input_picker_.button, 0, wxLEFT, 5);
+    input_sizer->Add(input_picker_.xex_button, 0, wxLEFT, 5);
 
     return input_sizer;
 }

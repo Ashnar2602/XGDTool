@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     auto* output_format_group = app.add_option_group(I18n::get("cli_group_output_format"))->require_option(1);
 
     output_format_group->add_flag_function("--extract",  [&](int64_t) { output_settings.file_type = FileType::DIR; }, I18n::get("cli_flag_extract"));
-    output_format_group->add_flag_function("--xiso",     [&](int64_t) { output_settings.file_type = FileType::ISO; }, I18n::get("cli_flag_xiso"));
+    output_format_group->add_flag_function("--xiso,--iso", [&](int64_t) { output_settings.file_type = FileType::ISO; }, I18n::get("cli_flag_xiso"));
     output_format_group->add_flag_function("--god",      [&](int64_t) { output_settings.file_type = FileType::GoD; }, I18n::get("cli_flag_god"));
     output_format_group->add_flag_function("--cci",      [&](int64_t) { output_settings.file_type = FileType::CCI; }, I18n::get("cli_flag_cci"));
     output_format_group->add_flag_function("--cso",      [&](int64_t) { output_settings.file_type = FileType::CSO; }, I18n::get("cli_flag_cso"));
@@ -125,7 +125,14 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    InputHelper input_helper(std::filesystem::absolute(in_path), out_directory, output_settings);
+    std::filesystem::path normalized_in = InputHelper::normalize_input_path(std::filesystem::absolute(in_path));
+    InputHelper input_helper(normalized_in, out_directory, output_settings);
+    if (input_helper.input_infos().empty())
+    {
+        XGDLog(Error) << I18n::get("msg_no_valid_files") << XGDLog::Endl;
+        return 1;
+    }
+
     input_helper.process_all();
 
     for (const auto& failed_input : input_helper.failed_inputs()) 

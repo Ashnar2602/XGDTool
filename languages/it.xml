@@ -20,6 +20,12 @@
     <string name="label_output_dir">Cartella di Output:</string>
     <string name="label_file_list">Lista File:</string>
     <string name="btn_browse">Sfoglia</string>
+    <string name="btn_xex_folder">Cartelle XEX</string>
+    <string name="dialog_select_xex_dir_title">Seleziona una cartella di gioco XEX/XBE (o una cartella contenente più giochi)</string>
+    <string name="dialog_select_xex_multi_title">Seleziona Cartelle XEX</string>
+    <string name="dialog_select_xex_multi_caption">Seleziona le cartelle di gioco XEX/XBE da aggiungere alla coda:</string>
+    <string name="msg_no_xex_found">Nessuna cartella di gioco XEX/XBE trovata nella cartella selezionata</string>
+    <string name="tooltip_browse_xex">Seleziona una cartella di gioco XEX/XBE estratta o una cartella con più giochi</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nome file</string>
     <string name="col_status">Stato</string>
@@ -86,7 +92,7 @@
     <string name="dialog_select_files_title">Seleziona uno o più file</string>
     <string name="dialog_select_dir_title">Seleziona una cartella</string>
     <string name="dialog_select_out_dir_title">Seleziona cartella di destinazione (GoD/Gioco/Batch)</string>
-    <string name="wildcard_xbox_images">File immagine Xbox (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Tutti i file (*.*)|*.*</string>
+    <string name="wildcard_xbox_images">Immagini Xbox e XEX (*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe)|*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe|Tutti i file (*.*)|*.*</string>
     <string name="msg_no_input_files">Nessun file di input selezionato</string>
     <string name="msg_no_output_dir">Nessuna cartella di output selezionata</string>
     <string name="msg_no_valid_files">Nessun file valido trovato nel percorso selezionato</string>

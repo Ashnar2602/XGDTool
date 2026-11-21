@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <wx/notifmsg.h>
 
@@ -113,16 +114,35 @@ void MainFrame::handle_dropped_files(const wxArrayString& files)
         return;
     }
 
+    bool added_xex_dir = false;
     for (const auto& info : temp_helper.input_infos())
     {
+        std::filesystem::path primary = info.paths.front();
+        bool already_present = std::find(input_paths_.begin(), input_paths_.end(), primary) != input_paths_.end();
+        if (already_present)
+        {
+            continue;
+        }
+
         for (const auto& p : info.paths)
         {
             input_paths_.push_back(p);
         }
 
+        if (info.file_type == FileType::DIR)
+        {
+            added_xex_dir = true;
+        }
+
         long item_index = file_list_->InsertItem(file_list_->GetItemCount(), get_file_type_string(info.file_type));
-        file_list_->SetItem(item_index, 1, info.paths.front().filename().string());
+        file_list_->SetItem(item_index, 1, wxString::FromUTF8(primary.filename().string().c_str()));
         file_list_->SetItem(item_index, 2, wxString::FromUTF8(I18n::get("status_queued").c_str()));
+    }
+
+    if (added_xex_dir && out_format_rbs_.extract && out_format_rbs_.extract->GetValue() && out_format_rbs_.iso)
+    {
+        out_format_rbs_.iso->SetValue(true);
+        update_controls_state();
     }
 
     input_picker_.field->Clear();
@@ -472,6 +492,74 @@ void MainFrame::on_pick_input_path(wxCommandEvent& event)
     }
 }
 
+void MainFrame::on_pick_xex_folders(wxCommandEvent& event)
+{
+    wxDirDialog open_dir_dialog(
+        this,
+        wxString::FromUTF8(I18n::get("dialog_select_xex_dir_title").c_str()),
+        "",
+        wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST
+    );
+
+    if (open_dir_dialog.ShowModal() != wxID_OK)
+    {
+        return;
+    }
+
+    std::filesystem::path selected_dir(open_dir_dialog.GetPath().ToStdWstring());
+    std::vector<std::filesystem::path> xex_dirs = InputHelper::find_xex_directories(selected_dir, 2);
+
+    if (xex_dirs.empty())
+    {
+        wxLogMessage(wxString::FromUTF8(I18n::get("msg_no_xex_found").c_str()));
+        return;
+    }
+
+    wxArrayString paths_to_add;
+    if (xex_dirs.size() == 1)
+    {
+        paths_to_add.Add(wxString::FromUTF8(xex_dirs.front().string().c_str()));
+    }
+    else
+    {
+        wxArrayString choices;
+        wxArrayInt preselected;
+        for (size_t i = 0; i < xex_dirs.size(); ++i)
+        {
+            choices.Add(wxString::FromUTF8(xex_dirs[i].filename().string().c_str()));
+            preselected.Add(static_cast<int>(i));
+        }
+
+        wxMultiChoiceDialog multi_dlg(
+            this,
+            wxString::FromUTF8(I18n::get("dialog_select_xex_multi_caption").c_str()),
+            wxString::FromUTF8(I18n::get("dialog_select_xex_multi_title").c_str()),
+            choices
+        );
+        multi_dlg.SetSelections(preselected);
+
+        if (multi_dlg.ShowModal() != wxID_OK)
+        {
+            return;
+        }
+
+        wxArrayInt selections = multi_dlg.GetSelections();
+        for (size_t i = 0; i < selections.GetCount(); ++i)
+        {
+            int idx = selections[i];
+            if (idx >= 0 && static_cast<size_t>(idx) < xex_dirs.size())
+            {
+                paths_to_add.Add(wxString::FromUTF8(xex_dirs[idx].string().c_str()));
+            }
+        }
+    }
+
+    if (!paths_to_add.IsEmpty())
+    {
+        handle_dropped_files(paths_to_add);
+    }
+}
+
 void MainFrame::on_pick_output_path(wxCommandEvent& event)
 {
     wxDirDialog open_dir_dialog(this, wxString::FromUTF8(I18n::get("dialog_select_out_dir_title").c_str()), "", wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
@@ -607,7 +695,7 @@ std::string MainFrame::get_file_type_string(FileType type)
         case FileType::ZAR:
             return "ZAR";
         case FileType::DIR:
-            return "DIR";
+            return "XEX/DIR";
         case FileType::XBE:
             return "XBE";
         default:
@@ -662,6 +750,9 @@ void MainFrame::update_button_states()
     if (process_buttons_.verify) process_buttons_.verify->Enable(!processing);
     process_buttons_.pause->Enable(processing);
     process_buttons_.cancel->Enable(processing);
+    if (input_picker_.button) input_picker_.button->Enable(!processing);
+    if (input_picker_.xex_button) input_picker_.xex_button->Enable(!processing);
+    if (output_picker_.button) output_picker_.button->Enable(!processing);
 
     out_format_rbs_.iso->Enable(!processing);
     out_format_rbs_.god->Enable(!processing);
@@ -858,6 +949,10 @@ void MainFrame::update_ui_language()
     if (input_picker_.button) {
         input_picker_.button->SetLabel(wxString::FromUTF8(I18n::get("btn_browse").c_str()));
         input_picker_.button->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_browse_input").c_str()));
+    }
+    if (input_picker_.xex_button) {
+        input_picker_.xex_button->SetLabel(wxString::FromUTF8(I18n::get("btn_xex_folder").c_str()));
+        input_picker_.xex_button->SetToolTip(wxString::FromUTF8(I18n::get("tooltip_browse_xex").c_str()));
     }
     if (output_picker_.button) {
         output_picker_.button->SetLabel(wxString::FromUTF8(I18n::get("btn_browse").c_str()));

@@ -20,6 +20,12 @@
     <string name="label_output_dir">Ausgabeverzeichnis:</string>
     <string name="label_file_list">Dateiliste:</string>
     <string name="btn_browse">Durchsuchen</string>
+    <string name="btn_xex_folder">XEX-Ordner</string>
+    <string name="dialog_select_xex_dir_title">XEX/XBE-Spielordner auswählen (oder übergeordneten Ordner mit mehreren Spielen)</string>
+    <string name="dialog_select_xex_multi_title">XEX-Ordner auswählen</string>
+    <string name="dialog_select_xex_multi_caption">Wählen Sie die XEX/XBE-Spielordner für die Warteschlange aus:</string>
+    <string name="msg_no_xex_found">Kein XEX/XBE-Spielordner im ausgewählten Verzeichnis gefunden</string>
+    <string name="tooltip_browse_xex">Entpackten XEX/XBE-Spielordner oder Ordner mit mehreren Spielen auswählen</string>
     <string name="col_format">Format</string>
     <string name="col_filename">Dateiname</string>
     <string name="col_status">Status</string>

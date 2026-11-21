@@ -27,6 +27,12 @@ inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="u
     <string name="label_output_dir">Output Directory:</string>
     <string name="label_file_list">File List:</string>
     <string name="btn_browse">Browse</string>
+    <string name="btn_xex_folder">XEX Folder</string>
+    <string name="dialog_select_xex_dir_title">Select an XEX/XBE game folder (or a parent folder with multiple games)</string>
+    <string name="dialog_select_xex_multi_title">Select XEX Folders</string>
+    <string name="dialog_select_xex_multi_caption">Select the XEX/XBE game folders to add to the queue:</string>
+    <string name="msg_no_xex_found">No XEX/XBE game folder found in the selected directory</string>
+    <string name="tooltip_browse_xex">Select an extracted XEX/XBE game folder or a parent folder with multiple games</string>
     <string name="col_format">Format</string>
     <string name="col_filename">Filename</string>
     <string name="col_status">Status</string>
@@ -93,7 +99,7 @@ inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="u
     <string name="dialog_select_files_title">Select file(s)</string>
     <string name="dialog_select_dir_title">Select a directory</string>
     <string name="dialog_select_out_dir_title">Select a GoD/Game/Batch directory</string>
-    <string name="wildcard_xbox_images">Xbox image files (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|All files (*.*)|*.*</string>
+    <string name="wildcard_xbox_images">Xbox images &amp; XEX (*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe)|*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe|All files (*.*)|*.*</string>
     <string name="msg_no_input_files">No input files selected</string>
     <string name="msg_no_output_dir">No output directory selected</string>
     <string name="msg_no_valid_files">No valid files found in selected input path</string>
@@ -181,7 +187,8 @@ inline constexpr std::string_view XML_EN = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">Writing CSO file</string>
     <string name="stage_writing_cci">Writing CCI archive</string>
     <string name="stage_extracting">Extracting files</string>
-</resources>)xml";
+</resources>
+)xml";
 
 inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -205,6 +212,12 @@ inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="u
     <string name="label_output_dir">Cartella di Output:</string>
     <string name="label_file_list">Lista File:</string>
     <string name="btn_browse">Sfoglia</string>
+    <string name="btn_xex_folder">Cartelle XEX</string>
+    <string name="dialog_select_xex_dir_title">Seleziona una cartella di gioco XEX/XBE (o una cartella contenente più giochi)</string>
+    <string name="dialog_select_xex_multi_title">Seleziona Cartelle XEX</string>
+    <string name="dialog_select_xex_multi_caption">Seleziona le cartelle di gioco XEX/XBE da aggiungere alla coda:</string>
+    <string name="msg_no_xex_found">Nessuna cartella di gioco XEX/XBE trovata nella cartella selezionata</string>
+    <string name="tooltip_browse_xex">Seleziona una cartella di gioco XEX/XBE estratta o una cartella con più giochi</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nome file</string>
     <string name="col_status">Stato</string>
@@ -271,7 +284,7 @@ inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="u
     <string name="dialog_select_files_title">Seleziona uno o più file</string>
     <string name="dialog_select_dir_title">Seleziona una cartella</string>
     <string name="dialog_select_out_dir_title">Seleziona cartella di destinazione (GoD/Gioco/Batch)</string>
-    <string name="wildcard_xbox_images">File immagine Xbox (*.iso;*.cci;*.cso;*.zar)|*.iso;*.cci;*.cso;*.zar|Tutti i file (*.*)|*.*</string>
+    <string name="wildcard_xbox_images">Immagini Xbox e XEX (*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe)|*.iso;*.cci;*.cso;*.zar;*.xex;*.xbe|Tutti i file (*.*)|*.*</string>
     <string name="msg_no_input_files">Nessun file di input selezionato</string>
     <string name="msg_no_output_dir">Nessuna cartella di output selezionata</string>
     <string name="msg_no_valid_files">Nessun file valido trovato nel percorso selezionato</string>
@@ -359,7 +372,8 @@ inline constexpr std::string_view XML_IT = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">Scrittura file CSO</string>
     <string name="stage_writing_cci">Scrittura archivio CCI</string>
     <string name="stage_extracting">Estrazione file</string>
-</resources>)xml";
+</resources>
+)xml";
 
 inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -383,6 +397,12 @@ inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="u
     <string name="label_output_dir">Ausgabeverzeichnis:</string>
     <string name="label_file_list">Dateiliste:</string>
     <string name="btn_browse">Durchsuchen</string>
+    <string name="btn_xex_folder">XEX-Ordner</string>
+    <string name="dialog_select_xex_dir_title">XEX/XBE-Spielordner auswählen (oder übergeordneten Ordner mit mehreren Spielen)</string>
+    <string name="dialog_select_xex_multi_title">XEX-Ordner auswählen</string>
+    <string name="dialog_select_xex_multi_caption">Wählen Sie die XEX/XBE-Spielordner für die Warteschlange aus:</string>
+    <string name="msg_no_xex_found">Kein XEX/XBE-Spielordner im ausgewählten Verzeichnis gefunden</string>
+    <string name="tooltip_browse_xex">Entpackten XEX/XBE-Spielordner oder Ordner mit mehreren Spielen auswählen</string>
     <string name="col_format">Format</string>
     <string name="col_filename">Dateiname</string>
     <string name="col_status">Status</string>
@@ -537,7 +557,8 @@ inline constexpr std::string_view XML_DE = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">CSO-Datei wird geschrieben</string>
     <string name="stage_writing_cci">CCI-Archiv wird geschrieben</string>
     <string name="stage_extracting">Dateien werden extrahiert</string>
-</resources>)xml";
+</resources>
+)xml";
 
 inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -623,6 +644,12 @@ inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="u
     <string name="choose_selection_type_caption">Sélectionner</string>
     <string name="choice_select_files">Sélectionner des fichiers</string>
     <string name="choice_select_dir">Sélectionner un dossier</string>
+    <string name="btn_xex_folder">Dossiers XEX</string>
+    <string name="dialog_select_xex_dir_title">Sélectionner un dossier de jeu XEX/XBE (ou un dossier contenant plusieurs jeux)</string>
+    <string name="dialog_select_xex_multi_title">Sélectionner les dossiers XEX</string>
+    <string name="dialog_select_xex_multi_caption">Sélectionnez les dossiers de jeux XEX/XBE à ajouter à la file :</string>
+    <string name="msg_no_xex_found">Aucun dossier de jeu XEX/XBE trouvé dans le répertoire sélectionné</string>
+    <string name="tooltip_browse_xex">Sélectionner un dossier de jeu XEX/XBE extrait ou un dossier contenant plusieurs jeux</string>
     <string name="dialog_select_files_title">Sélectionner un ou plusieurs fichiers</string>
     <string name="dialog_select_dir_title">Sélectionner un dossier</string>
     <string name="dialog_select_out_dir_title">Sélectionner le dossier de sortie (GoD/Jeu/Batch)</string>
@@ -714,7 +741,8 @@ inline constexpr std::string_view XML_FR = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">Écriture du fichier CSO</string>
     <string name="stage_writing_cci">Écriture de l'archive CCI</string>
     <string name="stage_extracting">Extraction des fichiers</string>
-</resources>)xml";
+</resources>
+)xml";
 
 inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -738,6 +766,12 @@ inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="u
     <string name="label_output_dir">Carpeta de salida:</string>
     <string name="label_file_list">Lista de archivos:</string>
     <string name="btn_browse">Examinar</string>
+    <string name="btn_xex_folder">Carpetas XEX</string>
+    <string name="dialog_select_xex_dir_title">Seleccionar carpeta de juego XEX/XBE (o carpeta con varios juegos)</string>
+    <string name="dialog_select_xex_multi_title">Seleccionar Carpetas XEX</string>
+    <string name="dialog_select_xex_multi_caption">Seleccione las carpetas de juegos XEX/XBE para añadir a la cola:</string>
+    <string name="msg_no_xex_found">No se encontró ninguna carpeta de juego XEX/XBE en el directorio seleccionado</string>
+    <string name="tooltip_browse_xex">Seleccionar una carpeta de juego XEX/XBE extraída o una carpeta con varios juegos</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nombre de archivo</string>
     <string name="col_status">Estado</string>
@@ -892,7 +926,8 @@ inline constexpr std::string_view XML_ES = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">Escribiendo archivo CSO</string>
     <string name="stage_writing_cci">Escribiendo archivo CCI</string>
     <string name="stage_extracting">Extrayendo archivos</string>
-</resources>)xml";
+</resources>
+)xml";
 
 inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -916,6 +951,12 @@ inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="u
     <string name="label_output_dir">Pasta de saída:</string>
     <string name="label_file_list">Lista de ficheiros:</string>
     <string name="btn_browse">Procurar</string>
+    <string name="btn_xex_folder">Pastas XEX</string>
+    <string name="dialog_select_xex_dir_title">Selecionar pasta de jogo XEX/XBE (ou pasta contendo vários jogos)</string>
+    <string name="dialog_select_xex_multi_title">Selecionar Pastas XEX</string>
+    <string name="dialog_select_xex_multi_caption">Selecione as pastas de jogos XEX/XBE para adicionar à fila:</string>
+    <string name="msg_no_xex_found">Nenhuma pasta de jogo XEX/XBE encontrada no diretório selecionado</string>
+    <string name="tooltip_browse_xex">Selecionar uma pasta de jogo XEX/XBE extraída ou uma pasta com vários jogos</string>
     <string name="col_format">Formato</string>
     <string name="col_filename">Nome do ficheiro</string>
     <string name="col_status">Estado</string>
@@ -1070,7 +1111,8 @@ inline constexpr std::string_view XML_PT = R"xml(<?xml version="1.0" encoding="u
     <string name="stage_writing_cso">A escrever ficheiro CSO</string>
     <string name="stage_writing_cci">A escrever arquivo CCI</string>
     <string name="stage_extracting">A extrair ficheiros</string>
-</resources>)xml";
+</resources>
+)xml";
 
 inline std::string_view get(std::string_view lang_code)
 {

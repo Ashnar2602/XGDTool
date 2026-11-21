@@ -3,6 +3,101 @@
 #include "Utils/StringUtils.h"
 #include "InputHelper/InputHelper.h"
 
+std::filesystem::path InputHelper::normalize_input_path(const std::filesystem::path& path)
+{
+    if (path.empty())
+    {
+        return path;
+    }
+
+    std::filesystem::path normalized = path.lexically_normal();
+    while (normalized.filename().empty() && normalized.has_parent_path() && normalized != normalized.root_path())
+    {
+        normalized = normalized.parent_path();
+    }
+    return normalized;
+}
+
+std::vector<std::filesystem::path> InputHelper::find_xex_directories(const std::filesystem::path& root_dir, int max_depth)
+{
+    std::vector<std::filesystem::path> results;
+    std::filesystem::path normalized = normalize_input_path(root_dir);
+    std::error_code ec;
+    if (normalized.empty() || !std::filesystem::is_directory(normalized, ec))
+    {
+        return results;
+    }
+
+    auto has_xex_or_xbe = [](const std::filesystem::path& dir) -> bool {
+        bool exe_found = false;
+        std::error_code iter_ec;
+        for (const auto& entry : std::filesystem::directory_iterator(dir, iter_ec))
+        {
+            if (iter_ec) break;
+            if (entry.is_regular_file(iter_ec))
+            {
+                std::string ext = entry.path().extension().string();
+                if (ext.size() == 4 &&
+                    (StringUtils::case_insensitive_search(ext, ".xex") ||
+                     StringUtils::case_insensitive_search(ext, ".xbe")))
+                {
+                    exe_found = true;
+                }
+                else if (ext.size() == 4 &&
+                    (StringUtils::case_insensitive_search(ext, ".iso") ||
+                     StringUtils::case_insensitive_search(ext, ".cso") ||
+                     StringUtils::case_insensitive_search(ext, ".cci")))
+                {
+                    return false;
+                }
+            }
+        }
+        return exe_found;
+    };
+
+    if (has_xex_or_xbe(normalized))
+    {
+        results.push_back(normalized);
+        return results;
+    }
+
+    auto scan_recursive = [&](auto&& self, const std::filesystem::path& current, int depth) -> void {
+        if (depth > max_depth)
+        {
+            return;
+        }
+        std::vector<std::filesystem::path> subdirs;
+        std::error_code iter_ec;
+        for (const auto& entry : std::filesystem::directory_iterator(current, iter_ec))
+        {
+            if (iter_ec) break;
+            if (entry.is_directory(iter_ec))
+            {
+                std::string name = entry.path().filename().string();
+                if (!name.empty() && name[0] != '.')
+                {
+                    subdirs.push_back(normalize_input_path(entry.path()));
+                }
+            }
+        }
+        std::sort(subdirs.begin(), subdirs.end());
+        for (const auto& sub : subdirs)
+        {
+            if (has_xex_or_xbe(sub))
+            {
+                results.push_back(sub);
+            }
+            else
+            {
+                self(self, sub, depth + 1);
+            }
+        }
+    };
+
+    scan_recursive(scan_recursive, normalized, 1);
+    return results;
+}
+
 bool InputHelper::has_extension(const std::filesystem::path& path, const std::string& extension) 
 {
     std::string ext = path.extension().string();
@@ -113,11 +208,26 @@ FileType InputHelper::get_filetype(const std::filesystem::path& path)
 
 bool InputHelper::is_batch_dir(const std::filesystem::path& path) 
 {
+    if (!std::filesystem::is_directory(path))
+    {
+        return false;
+    }
+
     for (const auto& entry : std::filesystem::directory_iterator(path)) 
     {
         if (get_filetype(entry.path()) != FileType::UNKNOWN) 
         {
             return true;
+        }
+        if (entry.is_directory())
+        {
+            for (const auto& nested : std::filesystem::directory_iterator(entry.path()))
+            {
+                if (nested.is_directory() && is_extracted_dir(nested.path()))
+                {
+                    return true;
+                }
+            }
         }
     }
     return false;
@@ -287,6 +397,11 @@ OutputSettings InputHelper::get_auto_output_settings(const AutoFormat auto_forma
 
 void InputHelper::remove_duplicate_infos(std::vector<InputInfo>& input_infos)
 {
+    if (input_infos.size() < 2)
+    {
+        return;
+    }
+
     std::sort(input_infos.begin(), input_infos.end(), [](const InputInfo& a, const InputInfo& b) 
     {
         return a.paths.front() < b.paths.front();
