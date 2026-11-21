@@ -335,11 +335,11 @@ std::vector<std::filesystem::path> GoDWriter::write_data_files(const std::filesy
 
     XGDLog() << "Writing data files" << XGDLog::Endl;
 
-    while (current_sector <= last_sector) 
+    while (current_sector < last_sector)
     {
         uint32_t current_out_sector = current_sector - sector_offset;
         uint32_t contiguous = get_contiguous_sectors(current_out_sector);
-        uint32_t read_sectors = std::min(last_sector - current_sector + 1, contiguous);
+        uint32_t read_sectors = std::min(last_sector - current_sector, contiguous);
 
         image_reader.read_sectors(current_sector, read_sectors, buffer.data());
 
@@ -429,13 +429,13 @@ void GoDWriter::write_hashtables(const std::vector<std::filesystem::path>& part_
 
         for (uint32_t i = 0; i < sub_hashtables; ++i) 
         {
+            blocks_left--; // Exclude the sub-hash-table block before counting data blocks.
             uint32_t blocks_in_sht = std::min(static_cast<uint32_t>(GoD::DATA_BLOCKS_PER_SHT), blocks_left);
             std::vector<char> sht_data_buffer(blocks_in_sht * GoD::BLOCK_SIZE, 0);
             std::vector<SHA1Hash> sub_hashtable;
             sub_hashtable.reserve(blocks_in_sht);
 
             current_file.seekp(GoD::BLOCK_SIZE, std::ios::cur);
-            blocks_left--;
 
             current_file.read(sht_data_buffer.data(), sht_data_buffer.size());
             if (current_file.fail()) 
